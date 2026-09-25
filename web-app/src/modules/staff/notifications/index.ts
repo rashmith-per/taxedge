@@ -1,1 +1,0 @@
-export { staffNotificationsRoutes } from './routes'

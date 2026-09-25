@@ -1,1 +1,0 @@
-export { staffPricingRoutes } from './routes'

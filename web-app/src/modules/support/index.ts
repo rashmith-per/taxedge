@@ -1,6 +1,0 @@
-export { supportRoutes } from './routes'
-export { useSupport } from './hooks/useSupport'
-export { useSupportChat } from './hooks/useSupportChat'
-export { useSupportExecutives } from './hooks/useSupportExecutives'
-export { supportService } from './services/supportService'
-export * from './types/support.types'

@@ -1,5 +1,0 @@
-export { env } from './environment'
-export type { Env } from './environment'
-export { appConfig } from './appConfig'
-export { routePaths } from './routePaths'
-export * from './constants'

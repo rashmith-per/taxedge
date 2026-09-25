@@ -1,7 +1,0 @@
-.staff-management { display: flex; flex-direction: column; gap: var(--space-5); }
-.staff-management__search { max-width: 420px; }
-
-.staff-management__person { display: flex; flex-direction: column; line-height: 1.3; }
-.staff-management__person span:last-child { font-size: var(--font-size-xs); color: var(--color-text-muted); }
-
-.staff-management__row-actions { display: inline-flex; gap: var(--space-1); }
