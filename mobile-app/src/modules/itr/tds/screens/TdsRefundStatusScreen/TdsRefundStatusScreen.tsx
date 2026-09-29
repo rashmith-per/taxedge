@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { View, ScrollView, StatusBar, BackHandler } from "react-native";
+import { View, ScrollView, BackHandler } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApplicationStore } from "@/store/applicationStore";
@@ -56,7 +57,7 @@ export const TdsRefundStatusScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, containerInsetsStyle]}>
-      <StatusBar barStyle="light-content" backgroundColor="#4338CA" />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor="#4338CA" />
 
       {/* Top Banner Navigation */}
       <TdsStatusTopNav

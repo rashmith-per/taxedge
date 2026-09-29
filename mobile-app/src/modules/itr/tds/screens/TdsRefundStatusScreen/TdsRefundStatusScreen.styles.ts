@@ -1,5 +1,4 @@
 import { StyleSheet, Platform, ViewStyle } from "react-native";
-import { BrandColors } from "../../../../../shared/theme";
 
 export const styles = StyleSheet.create({
   container: {

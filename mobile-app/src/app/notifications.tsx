@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "../hooks/use-theme";
@@ -8,6 +8,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles, getThemedStyles } from "../styles/app/notifications.styles";
 import type { IconName, NotificationType } from "../types/domain";
+import { formatRelativeTime, parseTimestamp } from "../shared/formatters/dateFormatter";
 
 export default function NotificationsScreen() {
   const colors = useTheme();
@@ -20,6 +21,23 @@ export default function NotificationsScreen() {
   useEffect(() => {
     markAllAsRead();
   }, []);
+
+  // Re-render once a minute so "5 min ago" style labels stay current.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Newest first by the raw creation time (never by the display string).
+  // Items without a creation time keep their stored order, after dated ones.
+  const sortedNotifications = useMemo(() => {
+    const time = (createdAt?: string) => parseTimestamp(createdAt)?.getTime() ?? -Infinity;
+    return notifications
+      .map((n, index) => ({ n, index }))
+      .sort((a, b) => time(b.n.createdAt) - time(a.n.createdAt) || a.index - b.index)
+      .map(({ n }) => n);
+  }, [notifications]);
 
   const getIcon = (
     type: NotificationType,
@@ -47,7 +65,8 @@ export default function NotificationsScreen() {
       <AppHeader title="Notifications" showBack showNotification={false} />
 
       <FlatList
-        data={notifications}
+        data={sortedNotifications}
+        extraData={now}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
           styles.listContent,
@@ -100,7 +119,7 @@ export default function NotificationsScreen() {
                       themedStyles.notifTime,
                     ]}
                   >
-                    {item.timestamp}
+                    {formatRelativeTime(item.createdAt, now)}
                   </Text>
                 </View>
                 <Text

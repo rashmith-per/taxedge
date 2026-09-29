@@ -40,4 +40,34 @@ export const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  accountNumberBox: {
+    marginTop: 4,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    fontWeight: '500',
+  },
 });

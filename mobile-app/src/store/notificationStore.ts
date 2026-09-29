@@ -1,8 +1,26 @@
 import { create } from "zustand";
 import { localStorage } from "../core/storage/localStorage";
+import { authStorage } from "../modules/authentication/services/authStorage";
 import type { AppNotification, NotificationType } from "../types/domain";
 
-const NOTIFICATIONS_STORAGE_KEY = "@taxedge_notifications";
+const getNotificationsStorageKey = (): string => {
+  const activeMobile = String(authStorage.getSession()?.activeMobile || "").replace(/\D/g, "");
+  return activeMobile ? `@taxedge_notifications_${activeMobile}` : "@taxedge_notifications_anonymous";
+};
+
+/**
+ * Notifications created before `createdAt` existed stored only the display
+ * string "Just now". Their id is `notif_<Date.now() at creation>_<random>`,
+ * so the real creation time is recovered from the id. Anything else keeps no
+ * createdAt and is shown as "Date unavailable" (never as a current time).
+ */
+const withCreatedAt = (n: AppNotification): AppNotification => {
+  if (n.createdAt) return n;
+  const match = /^notif_(\d{12,14})_/.exec(n.id);
+  if (!match) return n;
+  const created = new Date(Number(match[1]));
+  return isNaN(created.getTime()) ? n : { ...n, createdAt: created.toISOString() };
+};
 
 export interface NotificationState {
   notifications: AppNotification[];
@@ -20,7 +38,7 @@ export interface NotificationState {
 
 const persistNotifications = async (notifications: AppNotification[]) => {
   try {
-    await localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    await localStorage.setItem(getNotificationsStorageKey(), JSON.stringify(notifications));
   } catch (err) {
     console.warn("Failed to persist notifications:", err);
   }
@@ -32,13 +50,15 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 
   addNotification: (title, body, type) => {
     set((state) => {
+      // The notification is created now, so now is its real creation time.
+      const createdAtMs = Date.now();
       const newNotif: AppNotification = {
-        id: `notif_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+        id: `notif_${createdAtMs}_${Math.floor(Math.random() * 10000)}`,
         title,
         body,
         type,
         read: false,
-        timestamp: "Just now",
+        createdAt: new Date(createdAtMs).toISOString(),
       };
       const newNotifs = [newNotif, ...state.notifications];
       persistNotifications(newNotifs);
@@ -80,13 +100,13 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 
   loadPersisted: async () => {
     try {
-      const raw = await localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+      const raw = await localStorage.getItem(getNotificationsStorageKey());
       if (raw) {
         const parsed: AppNotification[] = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          const real = parsed.filter(
-            (n) => n && n.id && !n.id.startsWith("notif-")
-          );
+          const real = parsed
+            .filter((n) => n && n.id && !n.id.startsWith("notif-"))
+            .map(withCreatedAt);
           set({
             notifications: real,
             unreadCount: real.filter((n) => !n.read).length,

@@ -1,11 +1,11 @@
 import React, { type ReactNode } from "react";
 import {
-  StatusBar,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { Colors } from "../../../design-system/colors";
 import { AppHeader } from "../AppHeader/AppHeader";
 
@@ -38,7 +38,7 @@ export function ScreenLayout({
 }: ScreenLayoutProps) {
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }, style]}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
       <AppHeader
         title={title}
         showBack={showBack}

@@ -26,13 +26,13 @@ export interface GstPaymentReceiptStepProps {
 }
 
 export const GstPaymentReceiptStep: React.FC<GstPaymentReceiptStepProps> = ({
-  amount = "₹2,344",
+  amount = "Amount unavailable",
   serviceName = "GST Filing Service (GSTR-3B)",
-  invoiceNo = "INV-2026-08942",
-  gstin = "29ABCDE1234F1Z5",
-  period = "July 2026",
-  customerName = "Valued Customer",
-  txnId = "TXN" + Date.now().toString().slice(-8),
+  invoiceNo = "Not available",
+  gstin = "Not provided",
+  period = "Not provided",
+  customerName = "Not provided",
+  txnId = "Not available",
   paymentMethod = "UPI",
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);

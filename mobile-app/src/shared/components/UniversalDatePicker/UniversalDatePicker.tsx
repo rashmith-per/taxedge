@@ -2,9 +2,14 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   Platform,
   Modal,
+  Keyboard,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
@@ -12,12 +17,23 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { useTheme } from "@/shared/hooks/useTheme";
 import {
+  formatDateDDMMYYYY,
+  maskDateInput,
+  parseDDMMYYYY,
+} from "@/shared/formatters/dateFormatter";
+import {
   styles,
   getLabelThemeStyle,
   getInputBoxThemeStyle,
   getValueTextThemeStyle,
   getWebInputStyle,
 } from "./UniversalDatePicker.styles";
+
+/**
+ * "DD MMM YYYY" (e.g. 05 Mar 2024) is the historical default output.
+ * "DD-MM-YYYY" (e.g. 05-03-2024) is used by forms that store numeric dates.
+ */
+export type UniversalDateFormat = "DD MMM YYYY" | "DD-MM-YYYY";
 
 export interface UniversalDatePickerProps {
   label?: string;
@@ -30,6 +46,23 @@ export interface UniversalDatePickerProps {
   maximumDate?: Date;
   minimumDate?: Date;
   validateMinDate?: string;
+  /** Output format of `onChange`. Defaults to "DD MMM YYYY". */
+  valueFormat?: UniversalDateFormat;
+  /**
+   * Lets the user type the date (DD-MM-YYYY, digits only, dashes added
+   * automatically) as well as pick it from the calendar icon.
+   * Requires `valueFormat="DD-MM-YYYY"`.
+   */
+  allowManualEntry?: boolean;
+  /** Date the calendar opens on when the field is empty. Defaults to today. */
+  initialPickerDate?: Date;
+  /** Called when the manual-entry text field loses focus. */
+  onBlur?: () => void;
+  /** Set false when the parent renders its own error text. Defaults to true. */
+  showErrorText?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 const MONTHS = [
@@ -74,24 +107,65 @@ export function parseStringToDate(str?: string): Date {
   return isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
+const clampDate = (date: Date, min?: Date, max?: Date): Date => {
+  if (min && date.getTime() < min.getTime()) return min;
+  if (max && date.getTime() > max.getTime()) return max;
+  return date;
+};
+
 export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
   label,
   value,
   onChange,
   required = false,
   error,
-  placeholder = "Select Date",
+  placeholder,
   helperText,
   maximumDate,
   minimumDate,
   validateMinDate,
+  valueFormat = "DD MMM YYYY",
+  allowManualEntry = false,
+  initialPickerDate,
+  onBlur,
+  showErrorText = true,
+  containerStyle,
+  inputStyle,
+  textStyle,
 }) => {
   const { isDark } = useTheme();
   const [showPicker, setShowPicker] = useState(false);
-  const [tempIosDate, setTempIosDate] = useState<Date>(() => parseStringToDate(value));
 
-  const effectiveMinDate = minimumDate || (validateMinDate ? parseStringToDate(validateMinDate) : undefined);
-  const currentDate = parseStringToDate(value);
+  const isNumericFormat = valueFormat === "DD-MM-YYYY";
+  const manualEntry = allowManualEntry && isNumericFormat;
+  const effectivePlaceholder = placeholder ?? (isNumericFormat ? "DD-MM-YYYY" : "Select Date");
+  const effectiveMinDate =
+    minimumDate || (validateMinDate ? parseStringToDate(validateMinDate) : undefined);
+
+  const formatOutput = (date: Date): string =>
+    isNumericFormat ? formatDateDDMMYYYY(date) : formatDateToString(date);
+
+  // Date the native picker should show. Partial or invalid manual text never
+  // reaches the picker; it falls back to the initial date instead.
+  const resolvePickerDate = (): Date => {
+    const parsed = isNumericFormat
+      ? parseDDMMYYYY(value)
+      : value
+        ? parseStringToDate(value)
+        : null;
+    return clampDate(parsed || initialPickerDate || new Date(), effectiveMinDate, maximumDate);
+  };
+
+  const currentDate = resolvePickerDate();
+  const [tempIosDate, setTempIosDate] = useState<Date>(currentDate);
+
+  const openPicker = () => {
+    // Make sure no text field keeps (or later regains) focus: this is what
+    // re-opened the keyboard after a picker/dropdown closed.
+    Keyboard.dismiss();
+    setTempIosDate(resolvePickerDate());
+    setShowPicker(true);
+  };
 
   const handleNativeChange = (
     event: DateTimePickerEvent,
@@ -104,14 +178,14 @@ export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
       if (Platform.OS === "ios") {
         setTempIosDate(selectedDate);
       } else {
-        onChange(formatDateToString(selectedDate));
+        onChange(formatOutput(selectedDate));
       }
     }
   };
 
   const handleIosConfirm = () => {
     setShowPicker(false);
-    onChange(formatDateToString(tempIosDate));
+    onChange(formatOutput(tempIosDate));
   };
 
   const handleIosCancel = () => {
@@ -119,6 +193,13 @@ export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
   };
 
   const iconColor = isDark ? "#94A3B8" : "#64748B";
+  const errorNode = error && showErrorText ? <Text style={styles.errorText}>{error}</Text> : null;
+  const helperNode = helperText && !error ? <Text style={styles.helperText}>{helperText}</Text> : null;
+  const labelNode = label ? (
+    <Text style={[styles.label, getLabelThemeStyle(isDark)]}>
+      {label} {required && <Text style={styles.star}>*</Text>}
+    </Text>
+  ) : null;
 
   // Web Platform input
   if (Platform.OS === "web") {
@@ -134,23 +215,21 @@ export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
       if (val) {
         const [y, m, d] = val.split("-").map(Number);
         const newDate = new Date(y, m - 1, d);
-        onChange(formatDateToString(newDate));
+        onChange(formatOutput(newDate));
       }
     };
 
-    return (
-      <View style={styles.container}>
-        {label ? (
-          <Text style={[styles.label, getLabelThemeStyle(isDark)]}>
-            {label} {required && <Text style={styles.star}>*</Text>}
-          </Text>
-        ) : null}
+    const hasValidValue = isNumericFormat ? parseDDMMYYYY(value) !== null : !!value;
 
-        <View style={[styles.inputBox, getInputBoxThemeStyle(isDark, !!error)]}>
+    return (
+      <View style={[styles.container, containerStyle]}>
+        {labelNode}
+
+        <View style={[styles.inputBox, getInputBoxThemeStyle(isDark, !!error), inputStyle]}>
           <Ionicons name="calendar-outline" size={20} color={iconColor} />
           <input
             type="date"
-            value={value ? formatForWeb(currentDate) : ""}
+            value={hasValidValue ? formatForWeb(currentDate) : ""}
             onChange={handleWebChange}
             min={effectiveMinDate ? formatForWeb(effectiveMinDate) : undefined}
             max={maximumDate ? formatForWeb(maximumDate) : undefined}
@@ -158,49 +237,75 @@ export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
           />
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {helperText && !error ? <Text style={styles.helperText}>{helperText}</Text> : null}
+        {errorNode}
+        {helperNode}
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {label ? (
-        <Text style={[styles.label, getLabelThemeStyle(isDark)]}>
-          {label} {required && <Text style={styles.star}>*</Text>}
-        </Text>
-      ) : null}
+    <View style={[styles.container, containerStyle]}>
+      {labelNode}
 
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => {
-          setTempIosDate(parseStringToDate(value));
-          setShowPicker(true);
-        }}
-        style={[styles.inputBox, getInputBoxThemeStyle(isDark, !!error)]}
-      >
-        <View style={styles.iconBox}>
-          <Ionicons name="calendar-outline" size={17} color="#EA580C" />
+      {manualEntry ? (
+        <View style={[styles.inputBox, getInputBoxThemeStyle(isDark, !!error), inputStyle]}>
+          <TextInput
+            style={[styles.manualInput, getValueTextThemeStyle(value, isDark), textStyle]}
+            value={value}
+            onChangeText={(text) => onChange(maskDateInput(text))}
+            onBlur={onBlur}
+            placeholder={effectivePlaceholder}
+            placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+            keyboardType="number-pad"
+            maxLength={10}
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            accessibilityLabel={label ? `${label} (DD-MM-YYYY)` : "Date (DD-MM-YYYY)"}
+          />
+          <TouchableOpacity
+            onPress={openPicker}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Open calendar"
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={18}
+              color={error ? "#DC2626" : "#EA580C"}
+            />
+          </TouchableOpacity>
         </View>
-
-        <Text
-          style={[
-            styles.valueText,
-            getValueTextThemeStyle(value, isDark),
-          ]}
-          numberOfLines={1}
+      ) : (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={openPicker}
+          style={[styles.inputBox, getInputBoxThemeStyle(isDark, !!error), inputStyle]}
         >
-          {value || placeholder}
-        </Text>
+          <View style={styles.iconBox}>
+            <Ionicons name="calendar-outline" size={17} color="#EA580C" />
+          </View>
 
-        <Ionicons name="chevron-down" size={18} color={iconColor} />
-      </TouchableOpacity>
+          <Text
+            style={[
+              styles.valueText,
+              getValueTextThemeStyle(value, isDark),
+              textStyle,
+            ]}
+            numberOfLines={1}
+          >
+            {value || effectivePlaceholder}
+          </Text>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {helperText && !error ? <Text style={styles.helperText}>{helperText}</Text> : null}
+          <Ionicons name="chevron-down" size={18} color={iconColor} />
+        </TouchableOpacity>
+      )}
 
-      {/* Android Picker */}
+      {errorNode}
+      {helperNode}
+
+      {/* Android Picker (the calendar header's year opens a year list for fast navigation) */}
       {Platform.OS === "android" && showPicker && (
         <DateTimePicker
           value={currentDate}
@@ -212,7 +317,7 @@ export const UniversalDatePicker: React.FC<UniversalDatePickerProps> = ({
         />
       )}
 
-      {/* iOS Modal Picker */}
+      {/* iOS Modal Picker (spinner has independent day / month / year wheels) */}
       {Platform.OS === "ios" && (
         <Modal
           visible={showPicker}

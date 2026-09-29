@@ -3,7 +3,7 @@ package com.taxedge.itr.service;
 import java.time.LocalDateTime;
 
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.taxedge.itr.Exception.ResourceNotFoundException;
@@ -15,10 +15,10 @@ import com.taxedge.itr.repository.RefundBankAccountRepository;
 import jakarta.transaction.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class RefundBankAccountServiceImpl implements RefundBankAccountService {
 
-	@Autowired
-    private  RefundBankAccountRepository repository;
+    private final RefundBankAccountRepository repository;
 
     
 

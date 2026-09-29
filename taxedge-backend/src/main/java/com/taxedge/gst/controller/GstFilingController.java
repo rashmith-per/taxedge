@@ -3,7 +3,7 @@ package com.taxedge.gst.controller;
 import java.io.IOException;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,14 +16,12 @@ import com.taxedge.gst.service.GstFilingService;
 import com.taxedge.gst.service.GstFilingDocumentsService;
 
 @RestController
-@RequestMapping("/gst/filing")
+@RequestMapping("/api/v1/gst/filing")
+@RequiredArgsConstructor
 public class GstFilingController {
 
-    @Autowired
-    private GstFilingService gstFilingService;
-
-    @Autowired
-    private GstFilingDocumentsService documentsService;
+    private final GstFilingService gstFilingService;
+    private final GstFilingDocumentsService documentsService;
 
     // ==========================================
     // 1. GST FILING ENDPOINTS

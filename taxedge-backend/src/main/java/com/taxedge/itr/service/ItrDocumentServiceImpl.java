@@ -2,8 +2,6 @@ package com.taxedge.itr.service;
 
 import java.io.IOException;
 import java.util.Base64;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,137 +13,144 @@ import com.taxedge.itr.Exception.ResourceNotFoundException;
 import com.taxedge.itr.dto.DocumentDto;
 import com.taxedge.itr.entity.ItrDocument;
 import com.taxedge.itr.entity.ItrFiling;
-import com.taxedge.itr.enums.ItrDocumentType;
 import com.taxedge.itr.helper.RandomNumberGenerator;
 import com.taxedge.itr.repository.ItrDocumentRepository;
 import com.taxedge.itr.repository.ItrFilingRepository;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class ItrDocumentServiceImpl implements ItrDocumentService {
 
-    @Autowired
-    private ItrDocumentRepository documentRepository;
+	
+	private final ItrDocumentRepository documentRepository;
 
-    @Autowired
-    private ItrFilingRepository itrFilingRepository;
+	
+	private final ItrFilingRepository itrFilingRepository;
 
-    @Autowired
-    @Qualifier("itrModelMapper")
-    private ModelMapper modelMapper;
+	@Autowired
+	@Qualifier("itrModelMapper")
+	private ModelMapper modelMapper;
 
-    @Override
-    public String registerDocument(
-            String itrId,
-            String documentType,
-            MultipartFile file) throws IOException {
+	@Override
+	public String registerDocuments(String itrId, MultipartFile form16PartAPartB, MultipartFile form26as,
+			MultipartFile aisTis, MultipartFile bankAccountStatement, MultipartFile salaryPayslips) throws IOException {
 
-        ItrFiling itrFiling = itrFilingRepository.findById(itrId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "ITR Filing not found with itrId: " + itrId));
+		ItrFiling itrFiling = itrFilingRepository.findById(itrId)
+				.orElseThrow(() -> new ResourceNotFoundException("ITR Filing not found with itrId: " + itrId));
 
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is required");
-        }
+		if (form16PartAPartB == null && form26as == null && aisTis == null && bankAccountStatement == null
+				&& salaryPayslips == null) {
 
-        ItrDocumentType type;
+			throw new IllegalArgumentException("Please select at least one document");
+		}
 
-        try {
-            type = ItrDocumentType.valueOf(documentType.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
-                    "Invalid document type: " + documentType);
-        }
+		ItrDocument document = new ItrDocument();
 
-        boolean alreadyExists =
-                documentRepository
-                        .existsByItrFilingItrIdAndDocumentType(
-                                itrId, type);
+		String documentId = RandomNumberGenerator.generateDocumentId();
 
-        if (alreadyExists) {
-            throw new IllegalArgumentException(
-                    "Document already uploaded for: " + type);
-        }
+		document.setDocumentId(documentId);
 
-        ItrDocument document = new ItrDocument();
+		document.setItrFiling(itrFiling);
 
-        String documentId =
-                RandomNumberGenerator.generateDocumentId();
+		if (form16PartAPartB != null && !form16PartAPartB.isEmpty()) {
 
-        document.setDocumentId(documentId);
-        document.setItrFiling(itrFiling);
-        document.setDocumentType(type);
-        document.setFileName(file.getOriginalFilename());
-        document.setFileType(file.getContentType());
+			document.setForm16PartAPartB(convertFile(form16PartAPartB));
+		}
 
-        String base64Data =
-                Base64.getEncoder().encodeToString(file.getBytes());
+		if (form26as != null && !form26as.isEmpty()) {
 
-        document.setImageData(base64Data);
+			document.setForm26as(convertFile(form26as));
+		}
 
-        documentRepository.save(document);
+		if (aisTis != null && !aisTis.isEmpty()) {
 
-        return "ITR document uploaded successfully. Document ID: "
-                + documentId;
-    }
+			document.setAisTis(convertFile(aisTis));
+		}
 
-    @Override
-    public String updateDocument(
-            String documentId,
-            MultipartFile file) throws IOException {
+		if (bankAccountStatement != null && !bankAccountStatement.isEmpty()) {
 
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is required");
-        }
+			document.setBankAccountStatement(convertFile(bankAccountStatement));
+		}
 
-        ItrDocument document =
-                documentRepository.findById(documentId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Document not found with documentId: "
-                                                + documentId));
+		if (salaryPayslips != null && !salaryPayslips.isEmpty()) {
 
-        document.setFileName(file.getOriginalFilename());
-        document.setFileType(file.getContentType());
+			document.setSalaryPayslips(convertFile(salaryPayslips));
+		}
 
-        String base64Data =
-                Base64.getEncoder().encodeToString(file.getBytes());
+		documentRepository.save(document);
 
-        document.setImageData(base64Data);
+		return "ITR documents uploaded successfully. Document ID: " + documentId;
+	}
 
-        documentRepository.save(document);
+	@Override
+	public DocumentDto getDocuments(String documentId) {
 
-        return "ITR document updated successfully";
-    }
+		ItrDocument document = documentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("ITR documents not found with documentId: " + documentId));
 
-    @Override
-    public DocumentDto getDocument(String documentId) {
+		return modelMapper.map(document, DocumentDto.class);
+	}
 
-        ItrDocument document =
-                documentRepository.findById(documentId)
-                        .orElseThrow(() ->
-                                new ResourceNotFoundException(
-                                        "Document not found with documentId: "
-                                                + documentId));
+	@Override
+	public String updateDocuments(String documentId, MultipartFile form16PartAPartB, MultipartFile form26as,
+			MultipartFile aisTis, MultipartFile bankAccountStatement, MultipartFile salaryPayslips) throws IOException {
 
-        return modelMapper.map(document, DocumentDto.class);
-    }
-    
-    
-    @Override
-    public List<DocumentDto> getDocuments(String itrId) {
+		ItrDocument document = documentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("ITR documents not found with documentId: " + documentId));
 
-        itrFilingRepository.findById(itrId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "ITR Filing not found with itrId: " + itrId));
+		if (form16PartAPartB == null && form26as == null && aisTis == null && bankAccountStatement == null
+				&& salaryPayslips == null) {
 
-        List<ItrDocument> documents =
-                documentRepository.findByItrFilingItrId(itrId);
+			throw new IllegalArgumentException("Please select at least one document");
+		}
 
-        return documents.stream()
-                .map(document ->
-                        modelMapper.map(document, DocumentDto.class))
-                .collect(Collectors.toList());
-    }
+		if (form16PartAPartB != null && !form16PartAPartB.isEmpty()) {
+
+			document.setForm16PartAPartB(convertFile(form16PartAPartB));
+		}
+
+		if (form26as != null && !form26as.isEmpty()) {
+
+			document.setForm26as(convertFile(form26as));
+		}
+
+		if (aisTis != null && !aisTis.isEmpty()) {
+
+			document.setAisTis(convertFile(aisTis));
+		}
+
+		if (bankAccountStatement != null && !bankAccountStatement.isEmpty()) {
+
+			document.setBankAccountStatement(convertFile(bankAccountStatement));
+		}
+
+		if (salaryPayslips != null && !salaryPayslips.isEmpty()) {
+
+			document.setSalaryPayslips(convertFile(salaryPayslips));
+		}
+
+		documentRepository.save(document);
+
+		return "ITR documents updated successfully. Document ID: " + documentId;
+	}
+
+	@Override
+	public String deleteDocuments(String documentId) {
+
+		ItrDocument document = documentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("ITR documents not found with documentId: " + documentId));
+
+		documentRepository.delete(document);
+
+		return "ITR documents deleted successfully";
+	}
+
+	private String convertFile(MultipartFile file) throws IOException {
+
+		byte[] fileBytes = file.getBytes();
+
+		return Base64.getEncoder().encodeToString(fileBytes);
+	}
 }

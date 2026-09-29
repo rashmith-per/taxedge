@@ -468,20 +468,95 @@ export const HOME_LOAN_DOCUMENTS_TEMPLATE: LoanDocumentItem[] = [
   },
 ];
 
+export const MACHINERY_DOCUMENTS_TEMPLATE: LoanDocumentItem[] = [
+  {
+    id: "pan",
+    name: "PAN Card",
+    subtitle: "Entity or Primary Applicant PAN Card copy",
+    required: true,
+    iconName: "card",
+    iconBg: "#E0F2FE",
+    iconColor: "#0284C7",
+    category: "Identity & Address",
+  },
+  {
+    id: "aadhaar",
+    name: "Aadhaar / Accepted KYC",
+    subtitle: "Aadhaar Card or accepted KYC document of proprietor/applicant",
+    required: true,
+    iconName: "finger-print",
+    iconBg: "#F3E8FF",
+    iconColor: "#7E22CE",
+    category: "Identity & Address",
+  },
+  {
+    id: "bank-statements",
+    name: "Bank Statement",
+    subtitle: "Last 6 to 12 months primary business current account statement",
+    required: true,
+    iconName: "cash",
+    iconBg: "#FEF3C7",
+    iconColor: "#D97706",
+    category: "Income & Banking",
+  },
+  {
+    id: "machinery-quotation",
+    name: "Machinery Quotation",
+    subtitle: "Proforma invoice or official quotation from OEM / Machinery supplier",
+    required: true,
+    iconName: "document-text",
+    iconBg: "#DCFCE7",
+    iconColor: "#16A34A",
+    category: "Business & Tax",
+  },
+  {
+    id: "gst-certificate",
+    name: "GST Certificate / Returns",
+    subtitle: "GST REG-06 or GSTR-3B return copy (if GST registered)",
+    required: false,
+    iconName: "ribbon",
+    iconBg: "#E0F2FE",
+    iconColor: "#0284C7",
+    category: "Business & Tax",
+  },
+  {
+    id: "business-proof",
+    name: "Business Registration Proof",
+    subtitle: "Partnership Deed, MOA/COI, Trade License, or shop establishment proof",
+    required: false,
+    iconName: "briefcase",
+    iconBg: "#F3E8FF",
+    iconColor: "#7E22CE",
+    category: "Business & Tax",
+  },
+  {
+    id: "udyam-certificate",
+    name: "Udyam Certificate",
+    subtitle: "MSME registration certificate (optional)",
+    required: false,
+    iconName: "shield-checkmark",
+    iconBg: "#FEF3C7",
+    iconColor: "#D97706",
+    category: "Business & Tax",
+  },
+];
+
 export function getDocumentsForLoanType(
   loanType: string,
   isBusiness: boolean
 ): LoanDocumentItem[] {
+  if (loanType === "Machinery Loan") {
+    return JSON.parse(JSON.stringify(MACHINERY_DOCUMENTS_TEMPLATE));
+  }
+
   if (loanType === "Home Loan") {
     return JSON.parse(JSON.stringify(HOME_LOAN_DOCUMENTS_TEMPLATE));
   }
-
   const isBusinessCategory =
     isBusiness ||
     [
       "Business Loan",
       "Working Capital",
-      "Machinery Loan",
       "Project Finance",
       "MSME Loan",
       "Property Loan",
@@ -492,3 +567,4 @@ export function getDocumentsForLoanType(
   }
   return JSON.parse(JSON.stringify(INDIVIDUAL_DOCUMENTS_TEMPLATE));
 }
+

@@ -82,4 +82,35 @@ export const styles = StyleSheet.create({
     color: BrandColors.PRIMARY_BLUE,
     fontWeight: "700",
   },
+  customFieldWrapper: {
+    marginTop: 12,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: BrandColors.WHITE,
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#EFF6FF",
+    borderColor: BrandColors.PRIMARY_BLUE,
+  },
+  toggleText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  toggleTextActive: {
+    color: BrandColors.PRIMARY_BLUE,
+    fontWeight: "700",
+  },
 });
+

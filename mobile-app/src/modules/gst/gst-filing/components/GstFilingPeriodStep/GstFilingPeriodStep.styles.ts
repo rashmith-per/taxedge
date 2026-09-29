@@ -128,6 +128,11 @@ export const styles = StyleSheet.create({
     }),
   },
 
+  lookupIndicator: {
+    marginTop: 5,
+    alignSelf: "flex-start",
+  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",

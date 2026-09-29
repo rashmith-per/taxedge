@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { AppHeader } from '../../../../shared/components/AppHeader';
 import { useTheme } from '../../../../hooks/use-theme';
+import { useApplicationStore } from '../../../../store/applicationStore';
 import {
   styles,
   getCardThemedStyle,
@@ -11,19 +12,28 @@ import {
 
 export const CompletedApplicationsScreen: React.FC = () => {
   const colors = useTheme();
+  const applications = useApplicationStore((state) =>
+    state.applications.filter((application) => application.status === 'Completed'),
+  );
 
   return (
     <View style={styles.container}>
       <AppHeader title="Completed Applications" showBack />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={[styles.card, getCardThemedStyle(colors.backgroundElement)]}>
-          <Text style={[styles.title, getTitleThemedStyle(colors.text)]}>
-            GST Registration (GST-2026-9812)
+        {applications.length === 0 ? (
+          <Text style={[styles.desc, getDescThemedStyle(colors.textSecondary)]}>
+            No completed applications yet.
           </Text>
-          <Text style={[styles.desc, getDescThemedStyle(colors.success)]}>
-            Completed on 28 Feb 2026
-          </Text>
-        </View>
+        ) : applications.map((application) => (
+          <View key={application.id} style={[styles.card, getCardThemedStyle(colors.backgroundElement)]}>
+            <Text style={[styles.title, getTitleThemedStyle(colors.text)]}>
+              {application.serviceName} ({application.id})
+            </Text>
+            <Text style={[styles.desc, getDescThemedStyle(colors.success)]}>
+              Completed on {application.createdAt || 'Date unavailable'}
+            </Text>
+          </View>
+        ))}
       </ScrollView>
     </View>
   );

@@ -172,6 +172,8 @@ export const StepDocumentsKYC: React.FC = () => {
     'STATUTORY DOCUMENTS',
   ];
 
+  const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
+
   return (
     <View style={styles.container}>
       <Text style={styles.heading}>Documents & KYC Checklist</Text>
@@ -204,6 +206,8 @@ export const StepDocumentsKYC: React.FC = () => {
                 isVisible: true,
               };
 
+              const err = fieldErrors[item.id];
+
               return (
                 <View key={item.id} style={{ marginBottom: 12 }}>
                   <TdsDocumentCard
@@ -227,6 +231,7 @@ export const StepDocumentsKYC: React.FC = () => {
                       }
                     }}
                   />
+                  {!!err && <Text style={styles.errorText}>{err}</Text>}
                 </View>
               );
             })}

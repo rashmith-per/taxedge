@@ -1,0 +1,53 @@
+package com.taxedge.companyregistration.service;
+
+import com.taxedge.companyregistration.dto.CompanyRegistrationDto;
+import com.taxedge.companyregistration.dto.request.CapitalRequest;
+import com.taxedge.companyregistration.dto.request.CompanyDetailsRequest;
+import com.taxedge.companyregistration.dto.request.CreateCompanyRegistrationRequest;
+import com.taxedge.companyregistration.dto.request.LinkedRegistrationRequest;
+import com.taxedge.companyregistration.dto.request.PaymentRequest;
+import com.taxedge.companyregistration.dto.request.PersonRequest;
+import com.taxedge.companyregistration.dto.request.RegisteredOfficeRequest;
+import com.taxedge.companyregistration.dto.request.ShareholdingRequest;
+import com.taxedge.companyregistration.dto.response.CompanyRegistrationResponse;
+import com.taxedge.companyregistration.dto.response.DocumentResponse;
+import com.taxedge.companyregistration.dto.response.ReceiptResponse;
+import com.taxedge.companyregistration.dto.response.ReviewResponse;
+import com.taxedge.companyregistration.dto.response.SubmissionResponse;
+import com.taxedge.companyregistration.dto.response.TrackingResponse;
+import com.taxedge.companyregistration.entity.CompanyRegistrationDocumentType;
+import java.util.List;
+import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
+
+public interface CompanyRegistrationService {
+    SubmissionResponse applyDraft(CompanyRegistrationDto.DraftRequest request);
+    Map<String, Object> checkName(String name);
+    Map<String, Object> status(Long id);
+    CompanyRegistrationResponse create(CreateCompanyRegistrationRequest request);
+    List<CompanyRegistrationResponse> list();
+    ReviewResponse get(Long id);
+    Map<String, Object> updateDetails(Long id, CompanyDetailsRequest request);
+    Map<String, Object> updateOffice(Long id, RegisteredOfficeRequest request);
+    List<Map<String, Object>> persons(Long id);
+    Map<String, Object> addPerson(Long id, PersonRequest request);
+    Map<String, Object> updatePerson(Long id, Long personId, PersonRequest request);
+    void deletePerson(Long id, Long personId);
+    Map<String, Object> updateCapital(Long id, CapitalRequest request);
+    List<Map<String, Object>> shareholdings(Long id);
+    Map<String, Object> addShareholding(Long id, ShareholdingRequest request);
+    Map<String, Object> updateShareholding(Long id, Long shareholdingId, ShareholdingRequest request);
+    void deleteShareholding(Long id, Long shareholdingId);
+    List<DocumentResponse> documents(Long id);
+    DocumentResponse document(Long id, Long documentId);
+    DocumentResponse uploadDocument(Long id, CompanyRegistrationDocumentType documentType, MultipartFile file);
+    void deleteDocument(Long id, Long documentId);
+    Map<String, Object> updateLinkedRegistrations(Long id, LinkedRegistrationRequest request);
+    Map<String, Object> linkedRegistrations(Long id);
+    Map<String, Object> payment(Long id);
+    Map<String, Object> savePayment(Long id, PaymentRequest request);
+    List<TrackingResponse> tracking(Long id);
+    ReviewResponse review(Long id);
+    SubmissionResponse submit(Long id);
+    ReceiptResponse receipt(Long id);
+}

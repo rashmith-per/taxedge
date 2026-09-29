@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { gstApi } from "@/modules/gst/services/gstApi";
+import { GstValidators } from "@/modules/gst/utils/gstValidators";
+import { dismissKeyboardThen } from "@/shared/components/KeyboardAwareFormLayout";
+import { formatIndianNumberInput, toRawNumericString } from "@/shared/formatters/currencyFormatter";
 import { styles } from "./GstFilingPeriodStep.styles";
 
 const FILING_PERIODS = ["Monthly", "Quarterly", "Annual"];
@@ -128,12 +132,15 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const gstinLookupRequestId = useRef(0);
 
   // Auto-verify if 15-char GSTIN is already provided (e.g. from draft or account)
   useEffect(() => {
-    if (data.gstin && data.gstin.length === 15 && !data.isVerifiedEntity) {
+    if (data.gstin && GstValidators.isValidGstin(data.gstin) && !data.isVerifiedEntity) {
+      const requestId = ++gstinLookupRequestId.current;
       gstApi.lookupGstin(data.gstin).then((entity) => {
-        if (entity) {
+        if (requestId !== gstinLookupRequestId.current) return;
+        if (entity && entity.gstin === data.gstin) {
           onChange({
             businessName: entity.legalName,
             tradeName: entity.tradeName,
@@ -142,35 +149,43 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
             isVerifiedEntity: true,
           });
         }
+      }).catch(() => undefined).finally(() => {
+        if (requestId === gstinLookupRequestId.current) setIsLookingUp(false);
       });
     }
   }, [data.gstin]);
 
   const handleGstinChange = async (text: string) => {
-    const cleaned = text.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    onChange({ gstin: cleaned });
+    const cleaned = text.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 15);
+    const requestId = ++gstinLookupRequestId.current;
+    onChange({
+      gstin: cleaned,
+      isVerifiedEntity: false,
+      businessName: undefined,
+      tradeName: undefined,
+      legalName: undefined,
+      taxpayerScheme: undefined,
+      state: undefined,
+    });
 
-    if (cleaned.length === 15) {
+    if (GstValidators.isValidGstin(cleaned)) {
       setIsLookingUp(true);
-      const entity = await gstApi.lookupGstin(cleaned);
-      setIsLookingUp(false);
-      if (entity) {
-        onChange({
-          gstin: cleaned,
-          businessName: entity.legalName,
-          tradeName: entity.tradeName,
-          taxpayerScheme: entity.taxpayerScheme,
-          state: entity.state,
-          isVerifiedEntity: true,
-        });
+      try {
+        const entity = await gstApi.lookupGstin(cleaned);
+        if (requestId === gstinLookupRequestId.current && entity?.gstin === cleaned) {
+          onChange({
+            businessName: entity.legalName,
+            tradeName: entity.tradeName,
+            taxpayerScheme: entity.taxpayerScheme,
+            state: entity.state,
+            isVerifiedEntity: true,
+          });
+        }
+      } finally {
+        if (requestId === gstinLookupRequestId.current) setIsLookingUp(false);
       }
-    } else if (data.isVerifiedEntity) {
-      onChange({
-        isVerifiedEntity: false,
-        businessName: undefined,
-        tradeName: undefined,
-        taxpayerScheme: undefined,
-      });
+    } else {
+      setIsLookingUp(false);
     }
   };
 
@@ -237,7 +252,7 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
         <Text style={styles.label}>Financial Year *</Text>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => setShowYearModal(true)}
+          onPress={() => dismissKeyboardThen(() => setShowYearModal(true))}
           style={[styles.selectInput, errors.financialYear && styles.inputError]}
         >
           <Text style={[styles.selectText, !data.financialYear && styles.placeholderText]}>
@@ -255,7 +270,7 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
         <Text style={styles.label}>Filing Period / Return Period *</Text>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => setShowPeriodModal(true)}
+          onPress={() => dismissKeyboardThen(() => setShowPeriodModal(true))}
           style={[styles.selectInput, (errors.filingPeriod || errors.filingMonth) && styles.inputError]}
         >
           <Text style={[styles.selectText, !selectedPeriodValue && styles.placeholderText]}>
@@ -281,6 +296,7 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
           autoCapitalize="characters"
           maxLength={15}
         />
+        {isLookingUp ? <ActivityIndicator size="small" color={BrandColors.PRIMARY_ORANGE} style={styles.lookupIndicator} /> : null}
         {errors.gstin ? <Text style={styles.errorText}>{errors.gstin}</Text> : null}
 
         {/* Backend-Verified Entity Card (auto-resolved from GST portal) */}
@@ -307,7 +323,7 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
         <Text style={styles.label}>Filing Return Type *</Text>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => setShowTypeModal(true)}
+          onPress={() => dismissKeyboardThen(() => setShowTypeModal(true))}
           style={[styles.selectInput, errors.filingType && styles.inputError]}
         >
           <Text
@@ -402,8 +418,8 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
                   placeholder="e.g. 4,25,000"
                   placeholderTextColor="#94A3B8"
                   keyboardType="numeric"
-                  value={data.taxableSales}
-                  onChangeText={(val) => onChange({ taxableSales: val })}
+                  value={formatIndianNumberInput(data.taxableSales)}
+                  onChangeText={(val) => onChange({ taxableSales: toRawNumericString(val) })}
                 />
               </View>
               <View style={styles.estimateInputRow}>
@@ -413,8 +429,8 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
                   placeholder="e.g. 2,15,000"
                   placeholderTextColor="#94A3B8"
                   keyboardType="numeric"
-                  value={data.taxablePurchases}
-                  onChangeText={(val) => onChange({ taxablePurchases: val })}
+                  value={formatIndianNumberInput(data.taxablePurchases)}
+                  onChangeText={(val) => onChange({ taxablePurchases: toRawNumericString(val) })}
                 />
               </View>
               <View style={styles.estimateInputRow}>
@@ -424,8 +440,8 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
                   placeholder="e.g. 22,500"
                   placeholderTextColor="#94A3B8"
                   keyboardType="numeric"
-                  value={data.eligibleItc}
-                  onChangeText={(val) => onChange({ eligibleItc: val })}
+                  value={formatIndianNumberInput(data.eligibleItc)}
+                  onChangeText={(val) => onChange({ eligibleItc: toRawNumericString(val) })}
                 />
               </View>
             </View>

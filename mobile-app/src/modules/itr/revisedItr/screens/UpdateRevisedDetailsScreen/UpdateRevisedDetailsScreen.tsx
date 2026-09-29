@@ -4,8 +4,8 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RevisedItrHeader } from "../../components/common";
@@ -116,7 +116,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, getContainerInsetsStyle(insets.top)]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
       <RevisedItrHeader subtitle="Update Details" />

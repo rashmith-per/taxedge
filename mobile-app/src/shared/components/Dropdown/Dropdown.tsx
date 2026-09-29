@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../design-system/colors";
+import { dismissKeyboardThen } from "../KeyboardAwareFormLayout";
 
 export interface DropdownOption {
   label: string;
@@ -59,7 +60,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           styles.selector,
           error ? styles.selectorError : undefined,
         ]}
-        onPress={() => setModalVisible(true)}
+        onPress={() => dismissKeyboardThen(() => setModalVisible(true))}
         activeOpacity={0.8}
       >
         <Text

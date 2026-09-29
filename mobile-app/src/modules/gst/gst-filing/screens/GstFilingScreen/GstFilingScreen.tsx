@@ -22,10 +22,10 @@ import { GstPaymentSuccessStep } from "@/modules/gst/gst-filing/components/payme
 import { GstPaymentReceiptStep } from "@/modules/gst/gst-filing/components/payment/GstPaymentReceiptStep/GstPaymentReceiptStep";
 import { GstApplicationStatusStep } from "@/modules/gst/gst-status/components/GstApplicationStatusStep/GstApplicationStatusStep";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { styles } from "./GstFilingScreen.styles";
 import { useApplicationStore } from "@/store/applicationStore";
-import { useNotificationStore } from "@/store/notificationStore";
 import { applicationService } from "@/modules/applications/services/applicationService";
 import { gstApi } from "@/modules/gst/services/gstApi";
 
@@ -61,7 +61,6 @@ export const GstFilingScreen: React.FC = () => {
 
   // Result metadata
   const [createdAppId, setCreatedAppId] = useState("");
-  const [txnId, setTxnId] = useState("");
 
   // Access stores
   const gstFilingDraft = useApplicationStore((state) => state.gstFilingDraft);
@@ -71,14 +70,10 @@ export const GstFilingScreen: React.FC = () => {
   const clearGstFilingDraft = useApplicationStore(
     (state) => state.clearGstFilingDraft,
   );
-  const createApplication = useApplicationStore(
-    (state) => state.createApplication,
-  );
 
   // Universal Draft Guard Hook for Back Gesture and Hardware Back Interception
   const {
     showDraftModal,
-    markSubmitted,
     handleSaveAndExit,
     handleDiscardAndExit,
     handleCancel,
@@ -113,6 +108,7 @@ export const GstFilingScreen: React.FC = () => {
 
   // Restore existing application or draft on mount
   useEffect(() => {
+    const restoreTimer = setTimeout(() => {
     if (params.appId) {
       const existingApp = useApplicationStore
         .getState()
@@ -192,7 +188,10 @@ export const GstFilingScreen: React.FC = () => {
         setCurrentStep(gstFilingDraft.stepIndex);
       }
     }
-  }, [params.appId, params.step]);
+    }, 0);
+
+    return () => clearTimeout(restoreTimer);
+  }, [gstFilingDraft, params.appId, params.step]);
 
   // Universal Scroll-to-Top resetting whenever user transitions to another step
   useEffect(() => {
@@ -227,7 +226,7 @@ export const GstFilingScreen: React.FC = () => {
       case 2:
         return "Proceed to Submit →";
       case 3:
-        return "Pay Securely ₹2,344";
+        return "Payment service unavailable";
       default:
         return "";
     }
@@ -247,7 +246,6 @@ export const GstFilingScreen: React.FC = () => {
     const periodVal = periodData.filingPeriod || periodData.filingMonth;
     if (!periodVal || !GstValidators.isNotEmpty(periodVal)) {
       errs.filingPeriod = "Please select a filing return period";
-      errs.filingMonth = "Please select a filing return period";
     }
     if (!GstValidators.isValidGstin(periodData.gstin)) {
       errs.gstin = "Enter a valid 15-character GSTIN (e.g. 29AAAAA0000A1Z5)";
@@ -258,9 +256,17 @@ export const GstFilingScreen: React.FC = () => {
 
     setPeriodErrors(errs);
     if (Object.keys(errs).length > 0) {
+      const labels: Record<string, string> = {
+        periodType: "Filing frequency",
+        financialYear: "Financial year",
+        filingPeriod: "Filing period",
+        gstin: "GSTIN",
+        filingType: "Return type",
+      };
+      const invalidFields = Object.keys(errs).map((key) => labels[key] || key);
       Alert.alert(
-        "Required Fields Missing",
-        "Please select filing frequency, financial year, return period, valid GSTIN, and return type.",
+        "Review Filing Details",
+        `Please correct the following fields:\n\n${invalidFields.map((field) => `• ${field}`).join("\n")}`,
       );
       return false;
     }
@@ -486,66 +492,13 @@ export const GstFilingScreen: React.FC = () => {
       setCurrentStep(3);
     } else if (currentStep === 3) {
       if (!validatePaymentStep()) return;
-
-      const newTxn = "TXN" + Date.now().toString().slice(-8);
-      setTxnId(newTxn);
-
-      const periodLabel =
-        periodData.filingPeriod || periodData.filingMonth || "Current Period";
-      const businessDisplayName =
-        periodData.tradeName ||
-        periodData.businessName ||
-        "Shree Deshmukh Traders";
-      const legalDisplayName = periodData.legalName || businessDisplayName;
-
-      const appDocuments = documents.map((d) => ({
-        name: d.name,
-        status: (d.fileUri ? "Uploaded" : "Pending") as "Uploaded" | "Pending",
-        fileUri: d.fileUri,
-      }));
-
-      const appId = createApplication(
-        "gst-filing",
-        `GST Return Filing (${periodData.filingType ? periodData.filingType.split(" ")[0] : "GSTR-1"} - ${periodLabel})`,
-        "GST",
-        {
-          applicantName: businessDisplayName,
-          businessName: businessDisplayName,
-          legalName: legalDisplayName,
-          state: periodData.state || "Karnataka",
-          gstin: periodData.gstin,
-          taxpayerScheme: periodData.taxpayerScheme || "Regular Scheme",
-          filingNature: periodData.filingNature || "Regular Return",
-          calculationMethod: periodData.calculationMethod || "ca_assisted",
-          financialYear: periodData.financialYear || "FY 2025-26",
-          filingPeriod: periodLabel,
-          filingMonth: periodLabel,
-          filingType: periodData.filingType,
-          filingFrequency: periodData.periodType,
-          turnover: periodData.taxableSales || periodData.turnover || "425000",
-          eligibleItc: periodData.eligibleItc || "22500",
-          paymentMethod: selectedMethod.toUpperCase(),
-          transactionId: newTxn,
-          backendFilingId: filingId,
-        },
-        appDocuments,
-        2344,
-        "Paid",
+      setIsSubmitting(true);
+      Alert.alert(
+        "Payment unavailable",
+        "Online payment processing and backend verification are not configured yet. Your filing was not marked as paid.",
+        [{ text: "OK", onPress: () => setIsSubmitting(false) }],
       );
-
-      setCreatedAppId(appId);
-      markSubmitted();
-      clearGstFilingDraft();
-
-      useNotificationStore
-        .getState()
-        .addNotification(
-          "Payment & Filing Received",
-          `Your GST filing request for ${periodLabel} (${periodData.financialYear || "FY 2025-26"}) (App ID: ${appId}) has been confirmed. CA is preparing reconciliation.`,
-          "gst",
-        );
-
-      setCurrentStep(4);
+      return;
     }
   };
 
@@ -570,8 +523,8 @@ export const GstFilingScreen: React.FC = () => {
         <View style={styles.placeholderBox} />
       </View>
 
-      {/* Main Scroll Content with ScrollView ref for scroll-to-top */}
-      <ScrollView
+      {/* Main Scroll Content with ScrollView ref for scroll-to-top (keyboard-aware) */}
+      <KeyboardAwareScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={[
@@ -610,11 +563,12 @@ export const GstFilingScreen: React.FC = () => {
 
         {currentStep === 2 && (
           <GstFilingReviewStep
-            gstin={periodData.gstin || "29AAAAA0000A1Z5"}
+            key={`${periodData.taxableSales || periodData.turnover || "0"}-${periodData.eligibleItc || "0"}`}
+            gstin={periodData.gstin}
             businessName={
               periodData.tradeName ||
               periodData.businessName ||
-              "Shree Deshmukh Traders"
+              "Registered Business"
             }
             taxpayerScheme={periodData.taxpayerScheme || "Regular Scheme"}
             filingNature={periodData.filingNature || "Regular Return"}
@@ -628,9 +582,9 @@ export const GstFilingScreen: React.FC = () => {
             totalRequiredDocsCount={requiredDocs.length}
             missingDocsCount={missingDocsCount}
             grossTaxableTurnover={
-              periodData.taxableSales || periodData.turnover || 425000
+              periodData.taxableSales || periodData.turnover || 0
             }
-            eligibleItc={periodData.eligibleItc || 22500}
+            eligibleItc={periodData.eligibleItc || 0}
             onEditFilingDetails={() => setCurrentStep(0)}
             onEditTaxComputation={() => setCurrentStep(0)}
             onEditFilingFee={() => setCurrentStep(3)}
@@ -673,7 +627,7 @@ export const GstFilingScreen: React.FC = () => {
 
         {currentStep === 3 && (
           <GstPaymentMethodStep
-            amount="₹2,344"
+            amount="Amount unavailable"
             selectedMethod={selectedMethod}
             onSelectMethod={setSelectedMethod}
             upiId={upiId}
@@ -689,12 +643,12 @@ export const GstFilingScreen: React.FC = () => {
           <GstPaymentSuccessStep
             amount="₹2,344"
             serviceName={`GST Filing (${periodData.filingType ? periodData.filingType.split(" ")[0] : "GSTR-3B"})`}
-            txnId={txnId || "TXN202608942"}
+            txnId="Not available"
             paymentMethod={selectedMethod.toUpperCase()}
             filingPeriod={
               periodData.filingPeriod || periodData.filingMonth || "July 2026"
             }
-            gstin={periodData.gstin || "29AAAAA0000A1Z5"}
+            gstin={periodData.gstin || "Not provided"}
             onViewReceipt={() => setCurrentStep(5)}
             onViewApplication={() => setCurrentStep(6)}
           />
@@ -704,19 +658,19 @@ export const GstFilingScreen: React.FC = () => {
           <GstPaymentReceiptStep
             amount="₹2,344"
             serviceName={`GST Filing Service (${periodData.filingType ? periodData.filingType.split(" ")[0] : "GSTR-3B"})`}
-            invoiceNo={`INV-2026-${(createdAppId || "84920").slice(-5)}`}
-            gstin={periodData.gstin || "29AAAAA0000A1Z5"}
+            invoiceNo={createdAppId ? `INV-2026-${createdAppId.slice(-5)}` : "Not available"}
+            gstin={periodData.gstin || "Not provided"}
             period={
               periodData.filingPeriod || periodData.filingMonth || "July 2026"
             }
-            txnId={txnId || "TXN202608942"}
+            txnId="Not available"
             paymentMethod={selectedMethod.toUpperCase()}
           />
         )}
 
         {currentStep === 6 && (
           <GstApplicationStatusStep
-            appId={createdAppId || "GST-2026-84920"}
+            appId={createdAppId || "Not available"}
             businessName={
               periodData.tradeName ||
               periodData.businessName ||
@@ -747,7 +701,7 @@ export const GstFilingScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Universal Save As Draft Confirmation Modal (Matching Image 1) */}
       <UniversalDraftModal

@@ -8,25 +8,21 @@ import {
   TextInput,
   Alert,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "../../hooks/use-theme";
 import { useApplicationStore } from "../../store/applicationStore";
-import { useNotificationStore } from "../../store/notificationStore";
 import { useAuthStore } from "../../store/authStore";
+import { formatIndianCurrency } from "../../shared/formatters/currencyFormatter";
+import { paymentService } from "../../modules/payments/services/paymentService";
 import { AppHeader } from "../../components/AppHeader";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import type { IconName } from "../../types/domain";
 
 /**
- * Mock checkout for a single application's fee.
- *
- * The stored `paymentAmount` is the total the customer owes - the same figure
- * the Payments tab and the home "Payment Due" tile show - so the professional
- * fee and GST lines are backed out of it rather than added on top. Anything
- * else would make this screen disagree with the rest of the app.
+ * Checkout for a single application's stored payment amount.
  */
 const GST_RATE = 0.18;
 
@@ -76,17 +72,12 @@ const UPI_APPS: { label: string; suffix: string }[] = [
 
 const BANKS = ["HDFC Bank", "ICICI Bank", "State Bank of India", "Axis Bank"];
 
-const rupees = (value: number) => `₹${value.toLocaleString("en-IN")}`;
-
 export default function PaymentScreen() {
   const colors = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const applications = useApplicationStore((state) => state.applications);
-  const payApplication = useApplicationStore((state) => state.payApplication);
-  const addNotification = useNotificationStore((state) => state.addNotification);
   const customer = useAuthStore((state) => state.customer);
 
   const app = applications.find((a) => a.id === id);
@@ -113,15 +104,20 @@ export default function PaymentScreen() {
     );
   }
 
-  const total = app.paymentAmount;
+  const total = Number(app.paymentAmount);
+  const hasValidAmount = Number.isFinite(total) && total > 0;
   const fee = Math.round(total / (1 + GST_RATE));
   const gst = total - fee;
   const businessName =
     app.formData.businessName ?? customer?.name ?? "TaxEdge Client";
 
-  const alreadyPaid = app.paymentStatus === "Paid" || total <= 0;
+  const alreadyPaid = app.paymentStatus === "Paid";
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    if (!hasValidAmount) {
+      Alert.alert("Payment unavailable", "The payment amount for this application is unavailable.");
+      return;
+    }
     if (method === "UPI" && !upiId.trim()) {
       Alert.alert("UPI ID required", "Enter the UPI ID you want to pay from.");
       return;
@@ -140,10 +136,19 @@ export default function PaymentScreen() {
     }
 
     setProcessing(true);
+    const order = await paymentService.createOrder(total, app.id);
+    setProcessing(false);
+    if (!order) {
+      Alert.alert(
+        "Payment unavailable",
+        "Online payment processing is not configured yet. Your application was not marked as paid.",
+      );
+      return;
+    }
+
     Alert.alert(
-      "Payment Gateway Unavailable",
-      "Online payment processing is not yet available. Please contact support or pay via bank transfer.",
-      [{ text: "OK", onPress: () => setProcessing(false) }],
+      "Payment provider unavailable",
+      "A payment order was created, but no provider checkout or verification flow is configured. Your application was not marked as paid.",
     );
   };
 
@@ -204,16 +209,16 @@ export default function PaymentScreen() {
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {summaryRow("Professional Fee", rupees(fee))}
-          {summaryRow(`GST (${GST_RATE * 100}%)`, rupees(gst))}
-          {summaryRow("Discount", rupees(0))}
+          {summaryRow("Professional Fee", hasValidAmount ? formatIndianCurrency(fee) : "Unavailable")}
+          {summaryRow(`GST (${GST_RATE * 100}%)`, hasValidAmount ? formatIndianCurrency(gst) : "Unavailable")}
+          {summaryRow("Discount", formatIndianCurrency(0))}
 
           <View style={[styles.totalRow, { backgroundColor: "#E8EFF7" }]}>
             <Text style={[styles.totalLabel, { color: colors.primary }]}>
               Total Amount
             </Text>
             <Text style={[styles.totalValue, { color: colors.primary }]}>
-              {rupees(total)}
+              {hasValidAmount ? formatIndianCurrency(total) : "Amount unavailable"}
             </Text>
           </View>
         </View>
@@ -472,12 +477,16 @@ export default function PaymentScreen() {
         ]}
       >
         <PrimaryButton
-          title={
-            alreadyPaid ? "Already Paid" : `Pay Securely ${rupees(total)}`
+            title={
+            alreadyPaid
+              ? "Already Paid"
+              : hasValidAmount
+                ? `Pay Securely ${formatIndianCurrency(total)}`
+                : "Amount unavailable"
           }
           onPress={handlePay}
           loading={processing}
-          disabled={alreadyPaid}
+          disabled={alreadyPaid || !hasValidAmount}
           colorType="orange"
         />
       </View>

@@ -10,7 +10,7 @@ export const StepApplicationReceipt: React.FC = () => {
     applicationId: draft.id,
     companyName: draft.company.proposedName1,
     companyType: draft.company.companyType,
-    appliedDate: '18 Sep 2026',
+    appliedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     totalAmount: draft.feeBreakdown.totalAmount,
     paymentStatus: 'Paid' as const,
     paymentMethod: 'UPI',

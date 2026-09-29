@@ -5,16 +5,24 @@ export const styles = StyleSheet.create({
   container: {
     paddingBottom: 24,
   },
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
+  card: {
+    backgroundColor: BrandColors.WHITE,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 16,
     fontWeight: "700",
     color: "#0F172A",
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    fontSize: Typography.fontSize.sm,
-    color: "#64748B",
-    marginBottom: 16,
+    marginBottom: 14,
   },
   fieldGroup: {
     marginBottom: 18,
@@ -66,8 +74,8 @@ export const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
   },
   chipActive: {
-    backgroundColor: "#EFF6FF",
-    borderColor: BrandColors.PRIMARY_BLUE,
+    backgroundColor: "#FFF7ED",
+    borderColor: "#EA580C",
   },
   chipText: {
     fontSize: Typography.fontSize.xs,
@@ -75,7 +83,7 @@ export const styles = StyleSheet.create({
     color: "#475569",
   },
   chipTextActive: {
-    color: BrandColors.PRIMARY_BLUE,
+    color: "#EA580C",
     fontWeight: "700",
   },
   toggleContainer: {
@@ -104,32 +112,7 @@ export const styles = StyleSheet.create({
     color: "#64748B",
   },
   toggleTextActive: {
-    color: BrandColors.PRIMARY_BLUE,
-    fontWeight: "700",
-  },
-  tenureGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tenureBox: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  tenureBoxActive: {
-    backgroundColor: "#EFF6FF",
-    borderColor: BrandColors.PRIMARY_BLUE,
-  },
-  tenureText: {
-    fontSize: Typography.fontSize.sm,
-    color: "#475569",
-  },
-  tenureTextActive: {
-    color: BrandColors.PRIMARY_BLUE,
+    color: "#EA580C",
     fontWeight: "700",
   },
 });

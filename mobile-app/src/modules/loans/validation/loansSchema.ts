@@ -11,7 +11,8 @@ import type {
 } from "../types/loans.types";
 
 export function validateLoanDetails(
-  values: Partial<LoanDetailsFormData>
+  values: Partial<LoanDetailsFormData>,
+  options?: { requireExistingEmi?: boolean; requireIncomeOrTurnover?: boolean }
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
@@ -28,7 +29,10 @@ export function validateLoanDetails(
 
   if (!values.purpose || values.purpose.trim() === "") {
     errors.purpose = "Purpose of loan is required";
-  } else if (values.purpose === "Others" && (!values.customPurpose || values.customPurpose.trim() === "")) {
+  } else if (
+    (values.purpose === "Other" || values.purpose === "Others") &&
+    (!values.customPurpose || values.customPurpose.trim() === "")
+  ) {
     errors.customPurpose = "Please specify your loan purpose";
   }
 
@@ -46,17 +50,23 @@ export function validateLoanDetails(
     errors.employmentType = "Please select employment or business type";
   }
 
-  const incomeStr = values.monthlyIncomeOrTurnover?.trim();
-  if (!incomeStr) {
-    errors.monthlyIncomeOrTurnover = "Enter valid monthly income or annual turnover";
-  } else {
-    const incomeNum = Number(incomeStr);
-    if (!isNaN(incomeNum) && incomeNum <= 0) {
+  const shouldRequireIncome =
+    options?.requireIncomeOrTurnover ??
+    (values.loanType !== "Working Capital" && values.loanType !== "Machinery Loan");
+
+  if (shouldRequireIncome) {
+    const incomeStr = values.monthlyIncomeOrTurnover?.trim();
+    if (!incomeStr) {
       errors.monthlyIncomeOrTurnover = "Enter valid monthly income or annual turnover";
+    } else {
+      const incomeNum = Number(incomeStr);
+      if (!isNaN(incomeNum) && incomeNum <= 0) {
+        errors.monthlyIncomeOrTurnover = "Enter valid monthly income or annual turnover";
+      }
     }
   }
 
-  if (values.hasExistingLoans) {
+  if (values.hasExistingLoans && options?.requireExistingEmi !== false) {
     const emiNum = Number(values.existingEmi);
     if (!values.existingEmi || isNaN(emiNum) || emiNum < 0) {
       errors.existingEmi = "Enter current total monthly EMI amount";
@@ -88,12 +98,9 @@ export function validateLoanBusiness(
     }
   }
 
-  const vintageNum = Number(values.businessVintageYears);
   if (
-    values.businessVintageYears === undefined ||
-    values.businessVintageYears === "" ||
-    isNaN(vintageNum) ||
-    vintageNum < 0
+    !values.businessVintageYears ||
+    values.businessVintageYears.trim() === ""
   ) {
     errors.businessVintageYears = "Enter business vintage in years";
   }

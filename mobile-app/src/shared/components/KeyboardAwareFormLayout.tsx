@@ -1,18 +1,317 @@
-import React, { createContext, useContext, useRef, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  forwardRef,
+  useCallback,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
+  Dimensions,
   Keyboard,
-  TouchableWithoutFeedback,
+  Platform,
+  ScrollView,
   StyleSheet,
-  ViewStyle,
-  StyleProp,
-  findNodeHandle,
-  UIManager,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+  type GestureResponderEvent,
+  type KeyboardEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type ScrollViewProps,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+/**
+ * Shared keyboard handling for forms.
+ *
+ * `KeyboardAwareScrollView` is a drop-in replacement for `ScrollView`:
+ *  - When the keyboard opens, it adds bottom padding equal to the part of the
+ *    scroll view hidden behind the keyboard, so the last fields can scroll up.
+ *  - It scrolls the focused TextInput (text, numeric, multiline) just above
+ *    the keyboard, but only when the keyboard would actually cover it.
+ *  - Moving focus to another field while the keyboard is open re-checks the
+ *    newly focused field.
+ *  - Inputs that are not laid out inside this scroll view (for example inside
+ *    a Modal with its own KeyboardAvoidingView) are ignored, so the screen is
+ *    never scrolled to an unrelated section.
+ *
+ * Works the same on Android (edge-to-edge, where the window is not resized
+ * for the keyboard) and iOS. No third-party keyboard library is required.
+ */
+
+/**
+ * Dismisses the keyboard (which also blurs the focused TextInput) and then
+ * runs `action`. Use it to open dropdowns, pickers and other selector modals:
+ * if a text field stays focused while a Modal opens, Android hands focus back
+ * to that field when the Modal closes and the keyboard pops up unexpectedly.
+ */
+export function dismissKeyboardThen(action: () => void): void {
+  Keyboard.dismiss();
+  action();
+}
+
+const DEFAULT_EXTRA_SCROLL_HEIGHT = 48;
+const SCROLL_AFTER_KEYBOARD_DELAY_MS = Platform.OS === "ios" ? 40 : 80;
+const SCROLL_AFTER_TOUCH_DELAY_MS = 150;
+/** Tolerance (dp) when checking that an input really sits inside this scroll view. */
+const POSITION_TOLERANCE = 4;
+
+type Timer = ReturnType<typeof setTimeout>;
+
+type MeasurableHost = {
+  measureInWindow: (
+    callback: (x: number, y: number, width: number, height: number) => void
+  ) => void;
+  measureLayout: (
+    relativeTo: any,
+    onSuccess: (left: number, top: number, width: number, height: number) => void,
+    onFail?: () => void
+  ) => void;
+};
+
+export interface KeyboardAwareScrollController {
+  /** Re-check the focused input and scroll it above the keyboard if needed. */
+  scrollToFocusedInput: () => void;
+}
+
+export interface KeyboardAwareScrollViewProps extends ScrollViewProps {
+  /** Space (dp) kept between the bottom of the focused input and the keyboard. */
+  extraScrollHeight?: number;
+  /** Set to false to keep the extra bottom padding but disable auto-scrolling. */
+  enableAutomaticScroll?: boolean;
+  /** Optional imperative handle used by KeyboardAwareFormLayout. */
+  controllerRef?: React.Ref<KeyboardAwareScrollController>;
+}
+
+const getBasePaddingBottom = (style: StyleProp<ViewStyle>): number => {
+  const flat = StyleSheet.flatten(style) || {};
+  if (typeof flat.paddingBottom === "number") return flat.paddingBottom;
+  if (typeof flat.paddingVertical === "number") return flat.paddingVertical;
+  if (typeof flat.padding === "number") return flat.padding;
+  return 0;
+};
+
+const getKeyboardTop = (event: KeyboardEvent): number => {
+  const { screenY, height } = event.endCoordinates;
+  if (Number.isFinite(screenY) && screenY > 0) return screenY;
+  return Dimensions.get("window").height - height;
+};
+
+export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrollViewProps>(
+  function KeyboardAwareScrollView(
+    {
+      children,
+      extraScrollHeight = DEFAULT_EXTRA_SCROLL_HEIGHT,
+      enableAutomaticScroll = true,
+      controllerRef,
+      contentContainerStyle,
+      onScroll,
+      onTouchStart,
+      onTouchEnd,
+      onScrollBeginDrag,
+      scrollEventThrottle,
+      keyboardShouldPersistTaps = "handled",
+      ...scrollViewProps
+    },
+    forwardedRef
+  ) {
+    const scrollRef = useRef<ScrollView | null>(null);
+    const scrollOffsetY = useRef(0);
+    const keyboardTop = useRef<number | null>(null);
+    const pendingTimer = useRef<Timer | null>(null);
+    const isDragging = useRef(false);
+    const [keyboardInset, setKeyboardInset] = useState(0);
+
+    const setScrollRef = useCallback(
+      (node: ScrollView | null) => {
+        scrollRef.current = node;
+        if (typeof forwardedRef === "function") {
+          forwardedRef(node);
+        } else if (forwardedRef) {
+          (forwardedRef as React.MutableRefObject<ScrollView | null>).current = node;
+        }
+      },
+      [forwardedRef]
+    );
+
+    const getScrollHost = useCallback((): MeasurableHost | null => {
+      const scrollView = scrollRef.current as any;
+      if (!scrollView) return null;
+      return (scrollView.getNativeScrollRef?.() ?? scrollView) as MeasurableHost | null;
+    }, []);
+
+    const scrollToFocusedInput = useCallback(() => {
+      if (!enableAutomaticScroll) return;
+      const kbTop = keyboardTop.current;
+      const scrollView = scrollRef.current as any;
+      const scrollHost = getScrollHost();
+      const input = TextInput.State.currentlyFocusedInput() as unknown as MeasurableHost | null;
+      const contentHost = scrollView?.getInnerViewRef?.();
+      if (kbTop == null || !scrollHost || !input || !contentHost) return;
+
+      scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
+        if (!Number.isFinite(scrollTop) || scrollHeight <= 0) return;
+
+        input.measureLayout(
+          contentHost,
+          (_left, inputY, _width, inputHeight) => {
+            input.measureInWindow((_ix, inputWindowY) => {
+              // Ignore inputs that are not laid out inside this scroll view
+              // (e.g. inputs rendered inside a Modal).
+              const expectedWindowY = scrollTop + inputY - scrollOffsetY.current;
+              if (Math.abs(expectedWindowY - inputWindowY) > POSITION_TOLERANCE) return;
+
+              const visibleBottom = Math.min(scrollTop + scrollHeight, kbTop);
+              const visibleHeight = visibleBottom - scrollTop;
+              if (visibleHeight <= 0) return;
+
+              const currentOffset = scrollOffsetY.current;
+              const inputBottom = inputY + inputHeight;
+              let targetOffset: number | null = null;
+
+              if (inputHeight + extraScrollHeight > visibleHeight) {
+                // Tall multiline input: keep its top (and cursor start) visible.
+                targetOffset = inputY - Math.min(extraScrollHeight / 2, 16);
+              } else if (inputBottom + extraScrollHeight > currentOffset + visibleHeight) {
+                // Covered by the keyboard: lift it just above the keyboard.
+                targetOffset = inputBottom + extraScrollHeight - visibleHeight;
+              } else if (inputY < currentOffset) {
+                // Scrolled out above the viewport.
+                targetOffset = inputY - Math.min(extraScrollHeight / 2, 16);
+              }
+
+              if (targetOffset == null) return;
+              targetOffset = Math.max(0, targetOffset);
+              if (Math.abs(targetOffset - currentOffset) < 1) return;
+              scrollRef.current?.scrollTo({ y: targetOffset, animated: true });
+            });
+          },
+          () => {
+            // Focused input is not inside this scroll view.
+          }
+        );
+      });
+    }, [enableAutomaticScroll, extraScrollHeight, getScrollHost]);
+
+    const scheduleScroll = useCallback(
+      (delay: number) => {
+        if (pendingTimer.current) clearTimeout(pendingTimer.current);
+        pendingTimer.current = setTimeout(() => {
+          pendingTimer.current = null;
+          scrollToFocusedInput();
+        }, delay);
+      },
+      [scrollToFocusedInput]
+    );
+
+    useImperativeHandle(controllerRef, () => ({ scrollToFocusedInput }), [scrollToFocusedInput]);
+
+    useEffect(() => {
+      if (Platform.OS === "web") return undefined;
+
+      const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+      const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+      const showSub = Keyboard.addListener(showEvent, (event) => {
+        const kbTop = getKeyboardTop(event);
+        keyboardTop.current = kbTop;
+        const scrollHost = getScrollHost();
+        if (!scrollHost) return;
+        scrollHost.measureInWindow((_x, scrollTop, _w, scrollHeight) => {
+          const overlap = Math.max(0, Math.round(scrollTop + scrollHeight - kbTop));
+          setKeyboardInset(overlap);
+          scheduleScroll(SCROLL_AFTER_KEYBOARD_DELAY_MS);
+        });
+      });
+
+      const hideSub = Keyboard.addListener(hideEvent, () => {
+        keyboardTop.current = null;
+        if (pendingTimer.current) {
+          clearTimeout(pendingTimer.current);
+          pendingTimer.current = null;
+        }
+        setKeyboardInset(0);
+      });
+
+      return () => {
+        showSub.remove();
+        hideSub.remove();
+        if (pendingTimer.current) clearTimeout(pendingTimer.current);
+      };
+    }, [getScrollHost, scheduleScroll]);
+
+    const handleScroll = useCallback(
+      (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        scrollOffsetY.current = event.nativeEvent.contentOffset.y;
+        onScroll?.(event);
+      },
+      [onScroll]
+    );
+
+    const handleTouchStart = useCallback(
+      (event: GestureResponderEvent) => {
+        isDragging.current = false;
+        onTouchStart?.(event);
+      },
+      [onTouchStart]
+    );
+
+    const handleScrollBeginDrag = useCallback(
+      (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        isDragging.current = true;
+        onScrollBeginDrag?.(event);
+      },
+      [onScrollBeginDrag]
+    );
+
+    const handleTouchEnd = useCallback(
+      (event: GestureResponderEvent) => {
+        // A tap (not a drag) while the keyboard is open may have moved focus to
+        // another field: re-check it. Drags are the user scrolling on purpose,
+        // so never pull them back to the focused field.
+        if (keyboardTop.current != null && !isDragging.current) {
+          scheduleScroll(SCROLL_AFTER_TOUCH_DELAY_MS);
+        }
+        onTouchEnd?.(event);
+      },
+      [onTouchEnd, scheduleScroll]
+    );
+
+    const basePaddingBottom = useMemo(
+      () => getBasePaddingBottom(contentContainerStyle),
+      [contentContainerStyle]
+    );
+
+    return (
+      <ScrollView
+        ref={setScrollRef}
+        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        scrollEventThrottle={scrollEventThrottle ?? 16}
+        {...scrollViewProps}
+        contentContainerStyle={
+          keyboardInset > 0
+            ? [contentContainerStyle, { paddingBottom: basePaddingBottom + keyboardInset }]
+            : contentContainerStyle
+        }
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onTouchEnd={handleTouchEnd}
+      >
+        {children}
+      </ScrollView>
+    );
+  }
+);
+
+// ─── Form layout wrapper (kept for existing API compatibility) ───────────────
 
 interface KeyboardAwareContextType {
   scrollRef: React.RefObject<ScrollView | null>;
@@ -34,6 +333,7 @@ export interface KeyboardAwareFormLayoutProps extends ScrollViewProps {
   children: React.ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  /** @deprecated No longer needed; keyboard offset is measured automatically. */
   iosOffset?: number;
   extraScrollHeight?: number;
   dismissKeyboardOnTap?: boolean;
@@ -43,104 +343,63 @@ export const KeyboardAwareFormLayout: React.FC<KeyboardAwareFormLayoutProps> = (
   children,
   containerStyle,
   contentStyle,
-  iosOffset = 0,
-  extraScrollHeight = 60,
+  iosOffset: _iosOffset,
+  extraScrollHeight = DEFAULT_EXTRA_SCROLL_HEIGHT,
   dismissKeyboardOnTap = true,
   ...scrollViewProps
 }) => {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView | null>(null);
+  const controllerRef = useRef<KeyboardAwareScrollController | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   useEffect(() => {
+    if (Platform.OS === "web") return undefined;
     const showSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
-        setIsKeyboardVisible(true);
-      }
+      (e) => setKeyboardHeight(e.endCoordinates.height)
     );
-
     const hideSub = Keyboard.addListener(
       Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => {
-        setKeyboardHeight(0);
-        setIsKeyboardVisible(false);
-      }
+      () => setKeyboardHeight(0)
     );
-
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
 
-  const scrollToFocusedInput = useCallback(
-    (inputNodeHandle?: number | null) => {
-      if (!scrollRef.current) return;
-
-      const currentlyFocusedField =
-        inputNodeHandle || (TextInputState.currentlyFocusedInput ? findNodeHandle(TextInputState.currentlyFocusedInput()) : null);
-
-      if (!currentlyFocusedField) return;
-
-      UIManager.measureInWindow(currentlyFocusedField, (_x, y, _width, height) => {
-        if (typeof y !== "number") return;
-        // If the bottom of input extends into the keyboard region, scroll it up
-        const keyboardTop = (Platform.OS === "web" ? window.innerHeight : 0) || (keyboardHeight > 0 ? keyboardHeight : 280);
-        const inputBottom = y + height;
-
-        if (inputBottom > keyboardTop - extraScrollHeight) {
-          scrollRef.current?.scrollTo({
-            y: Math.max(0, inputBottom - keyboardTop + extraScrollHeight),
-            animated: true,
-          });
-        }
-      });
-    },
-    [keyboardHeight, extraScrollHeight]
+  const contextValue = useMemo<KeyboardAwareContextType>(
+    () => ({
+      scrollRef,
+      scrollToFocusedInput: () => controllerRef.current?.scrollToFocusedInput(),
+      keyboardHeight,
+      isKeyboardVisible: keyboardHeight > 0,
+    }),
+    [keyboardHeight]
   );
 
-  // Helper reference to TextInputState for RN compatibility
-  const TextInputState = (Keyboard as any).TextInputState || {
-    currentlyFocusedInput: () => null,
-  };
-
   const content = (
-    <ScrollView
+    <KeyboardAwareScrollView
       ref={scrollRef}
-      keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={true}
+      controllerRef={controllerRef}
+      extraScrollHeight={extraScrollHeight}
       keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[
         styles.defaultContent,
-        {
-          paddingBottom: Math.max(insets.bottom, 20) + (isKeyboardVisible ? extraScrollHeight : 30),
-        },
+        { paddingBottom: Math.max(insets.bottom, 20) + 30 },
         contentStyle,
       ]}
       {...scrollViewProps}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 
   return (
-    <KeyboardAwareContext.Provider
-      value={{
-        scrollRef,
-        scrollToFocusedInput,
-        keyboardHeight,
-        isKeyboardVisible,
-      }}
-    >
-      <KeyboardAvoidingView
-        style={[styles.container, containerStyle]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? iosOffset : 0}
-      >
+    <KeyboardAwareContext.Provider value={contextValue}>
+      <View style={[styles.container, containerStyle]}>
         {dismissKeyboardOnTap ? (
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             {content}
@@ -148,7 +407,7 @@ export const KeyboardAwareFormLayout: React.FC<KeyboardAwareFormLayoutProps> = (
         ) : (
           content
         )}
-      </KeyboardAvoidingView>
+      </View>
     </KeyboardAwareContext.Provider>
   );
 };

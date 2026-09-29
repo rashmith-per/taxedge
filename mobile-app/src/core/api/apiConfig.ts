@@ -1,13 +1,14 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-export const SERVER_IP = "192.168.88.25";
+export const SERVER_IP = "127.0.0.1";
 export const SERVER_PORT = 8086;
 export const STORAGE_KEY_SERVER_URL = "@taxedge_server_url";
 
 export function getDefaultBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL?.trim()) {
-    return process.env.EXPO_PUBLIC_API_URL.trim();
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configuredUrl) {
+    return configuredUrl;
   }
 
   if (Platform.OS === "web") {
@@ -15,7 +16,7 @@ export function getDefaultBaseUrl(): string {
     if (host && host !== "localhost" && host !== "127.0.0.1") {
       return `http://${host}:${SERVER_PORT}`;
     }
-    return `http://${SERVER_IP}:${SERVER_PORT}`;
+    return "";
   }
 
   try {
@@ -29,5 +30,5 @@ export function getDefaultBaseUrl(): string {
     }
   } catch {}
 
-  return `http://${SERVER_IP}:${SERVER_PORT}`;
+  return "";
 }

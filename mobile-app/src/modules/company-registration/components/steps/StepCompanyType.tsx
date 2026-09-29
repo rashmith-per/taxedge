@@ -49,6 +49,7 @@ const getCompanyTypeIcon = (type: string, title?: string): keyof typeof Ionicons
 export const StepCompanyType: React.FC = () => {
   const selectedType = useCompanyRegistrationStore((state) => state.draft.company.companyType);
   const setCompanyType = useCompanyRegistrationStore((state) => state.setCompanyType);
+  const errorText = useCompanyRegistrationStore((state) => state.fieldErrors.companyType);
 
   return (
     <View style={styles.container}>
@@ -91,6 +92,8 @@ export const StepCompanyType: React.FC = () => {
           </TouchableOpacity>
         );
       })}
+
+      {!!errorText && <Text style={styles.errorText}>{errorText}</Text>}
     </View>
   );
 };

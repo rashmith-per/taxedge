@@ -51,7 +51,7 @@ const GST_FILING_TIMELINE: TimelineItem[] = [
 ];
 
 export const GstApplicationStatusStep: React.FC<GstApplicationStatusStepProps> = ({
-  appId = "GST-2026-84920",
+  appId = "Not available",
   appliedDate = "Today",
   businessName = "Your Business",
   serviceName = "GST Registration",

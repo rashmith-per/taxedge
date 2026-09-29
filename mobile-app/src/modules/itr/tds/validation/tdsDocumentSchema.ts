@@ -1,10 +1,8 @@
 import { TdsChecklistItem } from "../types/checklist.types";
 import { TdsCustomerIncomeFormData } from "../types/customerIncome.types";
 import {
-  isFileSizeValid,
   isFileTypeAllowed,
   parsePositiveNumber,
-  MAX_FILE_SIZE_BYTES,
   ALLOWED_EXTENSIONS,
 } from "../utils/tdsValidation";
 

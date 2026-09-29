@@ -1,4 +1,4 @@
-import { apiClient, SERVER_IP, SERVER_PORT } from "../../../core/api/apiClient";
+import { apiClient } from "../../../core/api/apiClient";
 
 const MONTHS = [
   "Jan",
@@ -87,8 +87,12 @@ export const gstComplianceApi = {
       } as any);
     }
 
-    const baseUrl =
-      apiClient.getBaseUrl() || `http://${SERVER_IP}:${SERVER_PORT}`;
+    const baseUrl = apiClient.getBaseUrl();
+    if (!baseUrl) {
+      throw new Error(
+        "Backend URL is not configured. Set the API URL before submitting GST compliance data.",
+      );
+    }
     const url = `${baseUrl}/gst/compliance/create`;
 
     return new Promise<string>((resolve, reject) => {

@@ -3,8 +3,8 @@ package com.taxedge.gst.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.taxedge.gst.dto.GstFilingDto;
@@ -16,13 +16,11 @@ import com.taxedge.gst.helper.RandomNumberGenerator;
 import com.taxedge.gst.repository.GstFilingRepository;
 
 @Service
+@RequiredArgsConstructor
 public class GstFilingServiceImpl implements GstFilingService {
 
-    @Autowired
-    private GstFilingRepository gstFilingRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private final GstFilingRepository gstFilingRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public String createFiling(GstFilingDto gstFilingDto) {

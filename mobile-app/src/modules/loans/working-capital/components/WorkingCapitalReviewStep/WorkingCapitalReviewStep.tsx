@@ -166,7 +166,7 @@ export const WorkingCapitalReviewStep: React.FC<WorkingCapitalReviewStepProps> =
           <Text style={styles.cardTitle}>Disbursement Current Account</Text>
           <TouchableOpacity
             style={styles.editAction}
-            onPress={() => onGoToStep(2)}
+            onPress={() => onGoToStep(1)}
           >
             <Ionicons
               name="create-outline"
@@ -199,7 +199,7 @@ export const WorkingCapitalReviewStep: React.FC<WorkingCapitalReviewStepProps> =
           <Text style={styles.cardTitle}>Uploaded Records</Text>
           <TouchableOpacity
             style={styles.editAction}
-            onPress={() => onGoToStep(3)}
+            onPress={() => onGoToStep(2)}
           >
             <Ionicons
               name="create-outline"

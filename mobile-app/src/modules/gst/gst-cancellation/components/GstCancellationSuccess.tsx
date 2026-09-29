@@ -4,8 +4,8 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -38,7 +38,7 @@ export function GstCancellationSuccess({
 
   return (
     <View style={styles.successContainer}>
-      <StatusBar
+      <FocusAwareStatusBar
         barStyle="light-content"
         backgroundColor={BrandColors.PRIMARY_BLUE}
       />
@@ -106,24 +106,29 @@ export function GstCancellationSuccess({
         >
           <Text style={styles.primaryBtnText}>Track Cancellation</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={styles.secondaryBtn}
-          activeOpacity={0.85}
-          onPress={() => router.replace("/(main)/applications")}
+          style={styles.homeBtn}
+          onPress={() => router.replace('/(main)/home')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.secondaryBtnText}>My Applications</Text>
+          <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.homeBtnText}>Go to Home Dashboard</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
-          style={[styles.secondaryBtn, { marginTop: 8 }]}
-          activeOpacity={0.85}
-          onPress={() => router.replace("/(main)/home")}
+          style={styles.trackBtn}
+          onPress={() => router.replace('/(main)/applications')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.secondaryBtnText}>Go Home</Text>
+          <Ionicons name="folder-open-outline" size={20} color="#475569" />
+          <Text style={styles.trackBtnText}>Track in My Applications</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[
             styles.secondaryBtn,
-            { marginTop: 12, borderColor: "#EF4444" },
+            { marginTop: 4, borderColor: "#EF4444", borderWidth: 1 },
           ]}
           activeOpacity={0.85}
           onPress={() => {

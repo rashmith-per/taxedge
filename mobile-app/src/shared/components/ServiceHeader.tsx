@@ -9,6 +9,7 @@ import {
   Image,
   ImageSourcePropType,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,7 +52,7 @@ export const ServiceHeader: React.FC<ServiceHeaderProps> = ({
       end={{ x: 1, y: 1 }}
       style={styles.headerContainer}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <FocusAwareStatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={[styles.innerContainer, { paddingTop: topPadding }]}>
         {/* Top Bar: Back Button */}
         <View style={styles.topBar}>

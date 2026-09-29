@@ -54,9 +54,7 @@ public class IncomeTaxInfoDto {
     
     private BigDecimal netBusinessProfit;
 
-   
 
-   
     private BigDecimal homeLoanInterestSec24b;
 
    

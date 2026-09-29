@@ -28,6 +28,11 @@ import { biometricService } from "../../modules/authentication/services/biometri
 import { BiometricPromptModal } from "../../shared/components/BiometricPromptModal";
 import { styles } from "../../styles/app/(auth)/create-profile.styles";
 import type { IconName } from "../../types/domain";
+import {
+  validateDateOfBirth,
+  validateEmail,
+  validateFullName,
+} from "../../shared/validators/indianTaxValidators";
 
 const HEADER_INSET_TOP_OFFSET = Spacing.sm; // 8
 const MIN_HEADER_TOP = Spacing.xl; // 24
@@ -422,11 +427,12 @@ export default function CreateProfileScreen() {
   const validateField = (key: keyof SignupForm, val: string): string => {
     switch (key) {
       case "name":
-        return val.trim() ? "" : "Required";
+        if (!val.trim()) return "Required";
+        return validateFullName(val) ? "" : "Enter a valid full name";
       case "email": {
         const clean = val.trim();
         if (!clean) return "Required";
-        if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(clean)) {
+        if (!validateEmail(clean)) {
           return "Invalid email";
         }
         return "";
@@ -436,7 +442,7 @@ export default function CreateProfileScreen() {
       case "dob": {
         const clean = val.trim();
         if (!clean) return "Required";
-        if (!/^\d{2}-\d{2}-\d{4}$/.test(clean)) return "Invalid Date of Birth";
+        if (!validateDateOfBirth(clean)) return "Please enter a valid date of birth.";
         return "";
       }
       case "fatherSpouseName":
@@ -537,12 +543,10 @@ export default function CreateProfileScreen() {
 
   // Screen 1: Complete Form Validity Check for Continue button
   const isScreen1Valid = useMemo(() => {
-    const hasName = Boolean(form.name.trim());
-    const hasEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(
-      form.email.trim()
-    );
+    const hasName = validateFullName(form.name);
+    const hasEmail = validateEmail(form.email);
     const hasGender = Boolean(form.gender);
-    const hasDob = Boolean(form.dob.trim());
+    const hasDob = validateDateOfBirth(form.dob);
     const hasFatherSpouse = Boolean(form.fatherSpouseName.trim());
     const hasPan = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(
       form.pan.trim().toUpperCase()
@@ -759,14 +763,56 @@ export default function CreateProfileScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
       style={[styles.container, { backgroundColor: BrandColors.BACKGROUND }]}
     >
+      {/* Top Wave Header */}
+      <View style={styles.waveHeaderWrapper}>
+        <Svg
+          height={150}
+          width="100%"
+          viewBox="0 0 375 150"
+          style={StyleSheet.absoluteFill}
+          preserveAspectRatio="none"
+        >
+          <Path
+            d="M0,0 L375,0 L375,100 C310,140 230,135 140,115 C60,95 20,110 0,120 Z"
+            fill={BrandColors.PRIMARY_BLUE_DARK}
+          />
+          <Path
+            d="M260,0 C295,35 335,55 375,58 L375,0 Z"
+            fill={BrandColors.PRIMARY_ORANGE}
+          />
+        </Svg>
+
+        <View
+          style={[
+            styles.waveHeaderContent,
+            { paddingTop: Math.max(insets.top + HEADER_INSET_TOP_OFFSET, MIN_HEADER_TOP) },
+          ]}
+        >
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleBack}
+              style={styles.backBtnWhite}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={BrandColors.WHITE} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleWhite}>
+              {currentStep === 1 ? "Select Account Type" : "Create Account"}
+            </Text>
+          </View>
+        </View>
+      </View>
+
       <ScrollView
         ref={scrollRef}
+        style={currentStep === 1 ? { flex: 1 } : undefined}
         contentContainerStyle={[
           styles.profileScroll,
           {
             paddingBottom:
               currentStep === 1
-                ? Math.max(insets.bottom + 90, 110)
+                ? Spacing.base
                 : keyboardHeight > 0
                 ? keyboardHeight + (Platform.OS === "android" ? 100 : 60)
                 : Math.max(insets.bottom + Spacing.xl, 40),
@@ -776,51 +822,6 @@ export default function CreateProfileScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {/* Top Wave Header */}
-        <View style={styles.waveHeaderWrapper}>
-          <Svg
-            height={150}
-            width="100%"
-            viewBox="0 0 375 150"
-            style={StyleSheet.absoluteFill}
-            preserveAspectRatio="none"
-          >
-            {/* Navy Blue Curved Base */}
-            <Path
-              d="M0,0 L375,0 L375,100 C310,140 230,135 140,115 C60,95 20,110 0,120 Z"
-              fill={BrandColors.PRIMARY_BLUE_DARK}
-            />
-            {/* Orange Wave on Top Right */}
-            <Path
-              d="M260,0 C295,35 335,55 375,58 L375,0 Z"
-              fill={BrandColors.PRIMARY_ORANGE}
-            />
-          </Svg>
-
-          {/* Back Arrow & Centered Title Only */}
-          <View
-            style={[
-              styles.waveHeaderContent,
-              { paddingTop: Math.max(insets.top + HEADER_INSET_TOP_OFFSET, MIN_HEADER_TOP) },
-            ]}
-          >
-            <View style={styles.headerRow}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleBack}
-                style={styles.backBtnWhite}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              >
-                <Ionicons name="arrow-back" size={24} color={BrandColors.WHITE} />
-              </TouchableOpacity>
-
-              <Text style={styles.headerTitleWhite}>
-                {currentStep === 1 ? "Select Account Type" : "Create Account"}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* ============================================================= */}
         {/* STEP 1: TYPE OF USER / ACCOUNT TYPE SELECTION                 */}
         {/* ============================================================= */}
@@ -1411,6 +1412,7 @@ export default function CreateProfileScreen() {
         <View
           style={[
             styles.fixedBottomBar,
+            { position: "relative" },
             {
               paddingBottom: Math.max(insets.bottom + Spacing.sm, Spacing.base),
             },

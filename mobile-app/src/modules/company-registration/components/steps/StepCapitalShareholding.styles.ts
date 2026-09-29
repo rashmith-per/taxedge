@@ -166,4 +166,13 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 16,
   },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    fontWeight: '500',
+  },
 });

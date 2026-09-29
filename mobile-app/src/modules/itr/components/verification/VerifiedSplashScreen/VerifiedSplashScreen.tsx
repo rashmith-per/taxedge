@@ -3,8 +3,8 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StatusBar,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Rect } from "react-native-svg";
@@ -37,7 +37,7 @@ export const VerifiedSplashScreen: React.FC<VerifiedSplashScreenProps> = ({
 
   return (
     <View style={[styles.container, getContainerInsetsStyle(insets.top, insets.bottom)]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1F3A" />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor="#0B1F3A" />
 
       {/* Confetti & Glowing Animated Checkmark */}
       <View style={styles.centerSection}>

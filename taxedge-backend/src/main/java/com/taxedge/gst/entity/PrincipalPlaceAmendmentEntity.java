@@ -1,7 +1,7 @@
 package com.taxedge.gst.entity;
 
 import jakarta.persistence.*;
-import com.taxedge.gst.enums.AmendmentStatus;
+import com.taxedge.gst.enums.NatureOfPremises;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,49 +20,37 @@ public class PrincipalPlaceAmendmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "gst_id", nullable = false)
-    private String gstId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gst_id", referencedColumnName = "gst_id", nullable = false)
+    private Business business;
 
-    // Snapshot of Current Details
-    private String currentBusinessAddress;
-    private String currentCity;
-    private String currentDistrict;
-    private String currentState;
-    private String currentPinCode;
-
-    // New Proposed Details
-    @Column(nullable = false)
+    @Column(name = "new_business_address", nullable = false)
     private String newBusinessAddress;
 
-    @Column(nullable = false)
+    @Column(name = "new_city", nullable = false)
     private String newCity;
 
+    @Column(name = "new_district", nullable = false)
     private String newDistrict;
 
-    @Column(nullable = false)
+    @Column(name = "new_state", nullable = false)
     private String newState;
 
-    @Column(nullable = false)
+    @Column(name = "new_pin_code", nullable = false)
     private String newPinCode;
 
-    private String fileName;
-    private String fileType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nature_of_premises", nullable = false)
+    private NatureOfPremises natureOfPremises;
 
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
     private String imageData;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AmendmentStatus status;
-
-    private LocalDateTime requestedAt;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.requestedAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = AmendmentStatus.PENDING;
-        }
+        this.createdAt = LocalDateTime.now();
     }
 }

@@ -20,12 +20,12 @@ export const StepApplicationTracking: React.FC = () => {
 
       {/* Application Summary Card */}
       <View style={styles.metaCard}>
-        <Text style={styles.metaId}>Application ID: {draft.id || 'INC-2026-89421'}</Text>
+        <Text style={styles.metaId}>Application ID: {draft.id}</Text>
         <Text style={styles.metaText}>
-          Company: {draft.company?.proposedName1 || 'TaxEdge Tech Private Limited'}
+          Company: {draft.company?.proposedName1}
         </Text>
         <Text style={styles.metaSub}>
-          Type: {draft.company?.companyType || 'Private Limited'} • Date: {draft.createdAt || '2026-09-18'}
+          Type: {draft.company?.companyType || 'Private Limited'} • Date: {draft.createdAt || new Date().toISOString().split('T')[0]}
         </Text>
       </View>
 

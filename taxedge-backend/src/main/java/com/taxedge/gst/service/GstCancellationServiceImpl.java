@@ -3,8 +3,8 @@ package com.taxedge.gst.service;
 import java.io.IOException;
 import java.util.Base64;
 
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.taxedge.gst.dto.GstCancellationDto;
@@ -13,14 +13,12 @@ import com.taxedge.gst.exception.ResourceNotFoundException;
 import com.taxedge.gst.repository.GstCancellationRepository;
 
 @Service
+@RequiredArgsConstructor
 public class GstCancellationServiceImpl
         implements GstCancellationService {
 
-    @Autowired
-    private GstCancellationRepository cancellationRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private final GstCancellationRepository cancellationRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public String createCancellation(

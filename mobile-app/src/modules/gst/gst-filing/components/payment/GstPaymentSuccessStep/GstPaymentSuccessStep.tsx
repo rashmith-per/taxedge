@@ -23,12 +23,12 @@ export interface GstPaymentSuccessStepProps {
 }
 
 export const GstPaymentSuccessStep: React.FC<GstPaymentSuccessStepProps> = ({
-  amount = "₹2,344",
+  amount = "Amount unavailable",
   serviceName = "GST Filing (GSTR-3B)",
-  txnId = "TXN" + Date.now().toString().slice(-8),
+  txnId = "Not available",
   paymentMethod = "UPI",
   filingPeriod = "July 2026",
-  gstin = "29ABCDE1234F1Z5",
+  gstin = "Not provided",
   onViewReceipt,
   onViewApplication,
 }) => {

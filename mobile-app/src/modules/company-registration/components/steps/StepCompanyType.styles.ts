@@ -76,4 +76,10 @@ export const styles = StyleSheet.create({
     color: '#083B75',
     fontWeight: '600',
   },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    fontWeight: '500',
+  },
 });

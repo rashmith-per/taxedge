@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useTheme } from "../../hooks/use-theme";
 import { useApplicationStore } from "../../store/applicationStore";
 import {
@@ -73,6 +74,7 @@ export default function ChatScreen() {
     >
       {/* Header bar */}
       <View style={{ backgroundColor: colors.primaryDark, paddingTop: insets.top }}>
+        <FocusAwareStatusBar barStyle="light-content" />
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}

@@ -6,7 +6,7 @@ public interface RevisionReasonService {
 
 	String createRevisionReason(RevisionReasonDto dto);
 
-	String updateRevisionReason(String revisionReasonId, RevisionReasonDto dto);
-
 	RevisionReasonDto getRevisionReason(String revisionReasonId);
+
+	String updateRevisionReason(String revisionReasonId, RevisionReasonDto dto);
 }

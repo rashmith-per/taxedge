@@ -1,20 +1,29 @@
 import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { LoanBusinessFormData } from "../../../types/loans.types";
+import { Dropdown } from "../../../../../shared/components/Dropdown";
 import { styles } from "./MachineryLoanBusinessStep.styles";
 
 export interface MachineryLoanBusinessStepProps {
   data: LoanBusinessFormData;
-  onChange: (field: keyof LoanBusinessFormData, value: string) => void;
+  onChange: (field: keyof LoanBusinessFormData, value: any) => void;
   errors?: Record<string, string>;
 }
 
-const VINTAGE_OPTIONS = [
-  { label: "< 1 Year", value: "0" },
-  { label: "1 - 2 Years", value: "2" },
-  { label: "3 - 5 Years", value: "4" },
-  { label: "5 - 10 Years", value: "7" },
-  { label: "10+ Years", value: "11" },
+export const BUSINESS_TYPE_OPTIONS = [
+  "Proprietorship",
+  "Partnership",
+  "LLP",
+  "Private Limited",
+  "Other",
+];
+
+export const BUSINESS_VINTAGE_OPTIONS = [
+  "Less than 1 year",
+  "1–3 years",
+  "3–5 years",
+  "5–10 years",
+  "10+ years",
 ];
 
 export const MachineryLoanBusinessStep: React.FC<MachineryLoanBusinessStepProps> = ({
@@ -22,21 +31,26 @@ export const MachineryLoanBusinessStep: React.FC<MachineryLoanBusinessStepProps>
   onChange,
   errors = {},
 }) => {
+  const isOtherBusinessType =
+    data.businessType === "Other" ||
+    (Boolean(data.businessType) &&
+      !BUSINESS_TYPE_OPTIONS.slice(0, -1).includes(data.businessType || ""));
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Manufacturing / Business Profile</Text>
+      <Text style={styles.sectionTitle}>Business Details</Text>
       <Text style={styles.sectionSubtitle}>
-        Provide the manufacturing entity details, industrial registration, and annual revenues.
+        Provide essential business information and enterprise identity.
       </Text>
 
-      {/* Business Name */}
+      {/* Business / Plant Name */}
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>
-          Manufacturing / Plant Business Name <Text style={styles.requiredStar}>*</Text>
+          Business / Plant Name <Text style={styles.requiredStar}>*</Text>
         </Text>
         <TextInput
           style={[styles.input, errors.businessName && styles.inputError]}
-          placeholder="e.g. Precision Engineering Tools LLP"
+          placeholder="Enter business name"
           placeholderTextColor="#94A3B8"
           value={data.businessName}
           onChangeText={(text) => onChange("businessName", text)}
@@ -46,87 +60,71 @@ export const MachineryLoanBusinessStep: React.FC<MachineryLoanBusinessStepProps>
         )}
       </View>
 
-      {/* GSTIN */}
+      {/* Business Type */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Entity GSTIN <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, errors.gstin && styles.inputError]}
-          placeholder="e.g. 24AABCP1234F1Z9"
-          placeholderTextColor="#94A3B8"
-          autoCapitalize="characters"
-          maxLength={15}
-          value={data.gstin}
-          onChangeText={(text) => onChange("gstin", text.toUpperCase())}
+        <Dropdown
+          label="Business Type"
+          required
+          placeholder="Select business type"
+          options={BUSINESS_TYPE_OPTIONS}
+          value={isOtherBusinessType && data.businessType !== "Other" ? "Other" : data.businessType}
+          onSelect={(val) => {
+            if (val === "Other") {
+              onChange("businessType", "Other");
+            } else {
+              onChange("businessType", val);
+              onChange("otherBusinessType", "");
+            }
+          }}
+          error={errors.businessType}
         />
-        {errors.gstin && <Text style={styles.errorText}>{errors.gstin}</Text>}
-      </View>
 
-      {/* Udyam Registration */}
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Udyam MSME Certificate Number{" "}
-          <Text style={styles.optionalTag}>(MSME Capital Subsidy)</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, errors.udyamRegistration && styles.inputError]}
-          placeholder="e.g. UDYAM-GJ-01-0012345"
-          placeholderTextColor="#94A3B8"
-          autoCapitalize="characters"
-          value={data.udyamRegistration}
-          onChangeText={(text) =>
-            onChange("udyamRegistration", text.toUpperCase())
-          }
-        />
-        {errors.udyamRegistration && (
-          <Text style={styles.errorText}>{errors.udyamRegistration}</Text>
+        {isOtherBusinessType && (
+          <View style={styles.customFieldWrapper}>
+            <Text style={styles.label}>
+              Specify Business Type <Text style={styles.requiredStar}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                errors.otherBusinessType && styles.inputError,
+              ]}
+              placeholder="e.g. Trust / Co-operative Society"
+              placeholderTextColor="#94A3B8"
+              value={data.otherBusinessType || (data.businessType !== "Other" ? data.businessType : "")}
+              onChangeText={(text) => {
+                onChange("otherBusinessType", text);
+                onChange("businessType", text || "Other");
+              }}
+            />
+            {errors.otherBusinessType && (
+              <Text style={styles.errorText}>{errors.otherBusinessType}</Text>
+            )}
+          </View>
         )}
       </View>
 
-      {/* Vintage */}
+      {/* Business Vintage */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Factory / Business Vintage (Years) <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <View style={styles.vintageRow}>
-          {VINTAGE_OPTIONS.map((item) => {
-            const isSelected = data.businessVintageYears === item.value;
-            return (
-              <TouchableOpacity
-                key={item.label}
-                activeOpacity={0.7}
-                onPress={() => onChange("businessVintageYears", item.value)}
-                style={[
-                  styles.vintageChip,
-                  isSelected && styles.vintageChipActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.vintageChipText,
-                    isSelected && styles.vintageChipTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {errors.businessVintageYears && (
-          <Text style={styles.errorText}>{errors.businessVintageYears}</Text>
-        )}
+        <Dropdown
+          label="Business Vintage"
+          required
+          placeholder="Select vintage"
+          options={BUSINESS_VINTAGE_OPTIONS}
+          value={data.businessVintageYears}
+          onSelect={(val) => onChange("businessVintageYears", val)}
+          error={errors.businessVintageYears}
+        />
       </View>
 
       {/* Annual Turnover */}
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>
-          Annual Sales / Turnover (₹) <Text style={styles.requiredStar}>*</Text>
+          Annual Turnover <Text style={styles.requiredStar}>*</Text>
         </Text>
         <TextInput
           style={[styles.input, errors.annualTurnover && styles.inputError]}
-          placeholder="e.g. 10000000"
+          placeholder="Enter annual turnover (₹)"
           placeholderTextColor="#94A3B8"
           keyboardType="numeric"
           value={data.annualTurnover}
@@ -137,25 +135,71 @@ export const MachineryLoanBusinessStep: React.FC<MachineryLoanBusinessStepProps>
         )}
       </View>
 
-      {/* Net Profit */}
+      {/* GST Registered? */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Annual Net Profit (₹) <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, errors.netProfit && styles.inputError]}
-          placeholder="e.g. 1500000"
-          placeholderTextColor="#94A3B8"
-          keyboardType="numeric"
-          value={data.netProfit}
-          onChangeText={(text) => onChange("netProfit", text)}
-        />
-        {errors.netProfit && (
-          <Text style={styles.errorText}>{errors.netProfit}</Text>
-        )}
+        <Text style={styles.label}>GST Registered?</Text>
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => onChange("isGstRegistered", true)}
+            style={[
+              styles.toggleButton,
+              data.isGstRegistered && styles.toggleButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                data.isGstRegistered && styles.toggleTextActive,
+              ]}
+            >
+              Yes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              onChange("isGstRegistered", false);
+              onChange("gstin", "");
+            }}
+            style={[
+              styles.toggleButton,
+              !data.isGstRegistered && styles.toggleButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                !data.isGstRegistered && styles.toggleTextActive,
+              ]}
+            >
+              No
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Conditional GSTIN */}
+      {data.isGstRegistered && (
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>
+            GSTIN <Text style={styles.requiredStar}>*</Text>
+          </Text>
+          <TextInput
+            style={[styles.input, errors.gstin && styles.inputError]}
+            placeholder="Enter GSTIN (e.g. 24AABCP1234F1Z9)"
+            placeholderTextColor="#94A3B8"
+            autoCapitalize="characters"
+            maxLength={15}
+            value={data.gstin}
+            onChangeText={(text) => onChange("gstin", text.toUpperCase())}
+          />
+          {errors.gstin && <Text style={styles.errorText}>{errors.gstin}</Text>}
+        </View>
+      )}
     </View>
   );
 };
 
 export default MachineryLoanBusinessStep;
+

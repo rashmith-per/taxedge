@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../../design-system/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FocusAwareStatusBar } from "../FocusAwareStatusBar";
 
 export interface AppHeaderProps {
   title: string;
@@ -42,6 +43,7 @@ export function AppHeader({
 
   return (
     <View style={{ backgroundColor: Colors.primaryDark, paddingTop: insets.top }}>
+      <FocusAwareStatusBar barStyle="light-content" />
       <View
         style={[
           styles.headerContainer,

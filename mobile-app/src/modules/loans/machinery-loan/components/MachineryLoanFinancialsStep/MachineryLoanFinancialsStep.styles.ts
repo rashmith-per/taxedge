@@ -19,6 +19,9 @@ export const styles = StyleSheet.create({
   fieldGroup: {
     marginBottom: 18,
   },
+  customFieldWrapper: {
+    marginTop: 12,
+  },
   label: {
     fontSize: Typography.fontSize.sm,
     fontWeight: "600",

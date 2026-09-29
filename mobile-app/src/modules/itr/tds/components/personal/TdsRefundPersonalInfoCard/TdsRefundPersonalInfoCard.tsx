@@ -86,29 +86,6 @@ export const TdsRefundPersonalInfoCard: React.FC<TdsRefundPersonalInfoCardProps>
     return clean;
   };
 
-  const formatAddress = (): { text: string; isMissing: boolean } => {
-    const lines: string[] = [];
-    if (personalData.residentialAddress?.trim()) {
-      lines.push(personalData.residentialAddress.trim());
-    }
-    const cityState: string[] = [];
-    if (personalData.city?.trim()) cityState.push(personalData.city.trim());
-    if (personalData.state?.trim()) cityState.push(personalData.state.trim());
-    const region = cityState.join(", ");
-    if (region && personalData.pinCode?.trim()) {
-      lines.push(`${region} - ${personalData.pinCode.trim()}`);
-    } else if (region) {
-      lines.push(region);
-    } else if (personalData.pinCode?.trim()) {
-      lines.push(`PIN: ${personalData.pinCode.trim()}`);
-    }
-
-    if (lines.length === 0) {
-      return { text: "Not provided", isMissing: true };
-    }
-    return { text: lines.join("\n"), isMissing: false };
-  };
-
   const handleStartEdit = () => {
     setEditForm({ ...personalData });
     setEditErrors({});

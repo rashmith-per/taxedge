@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,10 @@ import { BrandColors } from "../../../../../shared/theme";
 import { useAuthStore } from "../../../../authentication/store/authStore";
 import { loansApi } from "../../../services/loansApi";
 import { BUSINESS_DOCUMENTS_TEMPLATE } from "../../../mock/loanServices";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useApplicationStore } from "@/store/applicationStore";
 import {
   LoanDetailsFormData,
   LoanBusinessFormData,
@@ -29,7 +33,6 @@ import {
 } from "../../../validation/loansSchema";
 import {
   WorkingCapitalStepIndicator,
-  WorkingCapitalCustomerCard,
   WorkingCapitalFinancialsStep,
   WorkingCapitalBusinessStep,
   WorkingCapitalBankingStep,
@@ -38,7 +41,7 @@ import {
 } from "../../components";
 import { styles } from "./WorkingCapitalScreen.styles";
 
-const STEPS = ["Financials", "Enterprise", "Banking", "Documents", "Review"];
+const STEPS = ["Financials", "Business & Banking", "Documents", "Review"];
 
 export const WorkingCapitalScreen: React.FC = () => {
   const router = useRouter();
@@ -55,23 +58,23 @@ export const WorkingCapitalScreen: React.FC = () => {
   // Step 1: Financials
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>({
     loanType: "Working Capital",
-    requiredAmount: "2500000",
-    purpose: "Cash Credit Facility",
+    requiredAmount: "",
+    purpose: "",
     preferredTenureMonths: "12",
     hasExistingLoans: false,
     existingEmi: "",
-    monthlyIncomeOrTurnover: "450000",
-    employmentType: "Business Owner",
+    monthlyIncomeOrTurnover: "",
+    employmentType: "Cash Credit (CC) Facility" as any,
   });
 
-  // Step 2: Enterprise details
+  // Step 2: Business details
   const [businessDetails, setBusinessDetails] = useState<LoanBusinessFormData>({
     businessName: "",
     gstin: "",
     udyamRegistration: "",
     businessVintageYears: "3",
-    annualTurnover: "4000000",
-    netProfit: "600000",
+    annualTurnover: "",
+    netProfit: "",
   });
 
   // Step 3: Banking
@@ -90,6 +93,74 @@ export const WorkingCapitalScreen: React.FC = () => {
   const [documents, setDocuments] = useState<LoanDocumentItem[]>(() =>
     JSON.parse(JSON.stringify(BUSINESS_DOCUMENTS_TEMPLATE))
   );
+
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const raw = await AsyncStorage.getItem("@taxedge_working_capital_draft_v1");
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft.loanDetails) setLoanDetails(draft.loanDetails);
+          if (draft.businessDetails) setBusinessDetails(draft.businessDetails);
+          if (draft.bankingDetails) setBankingDetails(draft.bankingDetails);
+          if (draft.documents) setDocuments(draft.documents);
+          if (typeof draft.currentStepIndex === "number") {
+            setCurrentStepIndex(draft.currentStepIndex);
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    };
+    loadDraft();
+  }, []);
+
+  const isFormDirty = useMemo(() => {
+    const hasAmount = Boolean(loanDetails.requiredAmount.trim());
+    const hasPurpose = Boolean(loanDetails.purpose.trim());
+    const hasBusiness = Boolean(businessDetails.businessName.trim());
+    const hasBank = Boolean(bankingDetails.primaryBankName.trim());
+    const hasDocs = documents.some((d) => Boolean(d.fileUri));
+    return hasAmount || hasPurpose || hasBusiness || hasBank || hasDocs || currentStepIndex > 0;
+  }, [loanDetails, businessDetails, bankingDetails, documents, currentStepIndex]);
+
+  const {
+    showDraftModal,
+    openDraftModal,
+    markSubmitted,
+    handleSaveAndExit,
+    handleDiscardAndExit,
+    handleCancel,
+  } = useUniversalDraftGuard({
+    isDirty: () => isFormDirty,
+    onSaveDraft: async () => {
+      try {
+        const draft = {
+          loanType: "Working Capital",
+          loanTypeId: "working-capital",
+          currentStepIndex,
+          loanDetails,
+          businessDetails,
+          bankingDetails,
+          documents,
+          savedAt: new Date().toISOString(),
+        };
+        await AsyncStorage.setItem(
+          "@taxedge_working_capital_draft_v1",
+          JSON.stringify(draft)
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    },
+    onDiscardDraft: async () => {
+      try {
+        await AsyncStorage.removeItem("@taxedge_working_capital_draft_v1");
+      } catch {
+        // Ignore storage errors
+      }
+    },
+  });
 
   const handleDetailsChange = (field: keyof LoanDetailsFormData, value: any) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));
@@ -153,29 +224,25 @@ export const WorkingCapitalScreen: React.FC = () => {
 
   const validateCurrentStep = (): boolean => {
     if (currentStepIndex === 0) {
-      const errs = validateLoanDetails(loanDetails);
+      const errs = validateLoanDetails(loanDetails, { requireIncomeOrTurnover: false });
       setErrors(errs);
       return Object.keys(errs).length === 0;
     }
 
     if (currentStepIndex === 1) {
-      const errs = validateLoanBusiness(businessDetails);
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+      const errsBus = validateLoanBusiness(businessDetails);
+      const errsBank = validateLoanBanking(bankingDetails);
+      const mergedErrs = { ...errsBus, ...errsBank };
+      setErrors(mergedErrs);
+      return Object.keys(mergedErrs).length === 0;
     }
 
     if (currentStepIndex === 2) {
-      const errs = validateLoanBanking(bankingDetails);
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
-    }
-
-    if (currentStepIndex === 3) {
       const { isValid, missingDocs } = validateLoanDocuments(documents);
       if (!isValid) {
         Alert.alert(
           "Mandatory Documents Required",
-          `Please upload all required business audit records to proceed:\n\n• ${missingDocs.slice(0, 3).join("\n• ")}`
+          `Please upload required documents to proceed:\n\n• ${missingDocs.slice(0, 3).join("\n• ")}`
         );
         return false;
       }
@@ -203,7 +270,7 @@ export const WorkingCapitalScreen: React.FC = () => {
       setCurrentStepIndex((prev) => prev - 1);
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     } else {
-      router.back();
+      openDraftModal();
     }
   };
 
@@ -229,22 +296,52 @@ export const WorkingCapitalScreen: React.FC = () => {
       };
 
       const response = await loansApi.applyLoan(draft);
-      Alert.alert(
-        "Working Capital Limit Lodged",
-        `Your application (Ref: ${response.referenceNumber}) has been submitted. Our commercial credit analyst will assess your drawing power shortly.`,
-        [
-          {
-            text: "Track Status",
-            onPress: () => {
-              router.replace(
-                `/service/loan-status?id=${response.applicationId}&loanType=Working+Capital` as any
-              );
-            },
-          },
-        ]
+      const appId = response.applicationId || `WC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      // Save application into store so it appears in My Applications / Application Overview
+      const appStore = useApplicationStore.getState();
+      const amountVal = Number(loanDetails.requiredAmount) || 5000000;
+      appStore.createApplication(
+        "working-capital",
+        "Working Capital",
+        "LOANS",
+        {
+          loanType: "Working Capital",
+          requestedAmount: amountVal,
+          purpose: loanDetails.purpose,
+          tenureMonths: loanDetails.preferredTenureMonths,
+          businessName: businessDetails.businessName,
+          gstin: businessDetails.gstin,
+          udyamRegistration: businessDetails.udyamRegistration,
+          businessVintage: businessDetails.businessVintageYears,
+          annualTurnover: businessDetails.annualTurnover,
+          netProfit: businessDetails.netProfit,
+          bankName: bankingDetails.primaryBankName,
+          accountNumber: bankingDetails.accountNumber,
+          ifscCode: bankingDetails.ifscCode,
+        },
+        documents.map((d) => ({
+          name: d.name,
+          status: d.fileUri ? "Uploaded" : "Pending",
+          fileUri: d.fileUri,
+        })),
+        0,
+        "Paid",
+        true
+      );
+
+      // Remove Working Capital draft from storage
+      await AsyncStorage.removeItem("@taxedge_working_capital_draft_v1");
+
+      // Mark submitted so draft guard beforeRemove listener does not intercept navigation
+      markSubmitted();
+
+      // Navigate directly to Loan Application Status screen
+      router.replace(
+        `/service/loan-status?id=${appId}&loanType=Working+Capital` as any
       );
     } catch {
-      Alert.alert("Submission Error", "Failed to lodge application. Please try again.");
+      Alert.alert("Submission Error", "Failed to submit application. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -254,40 +351,37 @@ export const WorkingCapitalScreen: React.FC = () => {
     switch (currentStepIndex) {
       case 0:
         return (
-          <>
-            <WorkingCapitalCustomerCard profile={customer || undefined} />
-            <WorkingCapitalFinancialsStep
-              data={loanDetails}
-              onChange={handleDetailsChange}
-              errors={errors}
-            />
-          </>
+          <WorkingCapitalFinancialsStep
+            data={loanDetails}
+            onChange={handleDetailsChange}
+            errors={errors}
+          />
         );
       case 1:
         return (
-          <WorkingCapitalBusinessStep
-            data={businessDetails}
-            onChange={handleBusinessChange}
-            errors={errors}
-          />
+          <>
+            <WorkingCapitalBusinessStep
+              data={businessDetails}
+              onChange={handleBusinessChange}
+              errors={errors}
+            />
+            <View style={{ height: 16 }} />
+            <WorkingCapitalBankingStep
+              data={bankingDetails}
+              onChange={handleBankingChange}
+              errors={errors}
+              hasExistingLoans={loanDetails.hasExistingLoans}
+            />
+          </>
         );
       case 2:
-        return (
-          <WorkingCapitalBankingStep
-            data={bankingDetails}
-            onChange={handleBankingChange}
-            errors={errors}
-            hasExistingLoans={loanDetails.hasExistingLoans}
-          />
-        );
-      case 3:
         return (
           <WorkingCapitalDocumentsStep
             documents={documents}
             onDocumentUploaded={handleDocumentUploaded}
           />
         );
-      case 4:
+      case 3:
       default:
         return (
           <WorkingCapitalReviewStep
@@ -312,36 +406,25 @@ export const WorkingCapitalScreen: React.FC = () => {
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#0F172A" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Working Capital</Text>
-            <Text style={styles.headerSubtitle}>
-              Step {currentStepIndex + 1} of {STEPS.length} • {STEPS[currentStepIndex]}
-            </Text>
-          </View>
+      <View style={styles.headerBar}>
+        <TouchableOpacity style={styles.circularBtn} onPress={openDraftModal} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+
+        <View style={styles.headerCenterContent}>
+          <Text style={styles.headerTitle}>Working Capital</Text>
+          <Text style={styles.headerSubtitle}>
+            Step {currentStepIndex + 1} of {STEPS.length} • {STEPS[currentStepIndex]}
+          </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.saveDraftButton}
-          onPress={() => Alert.alert("Draft Saved", "Working Capital draft saved successfully.")}
-        >
-          <Text style={styles.saveDraftText}>Save Draft</Text>
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* Step Progress Stepper */}
+      {/* Step Progress Bar (Home Loan Style) */}
       <WorkingCapitalStepIndicator
         steps={STEPS}
         currentStepIndex={currentStepIndex}
-        onStepPress={(idx) => {
-          if (idx <= currentStepIndex) {
-            setCurrentStepIndex(idx);
-          }
-        }}
       />
 
       {/* Scrollable Step Content */}
@@ -361,15 +444,15 @@ export const WorkingCapitalScreen: React.FC = () => {
           { paddingBottom: Math.max(insets.bottom, 12) },
         ]}
       >
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.backButtonText}>
-            {currentStepIndex === 0 ? "Cancel" : "Back"}
-          </Text>
-        </TouchableOpacity>
+        {currentStepIndex > 0 ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity
           style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}
@@ -392,6 +475,19 @@ export const WorkingCapitalScreen: React.FC = () => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Universal Draft Guard Modal */}
+      <UniversalDraftModal
+        visible={showDraftModal}
+        title="Save Progress?"
+        message="You have unsaved changes in your Working Capital Loan application. Save your progress to resume anytime."
+        saveButtonText="Save as Draft & Exit"
+        discardButtonText="Discard & Exit"
+        cancelButtonText="Keep Editing"
+        onSaveAndExit={handleSaveAndExit}
+        onDiscardAndExit={handleDiscardAndExit}
+        onCancel={handleCancel}
+      />
     </View>
   );
 };

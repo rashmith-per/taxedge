@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useTheme } from "../../hooks/use-theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSupportStore } from "../../store/supportStore";
@@ -73,6 +74,7 @@ export default function SupportChatScreen() {
     >
       {/* Header */}
       <View style={{ backgroundColor: colors.primaryDark, paddingTop: insets.top }}>
+        <FocusAwareStatusBar barStyle="light-content" />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />

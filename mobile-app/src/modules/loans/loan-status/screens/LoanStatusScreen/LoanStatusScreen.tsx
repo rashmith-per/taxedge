@@ -12,6 +12,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "../../../../../shared/theme";
+import { useApplicationStore } from "../../../../../store/applicationStore";
+import type { Application } from "../../../../../types/domain";
 import { loansApi } from "../../../services/loansApi";
 import {
   LoanApplicationResponse,
@@ -59,9 +61,19 @@ export const LoanStatusScreen: React.FC = () => {
   const handleSupport = () => {
     Alert.alert(
       "Loan Assistance Desk",
-      "Connecting you with your dedicated CA loan advisor."
+      "Connecting you with your dedicated TaxEdge Loan Agent."
     );
   };
+
+  const appFromStore = useApplicationStore
+    .getState()
+    .applications.find((a: Application) => a.id === appId);
+  const formData = appFromStore?.formData || {};
+  const displayAmount = formData.requestedAmount || data?.amount || 3000000;
+  const displayBank = formData.bankName || "Primary Current Bank";
+  const displayAcc = formData.accountNumber ? `XXXX${formData.accountNumber.slice(-4)}` : "—";
+  const displayEquipment = formData.equipmentType || "CNC / Automation Machinery";
+  const displayTenure = formData.tenureMonths ? `${formData.tenureMonths} Months` : "48 Months";
 
   return (
     <View style={[styles.safeArea, { paddingTop: insets.top }]}>
@@ -96,47 +108,46 @@ export const LoanStatusScreen: React.FC = () => {
             </View>
             <Text style={styles.successTitle}>Application Submitted Successfully</Text>
             <Text style={styles.successSubtitle}>
-              Your {params.loanType || data?.loanType || "Loan"} application has been lodged successfully.
-              Our credit verification officer and underwriting desk will initiate verification shortly.
+              Your {params.loanType || appFromStore?.serviceName || data?.loanType || "Loan"} application has been lodged.
+              Our Loan Agent and underwriting desk will initiate verification shortly.
             </Text>
           </View>
-
           {/* Summary Card */}
           <View style={styles.summaryCard}>
             <View style={styles.appIdRow}>
               <Text style={styles.refNumber}>
-                Ref: {data?.referenceNumber || appId}
+                Ref: {appFromStore?.id || data?.referenceNumber || appId}
               </Text>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
-                  {data?.status || "Application Received"}
+                  {appFromStore?.status || data?.status || "Submitted"}
                 </Text>
               </View>
             </View>
 
             <Text style={styles.loanName}>
-              {params.loanType || data?.loanType || "Business Loan"}
+              {params.loanType || appFromStore?.serviceName || data?.loanType || "Machinery Loan"}
             </Text>
             <Text style={styles.amountText}>
-              ₹{(data?.amount || 1500000).toLocaleString("en-IN")}
+              ₹{Number(displayAmount).toLocaleString("en-IN")}
             </Text>
 
             <View style={styles.metaGrid}>
               <View>
-                <Text style={styles.metaLabel}>Applied On</Text>
-                <Text style={styles.metaValue}>
-                  {data?.createdAt
-                    ? new Date(data.createdAt).toLocaleDateString()
-                    : "Today"}
-                </Text>
+                <Text style={styles.metaLabel}>Equipment</Text>
+                <Text style={styles.metaValue}>{displayEquipment}</Text>
               </View>
               <View>
-                <Text style={styles.metaLabel}>Lender Network</Text>
-                <Text style={styles.metaValue}>Multi-Bank Desk</Text>
+                <Text style={styles.metaLabel}>Tenure</Text>
+                <Text style={styles.metaValue}>{displayTenure}</Text>
               </View>
               <View>
-                <Text style={styles.metaLabel}>Case Advisor</Text>
-                <Text style={styles.metaValue}>TaxEdge Credit CA</Text>
+                <Text style={styles.metaLabel}>Disbursement Bank</Text>
+                <Text style={styles.metaValue}>{displayBank} ({displayAcc})</Text>
+              </View>
+              <View>
+                <Text style={styles.metaLabel}>Loan Agent</Text>
+                <Text style={styles.metaValue}>TaxEdge Loan Agent</Text>
               </View>
             </View>
           </View>

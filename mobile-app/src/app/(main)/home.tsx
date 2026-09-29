@@ -8,13 +8,13 @@ import {
   Dimensions,
   Modal,
   Pressable,
-  StatusBar,
   TextInput,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect, type Href } from "expo-router";
+import { useRouter, useFocusEffect, useIsFocused, type Href } from "expo-router";
 import { useTheme } from "../../hooks/use-theme";
 import { useColorScheme } from "../../hooks/use-color-scheme";
 import { useAuthStore } from "../../store/authStore";
@@ -209,6 +209,142 @@ const APPLY_BANNERS: ApplyBanner[] = (
   bg: i % 2 === 0 ? BANNER_NAVY : BANNER_NAVY_DEEP,
 }));
 
+/** Delay before the carousel advances on its own (restarts after every page change). */
+const BANNER_AUTO_ADVANCE_MS = 4000;
+
+interface ApplyBannerCarouselProps {
+  banners: readonly ApplyBanner[];
+  colors: ReturnType<typeof useTheme>;
+  onSelect: (categoryId: ServiceCategoryId) => void;
+}
+
+/**
+ * Paged "apply for" carousel (TC_001 / TC_002).
+ *  - Works for any number of banners: 0 renders nothing, 1 is static,
+ *    2+ page and auto-advance.
+ *  - Exactly one timer exists at a time. It restarts after every page change
+ *    (manual or automatic), never runs while the user is dragging, and pauses
+ *    while Home is not the focused screen.
+ *  - The page index is always derived from the real scroll position and
+ *    clamped to the banner list, so dots always match the visible banner.
+ *  - After the last banner it continues from the first one without animating
+ *    backwards through every banner.
+ */
+function ApplyBannerCarousel({ banners, colors, onSelect }: ApplyBannerCarouselProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const [pageWidth, setPageWidth] = useState(CARD_WIDTH);
+  const [page, setPage] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const isFocused = useIsFocused();
+
+  const count = banners.length;
+  const lastIndex = Math.max(0, count - 1);
+  const activePage = Math.min(Math.max(page, 0), lastIndex);
+
+  const pageFromOffset = (offsetX: number) =>
+    Math.min(Math.max(Math.round(offsetX / pageWidth), 0), lastIndex);
+
+  // If the list ever shrinks below the current page, show a valid banner.
+  useEffect(() => {
+    if (page > lastIndex) {
+      scrollRef.current?.scrollTo({ x: lastIndex * pageWidth, animated: false });
+    }
+  }, [page, lastIndex, pageWidth]);
+
+  // Auto-advance: one timeout per page, cancelled by any page change, drag,
+  // loss of focus or unmount, so a stale callback can never move the carousel.
+  useEffect(() => {
+    if (count < 2 || !isFocused || isDragging) return undefined;
+    const timer = setTimeout(() => {
+      const next = activePage >= lastIndex ? 0 : activePage + 1;
+      scrollRef.current?.scrollTo({ x: next * pageWidth, animated: next !== 0 });
+      setPage(next);
+    }, BANNER_AUTO_ADVANCE_MS);
+    return () => clearTimeout(timer);
+  }, [activePage, count, isDragging, isFocused, lastIndex, pageWidth]);
+
+  if (count === 0) return null;
+
+  return (
+    <View>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        scrollEnabled={count > 1}
+        showsHorizontalScrollIndicator={false}
+        onLayout={(e) => {
+          const width = e.nativeEvent.layout.width;
+          if (width > 0 && Math.abs(width - pageWidth) > 0.5) {
+            setPageWidth(width);
+            scrollRef.current?.scrollTo({ x: activePage * width, animated: false });
+          }
+        }}
+        onScrollBeginDrag={() => setIsDragging(true)}
+        onScrollEndDrag={() => setIsDragging(false)}
+        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          setIsDragging(false);
+          setPage(pageFromOffset(e.nativeEvent.contentOffset.x));
+        }}
+        scrollEventThrottle={16}
+      >
+        {banners.map((banner) => (
+          <View key={banner.key} style={[styles.bannerPage, { width: pageWidth }]}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => onSelect(banner.id)}
+              style={[styles.loansBanner, { backgroundColor: banner.bg }]}
+            >
+              <View style={styles.bannerLeft}>
+                <Text style={styles.bannerTitle} numberOfLines={1}>
+                  {banner.title}
+                </Text>
+                <Text style={styles.bannerDesc} numberOfLines={2}>
+                  {banner.desc}
+                </Text>
+                <View style={[styles.exploreButton, { backgroundColor: colors.orange }]}>
+                  <Text style={styles.exploreText}>{banner.cta}</Text>
+                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                </View>
+              </View>
+
+              <View style={styles.dotGrid} pointerEvents="none">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <View key={i} style={styles.decorDot} />
+                ))}
+              </View>
+
+              <View style={styles.bannerRight}>
+                <View style={styles.bannerIconCircle}>
+                  <Ionicons name={banner.icon} size={44} color={colors.orange} />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
+
+      {count > 1 ? (
+        <View style={styles.dotsRow}>
+          {banners.map((b, i) => (
+            <View
+              key={b.key}
+              style={[
+                styles.pageDot,
+                {
+                  backgroundColor: i === activePage ? colors.primary : colors.border,
+                  width: i === activePage ? 18 : 7,
+                  height: 7,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const colors = useTheme();
   const scheme = useColorScheme();
@@ -217,11 +353,8 @@ export default function HomeScreen() {
   const { accessService } = useServiceAccessGuard();
   const insets = useSafeAreaInsets();
 
-  const [bannerPage, setBannerPage] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const [moreQuery, setMoreQuery] = useState("");
-  const bannerRef = useRef<ScrollView>(null);
-  const bannerPageRef = useRef(0);
 
   const customer = useAuthStore((state) => state.customer);
   const applications = useApplicationStore((state) => state.applications);
@@ -331,26 +464,9 @@ export default function HomeScreen() {
       : group.items,
   })).filter((group) => group.items.length > 0);
 
-  const onBannerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / CARD_WIDTH);
-    bannerPageRef.current = page;
-    setBannerPage(page);
-  };
-
-  // Auto-advance the banner carousel; cleared on unmount so no stray state updates.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const next = (bannerPageRef.current + 1) % APPLY_BANNERS.length;
-      bannerPageRef.current = next;
-      setBannerPage(next);
-      bannerRef.current?.scrollTo({ x: next * CARD_WIDTH, animated: true });
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
 
       {/* ---------- Blue hero header ---------- */}
       <View style={[styles.heroHeader, { backgroundColor: colors.primaryDark, paddingTop: insets.top + Spacing.sm }]}>
@@ -412,67 +528,11 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ---------- Apply-for banner carousel ---------- */}
-        <View>
-          <ScrollView
-            ref={bannerRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={onBannerScroll}
-            scrollEventThrottle={16}
-          >
-            {APPLY_BANNERS.map((banner) => (
-              <View key={banner.key} style={styles.bannerPage}>
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleExploreCategory(banner.id)}
-                  style={[styles.loansBanner, { backgroundColor: banner.bg }]}
-                >
-                  <View style={styles.bannerLeft}>
-                    <Text style={styles.bannerTitle} numberOfLines={1}>
-                      {banner.title}
-                    </Text>
-                    <Text style={styles.bannerDesc} numberOfLines={2}>
-                      {banner.desc}
-                    </Text>
-                    <View style={[styles.exploreButton, { backgroundColor: colors.orange }]}>
-                      <Text style={styles.exploreText}>{banner.cta}</Text>
-                      <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-                    </View>
-                  </View>
-
-                  <View style={styles.dotGrid} pointerEvents="none">
-                    {Array.from({ length: 20 }).map((_, i) => (
-                      <View key={i} style={styles.decorDot} />
-                    ))}
-                  </View>
-
-                  <View style={styles.bannerRight}>
-                    <View style={styles.bannerIconCircle}>
-                      <Ionicons name={banner.icon} size={44} color={colors.orange} />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-
-          <View style={styles.dotsRow}>
-            {APPLY_BANNERS.map((b, i) => (
-              <View
-                key={b.key}
-                style={[
-                  styles.pageDot,
-                  {
-                    backgroundColor: i === bannerPage ? colors.primary : colors.border,
-                    width: i === bannerPage ? 18 : 7,
-                    height: 7,
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </View>
+        <ApplyBannerCarousel
+          banners={APPLY_BANNERS}
+          colors={colors}
+          onSelect={handleExploreCategory}
+        />
 
         {/* ---------- Services ---------- */}
         <View style={styles.sectionHeader}>

@@ -19,27 +19,27 @@ export const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({
         label="Proposed Company Name (Option 1)"
         value={values.proposedName1 || ""}
         onChangeText={(text) => onChange({ proposedName1: text })}
-        placeholder="e.g. Acme Tech Solutions Private Limited"
+        placeholder="Enter Proposed Company Name (Option 1)"
         required
       />
       <FormInput
         label="Proposed Company Name (Option 2 - Alternative)"
         value={values.proposedName2 || ""}
         onChangeText={(text) => onChange({ proposedName2: text })}
-        placeholder="e.g. Acme Innovations Private Limited"
+        placeholder="Enter Proposed Company Name (Option 2)"
       />
       <FormInput
         label="Industry Category"
         value={values.industryCategory || ""}
         onChangeText={(text) => onChange({ industryCategory: text })}
-        placeholder="e.g. Information Technology / Software"
+        placeholder="Enter Industry Category"
         required
       />
       <FormInput
         label="Business Activity Description"
         value={values.businessActivityDescription || ""}
         onChangeText={(text) => onChange({ businessActivityDescription: text })}
-        placeholder="Brief description of business operations"
+        placeholder="Enter Business Activity Description"
         required
       />
     </View>

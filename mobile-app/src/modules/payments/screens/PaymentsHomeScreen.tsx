@@ -123,12 +123,12 @@ export function PaymentsHomeScreen() {
         {currentView === "checkout" && (
           <>
             <PaymentOrderSummaryCard
-              serviceTitle="GST Registration"
-              businessSubtitle="Pavan Enterprises • Bengaluru"
-              professionalFee="₹1,986"
-              gstAmount="₹358"
-              discountAmount="₹0"
-              totalAmount="₹2,344"
+              serviceTitle="Payment"
+              businessSubtitle="Application payment details unavailable"
+              professionalFee="Unavailable"
+              gstAmount="Unavailable"
+              discountAmount="Unavailable"
+              totalAmount="Amount unavailable"
             />
 
             <PaymentMethodSelector
@@ -175,7 +175,7 @@ export function PaymentsHomeScreen() {
                 disabled={isProcessing}
               >
                 <Text style={styles.payBtnText}>
-                  {isProcessing ? "Processing..." : "Pay Securely ₹2,344"}
+                  {isProcessing ? "Processing..." : "Payment unavailable"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -184,7 +184,7 @@ export function PaymentsHomeScreen() {
 
         {currentView === "success" && (
           <GstPaymentSuccessStep
-            amount="₹2,344"
+            amount="Amount unavailable"
             serviceName="GST Registration"
             onViewReceipt={() => setCurrentView("receipt")}
             onViewApplication={() => setCurrentView("status")}
@@ -193,7 +193,7 @@ export function PaymentsHomeScreen() {
 
         {currentView === "receipt" && (
           <GstPaymentReceiptStep
-            amount="₹2,344"
+            amount="Amount unavailable"
             serviceName="GST Registration Service"
             invoiceNo="INV-2026-00001"
           />

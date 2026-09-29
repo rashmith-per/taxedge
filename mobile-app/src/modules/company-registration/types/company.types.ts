@@ -48,6 +48,9 @@ export interface CompanyDetails {
   paidUpCapital: number;
   numberOfShares: number;
   faceValuePerShare: number;
+  // Linked Bank Account
+  accountNumber?: string;
 }
+
 
 

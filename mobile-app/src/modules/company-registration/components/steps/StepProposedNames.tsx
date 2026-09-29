@@ -8,6 +8,7 @@ import { styles } from './StepProposedNames.styles';
 export const StepProposedNames: React.FC = () => {
   const company = useCompanyRegistrationStore((state) => state.draft.company);
   const updateDetails = useCompanyRegistrationStore((state) => state.updateCompanyDetails);
+  const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
 
   const getSuffix = () => {
     switch (company.companyType) {
@@ -22,6 +23,13 @@ export const StepProposedNames: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    const suf = getSuffix();
+    if (company.nameSuffix !== suf) {
+      updateDetails({ nameSuffix: suf });
+    }
+  }, [company.companyType]);
+
   return (
     <CompanySectionCard
       title="Proposed Company Names"
@@ -31,24 +39,26 @@ export const StepProposedNames: React.FC = () => {
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>First Preferred Name *</Text>
         <TextInput
-          style={styles.input}
-          value={company.proposedName1}
+          style={[styles.input, !!fieldErrors.proposedName1 && styles.inputError]}
+          value={company.proposedName1 || ''}
           onChangeText={(val) => updateDetails({ proposedName1: val })}
-          placeholder="First Preference Name"
+          placeholder="Enter First Preferred Name"
           placeholderTextColor="#94A3B8"
         />
+        {!!fieldErrors.proposedName1 && <Text style={styles.errorText}>{fieldErrors.proposedName1}</Text>}
       </View>
 
       {/* 2nd Preferred Name */}
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Second Preferred Name *</Text>
         <TextInput
-          style={styles.input}
-          value={company.proposedName2}
+          style={[styles.input, !!fieldErrors.proposedName2 && styles.inputError]}
+          value={company.proposedName2 || ''}
           onChangeText={(val) => updateDetails({ proposedName2: val })}
-          placeholder="Second Preference Name"
+          placeholder="Enter Second Preferred Name"
           placeholderTextColor="#94A3B8"
         />
+        {!!fieldErrors.proposedName2 && <Text style={styles.errorText}>{fieldErrors.proposedName2}</Text>}
       </View>
 
       {/* Mandatory Suffix */}
@@ -57,6 +67,7 @@ export const StepProposedNames: React.FC = () => {
         <View style={styles.suffixBadge}>
           <Text style={styles.suffixText}>Legal Suffix: {getSuffix()}</Text>
         </View>
+        {!!fieldErrors.nameSuffix && <Text style={styles.errorText}>{fieldErrors.nameSuffix}</Text>}
       </View>
 
       {/* Name Availability Indicator */}

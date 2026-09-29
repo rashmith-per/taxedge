@@ -4,13 +4,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Linking,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -139,7 +139,7 @@ export default function ApplicationDetailScreen() {
           },
         ]}
       >
-        <StatusBar barStyle="light-content" backgroundColor="#0A2346" />
+        <FocusAwareStatusBar barStyle="light-content" backgroundColor="#0A2346" />
         <ActivityIndicator size="large" color="#FF5722" />
         <Text style={{ color: "#FFF", marginTop: 12, fontSize: 14 }}>
           Loading application details...
@@ -156,7 +156,7 @@ export default function ApplicationDetailScreen() {
           { backgroundColor: "#0A2346", paddingTop: insets.top + 20 },
         ]}
       >
-        <StatusBar barStyle="light-content" backgroundColor="#0A2346" />
+        <FocusAwareStatusBar barStyle="light-content" backgroundColor="#0A2346" />
         <View style={styles.topNavRow}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -213,10 +213,16 @@ export default function ApplicationDetailScreen() {
         currentCustomerName ||
         "Verified Business");
 
+  const isLoans =
+    app.category === "LOANS" ||
+    (app.serviceId || "").startsWith("loan") ||
+    app.serviceId === "machinery-loan";
+
   const appliedDate =
     formData.submissionDate || formatDisplayDate(app.createdAt);
-  const assignedCA =
-    app.assignedExecutive && app.assignedExecutive.trim() !== ""
+  const assignedCA = isLoans
+    ? "TaxEdge Loan Agent"
+    : app.assignedExecutive && app.assignedExecutive.trim() !== ""
       ? app.assignedExecutive.trim()
       : isGstAmendment
         ? isCore
@@ -378,8 +384,8 @@ export default function ApplicationDetailScreen() {
         : `Total: ₹${totalAmount.toLocaleString()} • Status: ${app.paymentStatus}`,
     },
     CHAT: {
-      nav: "Chat with CA",
-      title: "CA Consultation",
+      nav: isLoans ? "Chat with Loan Agent" : "Chat with CA",
+      title: isLoans ? "Loan Agent Support" : "CA Consultation",
       sub: `Application #${displayId} • ${assignedCA}`,
     },
   }[activeTab];
@@ -518,7 +524,7 @@ export default function ApplicationDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A2346" />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor="#0A2346" />
 
       {/* ---------------- ROYAL NAVY HEADER ---------------- */}
       <View style={[styles.navyHeader, { paddingTop: insets.top + 8 }]}>
@@ -567,7 +573,9 @@ export default function ApplicationDetailScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {tab.label}
+                  {tab.id === "CHAT" && isLoans
+                    ? "Chat with Loan Agent"
+                    : tab.label}
                 </Text>
                 <View
                   style={
@@ -859,7 +867,7 @@ export default function ApplicationDetailScreen() {
                       fontWeight: "700",
                     }}
                   >
-                    Chat with CA
+                    {isLoans ? "Chat with Loan Agent" : "Chat with CA"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1871,7 +1879,9 @@ export default function ApplicationDetailScreen() {
             style={styles.actionBtnFilled}
           >
             <Ionicons name="chatbubbles-outline" size={18} color="#FFFFFF" />
-            <Text style={styles.actionBtnFilledText}>Chat with CA</Text>
+            <Text style={styles.actionBtnFilledText}>
+              {isLoans ? "Chat with Loan Agent" : "Chat with CA"}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

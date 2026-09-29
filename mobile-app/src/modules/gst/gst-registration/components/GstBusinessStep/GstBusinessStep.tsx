@@ -51,8 +51,8 @@ const REASONS_FOR_REGISTRATION = [
 ];
 
 const COMPOSITION_SCHEME_OPTIONS = [
-  "No â€” regular scheme",
-  "Yes â€” composition scheme",
+  "No - regular scheme",
+  "Yes - composition scheme",
 ];
 
 const PLACE_OF_BUSINESS_OPTIONS = [

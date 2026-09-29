@@ -1,7 +1,6 @@
 package com.taxedge.itr.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,14 +10,13 @@ import com.taxedge.itr.entity.RefundBankAccount;
 import com.taxedge.itr.entity.TdsTaxesPaid;
 import com.taxedge.itr.repository.RefundBankAccountRepository;
 import com.taxedge.itr.repository.TdsTaxesPaidRepository;
+
 @Service
+@RequiredArgsConstructor
 public class TdsTaxesPaidServiceImpl implements TdsTaxesPaidService {
 
-    @Autowired
-    private TdsTaxesPaidRepository repository;
-
-    @Autowired
-    private RefundBankAccountRepository bankAccountRepository;
+    private final TdsTaxesPaidRepository repository;
+    private final RefundBankAccountRepository bankAccountRepository;
 
     @Override
     @Transactional

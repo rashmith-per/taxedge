@@ -23,4 +23,5 @@ export * from "./KeyboardAwareFormLayout";
 export * from "./CompleteProfileModal";
 export * from "./BiometricPromptModal";
 export * from "./ServerConfigModal";
+export * from "./FocusAwareStatusBar";
 

@@ -1,6 +1,6 @@
 package com.taxedge.gst.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,14 +16,12 @@ import com.taxedge.gst.service.BusinessService;
 import com.taxedge.gst.service.DocumentsService;
 
 @RestController
-@RequestMapping("/gst")
+@RequestMapping("/api/v1/gst")
+@RequiredArgsConstructor
 public class GstRegistrationController {
 
-    @Autowired
-    private BusinessService businessService;
-
-    @Autowired
-    private DocumentsService documentsService;
+    private final BusinessService businessService;
+    private final DocumentsService documentsService;
 
     // ==========================================
     // 1. BUSINESS REGISTRATION ENDPOINTS

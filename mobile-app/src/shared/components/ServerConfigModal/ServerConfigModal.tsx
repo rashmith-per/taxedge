@@ -46,7 +46,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       setUrl(target);
     }
     if (!target.startsWith("http://") && !target.startsWith("https://")) {
-      target = `http://${target}`;
+      target = `https://${target}`;
     }
     if (target.endsWith("/")) {
       target = target.slice(0, -1);
@@ -122,7 +122,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               setUrl(txt);
               setTestResult(null);
             }}
-            placeholder="http://192.168.88.25:8086"
+            placeholder="https://your-api-domain.example.com"
             placeholderTextColor="#94A3B8"
             autoCapitalize="none"
             autoCorrect={false}

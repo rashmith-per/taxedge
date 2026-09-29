@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { ScrollView, Alert, Platform } from "react-native";
+import { useState, useCallback, useRef } from "react";
+import { ScrollView, Alert, Linking } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 
@@ -14,20 +14,43 @@ export interface UseDocumentUploadHelperOptions {
   maxSizeMB?: number;
   allowedMimeTypes?: string[];
   scrollRef?: React.RefObject<ScrollView | null>;
+  /**
+   * Show the native crop/rotate editor after a photo is taken or picked.
+   * On Android this is a free-form document cropper that bakes the crop and
+   * rotation into the saved file. (On iOS the native editor only supports a
+   * square crop, so callers usually enable this for Android only.)
+   */
+  allowsEditing?: boolean;
   onSuccess?: (result: DocumentUploadResult, docKey?: string) => void;
-  onError?: (error: string) => void;
+  onError?: (error: string, docKey?: string) => void;
+  /** Called when a picker/camera is launched for `docKey` (processing state). */
+  onProcessingStart?: (docKey?: string) => void;
+  /** Called when the user backs out of the picker/camera without choosing a file. */
+  onCancel?: (docKey?: string) => void;
 }
+
+const PERMISSION_MESSAGES = {
+  camera: "Please allow camera access to take document photos.",
+  gallery: "Please allow gallery access to select document photos.",
+};
 
 export function useDocumentUploadHelper({
   maxSizeMB = 10,
   allowedMimeTypes = ["image/jpeg", "image/png", "application/pdf"],
   scrollRef,
+  allowsEditing = false,
   onSuccess,
   onError,
+  onProcessingStart,
+  onCancel,
 }: UseDocumentUploadHelperOptions = {}) {
   const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [currentDocTitle, setCurrentDocTitle] = useState<string>("");
+  // The document a picker was opened for. Kept in a ref so a result that
+  // arrives later is always applied to the document that requested it.
+  const activeDocKeyRef = useRef<string | null>(null);
+  const isPickingRef = useRef(false);
 
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
@@ -38,6 +61,7 @@ export function useDocumentUploadHelper({
   }, [scrollRef]);
 
   const openUploadSheet = useCallback((docKey: string, title?: string, targetY?: number) => {
+    activeDocKeyRef.current = docKey;
     setActiveDocKey(docKey);
     setCurrentDocTitle(title || docKey);
     setIsSheetVisible(true);
@@ -51,94 +75,128 @@ export function useDocumentUploadHelper({
     setActiveDocKey(null);
   }, []);
 
-  const validateAndProcessFile = useCallback((file: { uri: string; name: string; size?: number; mimeType?: string }) => {
+  const reportError = useCallback((message: string, docKey?: string) => {
+    if (onError) onError(message, docKey);
+    else Alert.alert("Upload Error", message);
+  }, [onError]);
+
+  const validateAndProcessFile = useCallback((
+    file: { uri: string; name: string; size?: number; mimeType?: string },
+    docKey?: string,
+  ) => {
     if (file.size && file.size > maxSizeBytes) {
       const msg = `File size exceeds maximum limit of ${maxSizeMB}MB.`;
-      if (onError) onError(msg);
+      if (onError) onError(msg, docKey);
       else Alert.alert("File Too Large", msg);
       return false;
     }
 
     if (onSuccess) {
-      onSuccess(file, activeDocKey || undefined);
+      onSuccess(file, docKey);
     }
     closeUploadSheet();
     return true;
-  }, [maxSizeBytes, maxSizeMB, onError, onSuccess, activeDocKey, closeUploadSheet]);
+  }, [maxSizeBytes, maxSizeMB, onError, onSuccess, closeUploadSheet]);
+
+  /**
+   * Runs one picker for the active document: marks it as processing, handles
+   * cancel/permission/errors, and ignores re-entrant taps while a picker is open.
+   */
+  const runPicker = useCallback(async (
+    launch: () => Promise<{ file: DocumentUploadResult | null }>,
+    fallbackError: string,
+  ) => {
+    if (isPickingRef.current) return;
+    isPickingRef.current = true;
+    const docKey = activeDocKeyRef.current || undefined;
+    onProcessingStart?.(docKey);
+    try {
+      const { file } = await launch();
+      if (file) {
+        validateAndProcessFile(file, docKey);
+      } else {
+        onCancel?.(docKey);
+      }
+    } catch (e: any) {
+      onCancel?.(docKey);
+      reportError(e?.message || fallbackError, docKey);
+    } finally {
+      isPickingRef.current = false;
+    }
+  }, [onProcessingStart, onCancel, validateAndProcessFile, reportError]);
+
+  const ensurePermission = useCallback(async (kind: "camera" | "gallery"): Promise<boolean> => {
+    const perm = kind === "camera"
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.granted) return true;
+    Alert.alert(
+      "Permission Required",
+      PERMISSION_MESSAGES[kind],
+      perm.canAskAgain
+        ? [{ text: "OK" }]
+        : [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => { Linking.openSettings().catch(() => {}); } },
+          ],
+    );
+    return false;
+  }, []);
 
   const pickFiles = useCallback(async () => {
-    try {
+    await runPicker(async () => {
       const res = await DocumentPicker.getDocumentAsync({
         type: ["application/pdf", "image/*"],
         copyToCacheDirectory: true,
       });
-
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        const asset = res.assets[0];
-        validateAndProcessFile({
-          uri: asset.uri,
-          name: asset.name,
-          size: asset.size,
-          mimeType: asset.mimeType,
-        });
-      }
-    } catch (e: any) {
-      if (onError) onError(e?.message || "Failed to pick file");
-    }
-  }, [validateAndProcessFile, onError]);
+      if (res.canceled || !res.assets || res.assets.length === 0) return { file: null };
+      const asset = res.assets[0];
+      return {
+        file: { uri: asset.uri, name: asset.name, size: asset.size, mimeType: asset.mimeType },
+      };
+    }, "Failed to pick file");
+  }, [runPicker]);
 
   const pickGallery = useCallback(async () => {
-    try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("Permission Required", "Please allow gallery access to select document photos.");
-        return;
-      }
-
+    await runPicker(async () => {
+      if (!(await ensurePermission("gallery"))) return { file: null };
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         quality: 0.8,
+        allowsEditing,
       });
-
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        const asset = res.assets[0];
-        validateAndProcessFile({
+      if (res.canceled || !res.assets || res.assets.length === 0) return { file: null };
+      const asset = res.assets[0];
+      return {
+        file: {
           uri: asset.uri,
           name: asset.fileName || `photo_${Date.now()}.jpg`,
           size: asset.fileSize,
           mimeType: asset.mimeType || "image/jpeg",
-        });
-      }
-    } catch (e: any) {
-      if (onError) onError(e?.message || "Failed to select photo");
-    }
-  }, [validateAndProcessFile, onError]);
+        },
+      };
+    }, "Failed to select photo");
+  }, [runPicker, ensurePermission, allowsEditing]);
 
   const takePhoto = useCallback(async () => {
-    try {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("Permission Required", "Please allow camera access to take document photos.");
-        return;
-      }
-
+    await runPicker(async () => {
+      if (!(await ensurePermission("camera"))) return { file: null };
       const res = await ImagePicker.launchCameraAsync({
         quality: 0.8,
+        allowsEditing,
       });
-
-      if (!res.canceled && res.assets && res.assets.length > 0) {
-        const asset = res.assets[0];
-        validateAndProcessFile({
+      if (res.canceled || !res.assets || res.assets.length === 0) return { file: null };
+      const asset = res.assets[0];
+      return {
+        file: {
           uri: asset.uri,
           name: asset.fileName || `camera_${Date.now()}.jpg`,
           size: asset.fileSize,
           mimeType: asset.mimeType || "image/jpeg",
-        });
-      }
-    } catch (e: any) {
-      if (onError) onError(e?.message || "Failed to take photo");
-    }
-  }, [validateAndProcessFile, onError]);
+        },
+      };
+    }, "Failed to take photo");
+  }, [runPicker, ensurePermission, allowsEditing]);
 
   return {
     isSheetVisible,
@@ -150,6 +208,7 @@ export function useDocumentUploadHelper({
     pickGallery,
     takePhoto,
     scrollToTarget,
+    allowedMimeTypes,
   };
 }
 

@@ -1,6 +1,7 @@
 import React from "react";
-import { MsmeLoanScreen } from "@/modules/loans/msme-loan";
+import { BusinessLoanScreen } from "@/modules/loans/business-loan";
 
 export default function MsmeLoanRoute() {
-  return <MsmeLoanScreen />;
+  return <BusinessLoanScreen />;
 }
+

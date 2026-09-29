@@ -1,10 +1,15 @@
 import { apiClient } from "../../../../core/api/apiClient";
+import { ApiError } from "../../../../core/api/apiError";
+import { tokenManager, JwtUtils } from "../../../../core/authentication/tokenManager";
+import { tokenRefreshManager } from "../../../../core/authentication/tokenRefreshManager";
 import * as FileSystem from "expo-file-system";
 import { TdsCustomerIncomeFormData } from "../types/customerIncome.types";
 import { TdsDocumentItem } from "../types/tdsDocuments.types";
 import { TaxCalculationBreakdown } from "../types/estimate.types";
 import { parsePositiveNumber } from "../utils/tdsValidation";
 import { tdsCalculationService } from "./tdsCalculationService";
+import { getTdsCustId } from "./tdsDraftService";
+import { authApi } from "@/modules/authentication/services/authApi";
 import { INITIAL_TDS_DOCUMENTS } from "../constants/tdsDocuments.constants";
 
 export interface RefundBankAccountDto {
@@ -133,7 +138,7 @@ const readFileAsBase64 = async (uri?: string): Promise<string | null> => {
     if (base64 && base64.trim().length > 0) {
       return base64.trim();
     }
-  } catch (directErr) {
+  } catch {
     // 5. Fallback: Copy content:// or special URI to temporary cache file then read
     try {
       const ext = cleanUri.split(".").pop()?.split("?")[0] || "bin";
@@ -161,6 +166,88 @@ const extractIdFromResponse = (responseMsg: string): string | null => {
   return match ? match[1] : null;
 };
 
+const isFilled = (v: unknown) => v !== undefined && v !== null && v !== "";
+
+// Access tokens are short-lived, and this backend answers an expired token with 403
+// (not 401), so the shared client's 401-only refresh never fires for TDS calls.
+// Refresh up front through the existing refresh manager; logs metadata only, never the token.
+const ensureFreshSession = async (): Promise<void> => {
+  const token = await tokenManager.getAccessToken().catch(() => null);
+  const unexpired = Boolean(token) && JwtUtils.isStructureAndExpiryValid(token as string, 15);
+  console.log("[TDS AUTH]", {
+    apiUrl: apiClient.getBaseUrl(),
+    tokenSource: "tokenManager (access token)",
+    tokenPresent: Boolean(token),
+    tokenLength: token?.length ?? 0,
+    bearerFormatValid: Boolean(token) && (token as string).split(".").length === 3,
+    unexpired,
+  });
+  if (!unexpired) {
+    const refreshed = await tokenRefreshManager.attemptRefresh();
+    console.log(`[TDS AUTH] Access token expired/missing → refresh ${refreshed ? "succeeded" : "failed"}`);
+  }
+};
+
+// POSTs a TDS save and logs START / SUCCESS / FAILED with safe metadata only
+// (key names and presence flags, never PAN, account numbers or tokens).
+const tracedPost = async (
+  step: string,
+  path: string,
+  payload: object,
+  ids: { custId?: string; tdsRefundId?: string }
+): Promise<string> => {
+  const entries = Object.entries(payload);
+  console.log(`[TDS SAVE] ${step} → START`, {
+    endpoint: path,
+    method: "POST",
+    customerIdPresent: isFilled(ids.custId),
+    customerIdLength: ids.custId?.length ?? 0,
+    applicationIdPresent: isFilled(ids.tdsRefundId),
+    payloadKeys: entries.map(([k]) => k),
+    emptyFields: entries.filter(([, v]) => !isFilled(v)).map(([k]) => k),
+  });
+
+  await ensureFreshSession();
+
+  const post = () => apiClient.post<string>(path, payload);
+  try {
+    let res: string;
+    try {
+      res = await post();
+    } catch (firstErr) {
+      // One refresh + retry for a 403, which is how this backend reports an expired token
+      if (!(firstErr instanceof ApiError) || firstErr.statusCode !== 403) throw firstErr;
+      console.warn(`[TDS AUTH] HTTP 403 on ${path} — refreshing session and retrying once`);
+      if (!(await tokenRefreshManager.attemptRefresh())) throw firstErr;
+      res = await post();
+    }
+    console.log(`[TDS SAVE] ${step} → SUCCESS`, { returnedId: extractIdFromResponse(res) });
+    return res;
+  } catch (err) {
+    const apiErr = err instanceof ApiError ? err : ApiError.fromError(err);
+    const tokenPresent = Boolean(await tokenManager.getAccessToken().catch(() => null));
+    console.error(`[TDS SAVE] ${step} → FAILED`);
+    console.error(
+      "[TDS API ERROR]\n" +
+        `Endpoint: ${apiClient.getBaseUrl()}${path}\n` +
+        "Method: POST\n" +
+        `Status: ${apiErr.statusCode}\n` +
+        `Code: ${apiErr.code}\n` +
+        `Message: ${apiErr.message}\n` +
+        `Network error: ${apiErr.code === "NETWORK_ERROR"}\n` +
+        `Auth rejected: ${apiErr.statusCode === 401 || apiErr.statusCode === 403}\n` +
+        `Token present: ${tokenPresent}`
+    );
+    // Re-throw with the step and endpoint so the screen can say what failed
+    throw new ApiError(
+      `${step} save failed at POST ${path} (HTTP ${apiErr.statusCode}): ${apiErr.message}`,
+      apiErr.statusCode,
+      apiErr.code,
+      apiErr.errors
+    );
+  }
+};
+
 export const tdsApiService = {
   // ----------------------------------------------------
   // 1. BANK ACCOUNT API
@@ -182,7 +269,10 @@ export const tdsApiService = {
       accountType: (bankData.accountType?.toUpperCase() === "CURRENT" ? "CURRENT" : "SAVINGS") as any,
     };
 
-    const res = await apiClient.post<string>("/itr/refund-bank-account/save", payload);
+    const res = await tracedPost("Bank Account", "/itr/refund-bank-account/save", payload, {
+      custId: payload.custId,
+      tdsRefundId: existingId,
+    });
     const extractedId = extractIdFromResponse(res) || existingId || "";
     return extractedId;
   },
@@ -222,7 +312,7 @@ export const tdsApiService = {
       deductions80D: incomeData.hasDeductions ? parsePositiveNumber(incomeData.deductions80D) : 0,
     };
 
-    return await apiClient.post<string>("/itr/income-tax-info/save", payload);
+    return await tracedPost("Income", "/itr/income-tax-info/save", payload, { tdsRefundId });
   },
 
   getIncomeTaxInfo: async (tdsRefundId: string): Promise<IncomeTaxInfoDto | null> => {
@@ -250,7 +340,7 @@ export const tdsApiService = {
       selfAssessmentTax: parsePositiveNumber(incomeData.selfAssessmentTaxPaid),
     };
 
-    return await apiClient.post<string>("/itr/tds-taxes-paid/save", payload);
+    return await tracedPost("Taxes Paid", "/itr/tds-taxes-paid/save", payload, { custId, tdsRefundId });
   },
 
   getTdsTaxesPaid: async (tdsRefundId: string): Promise<TdsTaxesPaidDto | null> => {
@@ -347,7 +437,7 @@ export const tdsApiService = {
       hasIncomeProofs: Boolean(payload.incomeProofsFile),
     });
 
-    return await apiClient.post<string>("/itr/tds-documents/save", payload);
+    return await tracedPost("Documents", "/itr/tds-documents/save", payload, { tdsRefundId });
   },
 
   getDocuments: async (tdsRefundId: string): Promise<TdsDocumentsDto | null> => {
@@ -362,6 +452,7 @@ export const tdsApiService = {
     tdsRefundId: string,
     fallbackDocs: TdsDocumentItem[] = INITIAL_TDS_DOCUMENTS
   ): Promise<TdsDocumentItem[]> => {
+    await ensureFreshSession();
     const fetched = await tdsApiService.getDocuments(tdsRefundId);
     if (!fetched) return fallbackDocs;
 
@@ -407,6 +498,26 @@ export const tdsApiService = {
     custId: string,
     existingTdsRefundId?: string
   ): Promise<string> => {
+    if (!custId) {
+      throw new Error("Unable to identify the logged-in customer. Please log in again.");
+    }
+
+    // The JWT filter trusts token claims only, so confirm the account still exists
+    // before writing TDS rows against it.
+    const customer = await authApi.checkUser(custId);
+    console.log("[TDS] Customer check", {
+      customerId: `${custId.slice(0, 2)}******${custId.slice(-2)}`,
+      customerIdLength: custId.length,
+      reachable: customer.success,
+      exists: customer.exists,
+    });
+    if (!customer.success) {
+      throw new Error("Unable to verify your account with the server. Please check your connection and try again.");
+    }
+    if (!customer.exists) {
+      throw new Error("Your customer account was not found on the server. Please log out, then register or log in again before submitting.");
+    }
+
     // 1. Save Bank Account & receive generated / existing tdsRefundId
     const tdsRefundId = await tdsApiService.saveBankAccount(formData.bank, custId, existingTdsRefundId);
     if (!tdsRefundId) {
@@ -438,6 +549,7 @@ export const tdsApiService = {
     documents?: TdsDocumentItem[];
   } | null> => {
     try {
+      await ensureFreshSession();
       let bankDto: RefundBankAccountDto | null = null;
       let tdsRefundId: string | null = existingTdsRefundId || null;
 
@@ -561,7 +673,7 @@ export const tdsApiService = {
     existingAppId?: string
   ): Promise<BackendApplicationResponse> => {
     // First save all structured sections to DB backend
-    const custId = formData.personal.mobileNumber || "CUST-DEFAULT";
+    const custId = getTdsCustId(formData.personal.mobileNumber);
     const savedId = await tdsApiService.saveFullTdsApplication(formData, documents as any, custId, existingAppId);
 
     const payload = {

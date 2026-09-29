@@ -1,5 +1,4 @@
 import { apiClient } from '../../../core/api/apiClient';
-import type { PaymentTransaction } from '../types/payment.types';
 
 export const paymentService = {
   createOrder: async (amount: number, serviceId: string): Promise<{ orderId: string } | null> => {

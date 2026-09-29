@@ -7,6 +7,7 @@ import { styles } from './StepBusinessActivity.styles';
 export const StepBusinessActivity: React.FC = () => {
   const company = useCompanyRegistrationStore((state) => state.draft.company);
   const updateDetails = useCompanyRegistrationStore((state) => state.updateCompanyDetails);
+  const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
 
   return (
     <CompanySectionCard
@@ -17,27 +18,36 @@ export const StepBusinessActivity: React.FC = () => {
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>Primary Business Activity *</Text>
         <TextInput
-          style={styles.input}
-          value={company.primaryActivity}
+          style={[styles.input, !!fieldErrors.primaryActivity && styles.inputError]}
+          value={company.primaryActivity || ''}
           onChangeText={(val) => updateDetails({ primaryActivity: val })}
-          placeholder="e.g. Information Technology & Software Development"
+          placeholder="Enter Primary Business Activity"
           placeholderTextColor="#94A3B8"
         />
-        <Text style={styles.hint}>Used for Main Objects in MoA Memorandum of Association.</Text>
+        {!!fieldErrors.primaryActivity ? (
+          <Text style={styles.errorText}>{fieldErrors.primaryActivity}</Text>
+        ) : (
+          <Text style={styles.hint}>Used for Main Objects in MoA Memorandum of Association.</Text>
+        )}
       </View>
 
       {/* NIC Code */}
       <View style={styles.fieldGroup}>
         <Text style={styles.label}>NIC 5-Digit Code *</Text>
         <TextInput
-          style={styles.input}
-          value={company.nicCode}
+          style={[styles.input, !!fieldErrors.nicCode && styles.inputError]}
+          value={company.nicCode || ''}
           onChangeText={(val) => updateDetails({ nicCode: val })}
-          placeholder="e.g. 62011"
+          placeholder="Enter 5-digit NIC Code"
           keyboardType="numeric"
+          maxLength={5}
           placeholderTextColor="#94A3B8"
         />
-        <Text style={styles.hint}>National Industrial Classification code (e.g. 62011 for software development).</Text>
+        {!!fieldErrors.nicCode ? (
+          <Text style={styles.errorText}>{fieldErrors.nicCode}</Text>
+        ) : (
+          <Text style={styles.hint}>National Industrial Classification 5-Digit Code.</Text>
+        )}
       </View>
 
       {/* Secondary Business Activity */}
@@ -45,9 +55,9 @@ export const StepBusinessActivity: React.FC = () => {
         <Text style={styles.label}>Secondary Business Activity (Optional)</Text>
         <TextInput
           style={[styles.input, styles.multilineInput]}
-          value={company.secondaryActivity}
+          value={company.secondaryActivity || ''}
           onChangeText={(val) => updateDetails({ secondaryActivity: val })}
-          placeholder="e.g. Data Processing, IT Consultancy, Web Hosting, Software Sales"
+          placeholder="Enter Secondary Business Activity"
           multiline
           placeholderTextColor="#94A3B8"
         />

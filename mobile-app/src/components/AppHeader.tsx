@@ -12,6 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../hooks/use-theme";
 import { useNotificationStore } from "../store/notificationStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FocusAwareStatusBar } from "../shared/components/FocusAwareStatusBar";
 
 export interface AppHeaderProps {
   title: string;
@@ -33,6 +34,7 @@ export function AppHeader({
 
   return (
     <View style={{ backgroundColor: colors.primaryDark, paddingTop: insets.top }}>
+      <FocusAwareStatusBar barStyle="light-content" />
       <View
         style={[
           styles.headerContainer,

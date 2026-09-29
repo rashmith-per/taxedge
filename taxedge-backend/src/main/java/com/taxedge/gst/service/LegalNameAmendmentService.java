@@ -8,7 +8,5 @@ public interface LegalNameAmendmentService {
 
     LegalNameAmendmentViewDto getExistingLegalNameDetails(String gstId);
 
-    LegalNameAmendmentViewDto getNewLegalNameAmendmentDetails(String gstId);
-
     String submitLegalNameAmendment(String gstId, String newLegalName, MultipartFile file) throws IOException;
 }

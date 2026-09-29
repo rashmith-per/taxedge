@@ -1,52 +1,154 @@
 package com.taxedge.itr.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.io.IOException;
+
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.taxedge.itr.dto.DocumentDto;
 import com.taxedge.itr.dto.ItrFilingPostDto;
+import com.taxedge.itr.dto.SalaryIncomeDto;
 import com.taxedge.itr.entity.ItrFiling;
+import com.taxedge.itr.service.ItrDocumentService;
 import com.taxedge.itr.service.ItrFilingService;
+import com.taxedge.itr.service.SalaryIncomeService;
 
 @RestController
-@RequestMapping("/api/v1/itr/filing")
+@RequestMapping("/api/v1/itr")
+@RequiredArgsConstructor
 public class ItrFilingController {
 
-    @Autowired
-    private ItrFilingService itrFilingService;
+	private final ItrFilingService itrFilingService;
 
-    @GetMapping("/{itrId}")
-    public ResponseEntity<ItrFiling> getItrFiling(
-            @PathVariable String itrId) {
+	private final ItrDocumentService itrDocumentService;
 
-        ItrFiling itrFiling = itrFilingService.getItrFiling(itrId);
+	private final SalaryIncomeService salaryIncomeService;
 
-        return ResponseEntity.ok(itrFiling);
-    }
+	// ==========================================
+	// 1. ITR FILING ENDPOINTS
+	// ==========================================
 
-    @PostMapping("/register")
-    public ResponseEntity<String> registerItrFiling(
-            @RequestBody ItrFilingPostDto dto) {
+	@GetMapping("/filing/{itrId}")
+	public ResponseEntity<ItrFiling> getItrFiling(@PathVariable String itrId) {
 
-        String result = itrFilingService.createItrFiling(dto);
+		ItrFiling itrFiling = itrFilingService.getItrFiling(itrId);
 
-        return new ResponseEntity<>(result, HttpStatus.CREATED);
-    }
+		return ResponseEntity.ok(itrFiling);
+	}
 
-    @PutMapping("/update/{itrId}")
-    public ResponseEntity<String> updateItrFiling(
-            @PathVariable String itrId,
-            @RequestBody ItrFilingPostDto dto) {
+	@PostMapping("/filing/register")
+	public ResponseEntity<String> registerItrFiling(@RequestBody ItrFilingPostDto dto) {
 
-        String result = itrFilingService.updateItrFiling(itrId, dto);
+		String result = itrFilingService.createItrFiling(dto);
 
-        return ResponseEntity.ok(result);
-    }
+		return new ResponseEntity<>(result, HttpStatus.CREATED);
+	}
+
+	@PutMapping("/filing/update/{itrId}")
+	public ResponseEntity<String> updateItrFiling(@PathVariable String itrId, @RequestBody ItrFilingPostDto dto) {
+
+		String result = itrFilingService.updateItrFiling(itrId, dto);
+
+		return ResponseEntity.ok(result);
+	}
+
+	// ==========================================
+	// 2. ITR DOCUMENT ENDPOINTS
+	// ==========================================
+
+	@PostMapping("/{itrId}/documents/register")
+	public ResponseEntity<String> registerDocuments(@PathVariable String itrId,
+			@RequestParam(value = "form16PartAPartB", required = false) MultipartFile form16PartAPartB,
+
+			@RequestParam(value = "form26as", required = false) MultipartFile form26as,
+
+			@RequestParam(value = "aisTis", required = false) MultipartFile aisTis,
+
+			@RequestParam(value = "bankAccountStatement", required = false) MultipartFile bankAccountStatement,
+
+			@RequestParam(value = "salaryPayslips", required = false) MultipartFile salaryPayslips) throws IOException {
+
+		String result = itrDocumentService.registerDocuments(itrId, form16PartAPartB, form26as, aisTis,
+				bankAccountStatement, salaryPayslips);
+
+		return new ResponseEntity<>(result, HttpStatus.CREATED);
+	}
+
+	@GetMapping("/documents/{documentId}")
+	public ResponseEntity<DocumentDto> getDocuments(@PathVariable String documentId) {
+
+		DocumentDto documents = itrDocumentService.getDocuments(documentId);
+
+		return ResponseEntity.ok(documents);
+	}
+
+	@PutMapping("/documents/update/{documentId}")
+	public ResponseEntity<String> updateDocuments(@PathVariable String documentId,
+
+			@RequestParam(value = "form16PartAPartB", required = false) MultipartFile form16PartAPartB,
+
+			@RequestParam(value = "form26as", required = false) MultipartFile form26as,
+
+			@RequestParam(value = "aisTis", required = false) MultipartFile aisTis,
+
+			@RequestParam(value = "bankAccountStatement", required = false) MultipartFile bankAccountStatement,
+
+			@RequestParam(value = "salaryPayslips", required = false) MultipartFile salaryPayslips) throws IOException {
+
+		String result = itrDocumentService.updateDocuments(documentId, form16PartAPartB, form26as, aisTis,
+				bankAccountStatement, salaryPayslips);
+
+		return ResponseEntity.ok(result);
+	}
+
+	@DeleteMapping("/documents/{documentId}")
+	public ResponseEntity<String> deleteDocuments(@PathVariable String documentId) {
+
+		String result = itrDocumentService.deleteDocuments(documentId);
+
+		return ResponseEntity.ok(result);
+	}
+
+	// ==========================================
+	// 3. SALARY INCOME ENDPOINTS
+	// ==========================================
+
+	@PostMapping("/{itrId}/salary-income/register")
+	public ResponseEntity<String> registerSalaryIncome(@PathVariable String itrId,
+			@RequestBody SalaryIncomeDto salaryIncomeDto) {
+
+		String result = salaryIncomeService.registerSalaryIncome(itrId, salaryIncomeDto);
+
+		return new ResponseEntity<>(result, HttpStatus.CREATED);
+	}
+
+	@GetMapping("/salary-income/{incomeId}")
+	public ResponseEntity<SalaryIncomeDto> getSalaryIncome(@PathVariable String incomeId) {
+
+		SalaryIncomeDto salaryIncome = salaryIncomeService.getSalaryIncome(incomeId);
+
+		return ResponseEntity.ok(salaryIncome);
+	}
+
+	@PutMapping("/salary-income/update/{incomeId}")
+	public ResponseEntity<String> updateSalaryIncome(@PathVariable String incomeId,
+			@RequestBody SalaryIncomeDto salaryIncomeDto) {
+
+		String result = salaryIncomeService.updateSalaryIncome(incomeId, salaryIncomeDto);
+
+		return ResponseEntity.ok(result);
+	}
+
+	@DeleteMapping("/salary-income/{incomeId}")
+	public ResponseEntity<String> deleteSalaryIncome(@PathVariable String incomeId) {
+
+		String result = salaryIncomeService.deleteSalaryIncome(incomeId);
+
+		return ResponseEntity.ok(result);
+	}
 }

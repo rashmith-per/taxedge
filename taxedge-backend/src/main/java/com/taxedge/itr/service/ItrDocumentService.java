@@ -1,7 +1,6 @@
 package com.taxedge.itr.service;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -9,11 +8,13 @@ import com.taxedge.itr.dto.DocumentDto;
 
 public interface ItrDocumentService {
 
-	String registerDocument(String itrId, String documentType, MultipartFile file) throws IOException;
+	String registerDocuments(String itrId, MultipartFile form16PartAPartB, MultipartFile form26as, MultipartFile aisTis,
+			MultipartFile bankAccountStatement, MultipartFile salaryPayslips) throws IOException;
 
-	String updateDocument(String documentId, MultipartFile file) throws IOException;
+	DocumentDto getDocuments(String documentId);
 
-	DocumentDto getDocument(String documentId);
-	
-	List<DocumentDto> getDocuments(String itrId);
+	String updateDocuments(String documentId, MultipartFile form16PartAPartB, MultipartFile form26as,
+			MultipartFile aisTis, MultipartFile bankAccountStatement, MultipartFile salaryPayslips) throws IOException;
+
+	String deleteDocuments(String documentId);
 }

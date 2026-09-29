@@ -97,4 +97,20 @@ export const styles = StyleSheet.create({
     color: "#1E293B",
     marginBottom: 10,
   },
+  ifscInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    gap: 6,
+  },
+  ifscLoadingText: {
+    fontSize: Typography.fontSize.xs,
+    color: "#EA580C",
+    fontWeight: "500",
+  },
+  ifscSuccessText: {
+    fontSize: Typography.fontSize.xs,
+    color: "#16A34A",
+    fontWeight: "600",
+  },
 });

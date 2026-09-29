@@ -9,8 +9,6 @@ public interface SignatoryAmendmentService {
 
     SignatoryAmendmentViewDto getExistingSignatoryDetails(String gstId);
 
-    SignatoryAmendmentViewDto getNewSignatoryAmendmentDetails(String gstId);
-
     String submitSignatoryAmendment(String gstId, String signatoryName, String signatoryPan,
                                     LocalDate signatoryDob, String designation, String signatoryMobile,
                                     String signatoryEmail, MultipartFile file) throws IOException;

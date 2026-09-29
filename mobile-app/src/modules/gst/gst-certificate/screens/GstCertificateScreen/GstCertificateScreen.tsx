@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StatusBar, Alert, Animated, Platform, BackHandler } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Animated, Platform, BackHandler } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -51,6 +52,68 @@ ${d.activities?.length ? `<table class="tbl"><tr class="sec-hdr"><th colspan="2"
 <div class="ftr-bar">TAXEDGE • DIGITALLY GENERATED DEMO CERTIFICATE</div>
 <div class="bot-note"><span>TaxEdge Demo Copy • Not a Government Document</span><span>Form GST REG-06 Reference</span></div>
 </div></div></body></html>`;
+
+interface SectionCardProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+function SectionCard({ icon, title, action, children }: SectionCardProps) {
+  return (
+    <View style={st.card}>
+      <View style={st.contactHeaderRow}>
+        <View style={st.cardHeaderRow}>
+          <View style={st.cardIconBox}>
+            <Ionicons name={icon} size={18} color="#1E5EFF" />
+          </View>
+          <Text style={st.cardLabel}>{title}</Text>
+        </View>
+        {action}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+interface ActionButtonProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+  onPress: () => void;
+  outline?: boolean;
+  variant?: "primary" | "outline" | "text";
+  onPressIn?: () => void;
+  onPressOut?: () => void;
+}
+
+function ActionButton({ icon, text, onPress, outline, variant, onPressIn, onPressOut }: ActionButtonProps) {
+  const isPrimary = variant === "primary" || outline === false;
+  const isText = variant === "text";
+
+  if (isPrimary) {
+    return (
+      <TouchableOpacity style={st.orangeCta} activeOpacity={0.9} onPressIn={onPressIn} onPressOut={onPressOut} onPress={onPress}>
+        <Ionicons name={icon} size={20} color="#FFF" style={{ marginRight: 8 }} />
+        <Text style={st.orangeCtaText}>{text}</Text>
+      </TouchableOpacity>
+    );
+  }
+  if (isText) {
+    return (
+      <TouchableOpacity style={st.textOnlyBtn} activeOpacity={0.8} onPress={onPress}>
+        <Ionicons name={icon} size={16} color="#64748B" style={{ marginRight: 6 }} />
+        <Text style={st.textOnlyBtnText}>{text}</Text>
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <TouchableOpacity style={st.blueOutlineBtn} activeOpacity={0.8} onPress={onPress}>
+      <Ionicons name={icon} size={18} color="#1E5EFF" style={{ marginRight: 8 }} />
+      <Text style={st.blueOutlineBtnText}>{text}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export function GstCertificateScreen() {
   const router = useRouter(), insets = useSafeAreaInsets();
@@ -206,6 +269,65 @@ export function GstCertificateScreen() {
   const pressIn = () => Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: true }).start();
   const pressOut = () => Animated.spring(btnScale, { toValue: 1, friction: 4, useNativeDriver: true }).start();
 
+  const handleDownload = () => {
+    if (certificatePdfUri) {
+      downloadAndSharePdf(certificatePdfUri, generatedFileName);
+    } else {
+      handleAction();
+    }
+  };
+
+  const handleShare = () => {
+    if (certificatePdfUri) {
+      downloadAndSharePdf(certificatePdfUri, generatedFileName);
+    }
+  };
+
+  const handleApplications = () => {
+    router.replace("/(main)/applications");
+  };
+
+  const handleHome = () => {
+    router.replace("/(main)/home");
+  };
+
+  const renderActionButton = (
+    icon: keyof typeof Ionicons.glyphMap,
+    text: string,
+    onPress: () => void,
+    variant: "primary" | "outline" | "text" = "outline",
+    onPressIn?: () => void,
+    onPressOut?: () => void
+  ) => (
+    <ActionButton
+      icon={icon}
+      text={text}
+      onPress={onPress}
+      variant={variant}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+    />
+  );
+
+  const renderCertificateActions = () => (
+    <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%", marginTop: 18, gap: 10 }}>
+      {renderActionButton("cloud-download-outline", "Download Certificate", handleDownload, "primary", pressIn, pressOut)}
+      {renderActionButton("share-social-outline", "Share Certificate", handleShare, "outline")}
+      {renderActionButton("briefcase-outline", "Track in My Applications", handleApplications, "outline")}
+      {renderActionButton("home-outline", "Go to Home", handleHome, "text")}
+    </Animated.View>
+  );
+
+  const renderCertificateFooter = () => (
+    <View style={st.footerWrap}>
+      <View style={st.footerRow}>
+        <Ionicons name="shield-checkmark-outline" size={14} color="#1E5EFF" />
+        <Text style={st.footerSafeText}>Your data is safe with us</Text>
+      </View>
+      <Text style={st.footerGovText}>TaxEdge Form GST REG-06 Generator</Text>
+    </View>
+  );
+
   if (isCompleted) {
     const detailRows = [
       { icon: "document-text-outline", label: "Document", val: "GST Registration Certificate" },
@@ -216,9 +338,9 @@ export function GstCertificateScreen() {
     ];
     return (
       <View style={st.root}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={[st.topBar, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => router.replace("/(main)/applications")} style={st.backBtn}><Ionicons name="chevron-back" size={22} color="#0F172A" /></TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7} onPress={handleApplications} style={st.backBtn}><Ionicons name="chevron-back" size={22} color="#0F172A" /></TouchableOpacity>
         </View>
         <ScrollView style={st.flex1} contentContainerStyle={st.readyScroll} showsVerticalScrollIndicator={false}>
           <Animated.View style={[st.readyHeroWrap, { transform: [{ translateY: floatAnim }] }]}>
@@ -245,24 +367,8 @@ export function GstCertificateScreen() {
               </React.Fragment>
             ))}
           </View>
-          <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%", marginTop: 18, gap: 10 }}>
-            <TouchableOpacity style={st.orangeCta} activeOpacity={0.9} onPressIn={pressIn} onPressOut={pressOut} onPress={() => { if (certificatePdfUri) downloadAndSharePdf(certificatePdfUri, generatedFileName); else handleAction(); }}>
-              <Ionicons name="cloud-download-outline" size={20} color="#FFF" style={{ marginRight: 8 }} /><Text style={st.orangeCtaText}>Download Certificate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={st.blueOutlineBtn} activeOpacity={0.8} onPress={() => { if (certificatePdfUri) downloadAndSharePdf(certificatePdfUri, generatedFileName); }}>
-              <Ionicons name="share-social-outline" size={18} color="#1E5EFF" style={{ marginRight: 8 }} /><Text style={st.blueOutlineBtnText}>Share Certificate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={st.blueOutlineBtn} activeOpacity={0.8} onPress={() => router.replace("/(main)/applications")}>
-              <Ionicons name="briefcase-outline" size={18} color="#1E5EFF" style={{ marginRight: 8 }} /><Text style={st.blueOutlineBtnText}>Track in My Applications</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={st.textOnlyBtn} activeOpacity={0.8} onPress={() => router.replace("/(main)/home")}>
-              <Ionicons name="home-outline" size={16} color="#64748B" style={{ marginRight: 6 }} /><Text style={st.textOnlyBtnText}>Go to Home</Text>
-            </TouchableOpacity>
-          </Animated.View>
-          <View style={st.footerWrap}>
-            <View style={st.footerRow}><Ionicons name="shield-checkmark-outline" size={14} color="#1E5EFF" /><Text style={st.footerSafeText}>Your data is safe with us</Text></View>
-            <Text style={st.footerGovText}>TaxEdge Form GST REG-06 Generator</Text>
-          </View>
+          {renderCertificateActions()}
+          {renderCertificateFooter()}
         </ScrollView>
       </View>
     );
@@ -270,7 +376,7 @@ export function GstCertificateScreen() {
 
   return (
     <View style={st.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={[st.topBar, { paddingTop: Math.max(insets.top, 12) + 4 }]}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()} style={st.backBtn}><Ionicons name="chevron-back" size={22} color="#0F172A" /></TouchableOpacity>
         <Text style={st.headerTitle}>GST Certificate</Text>
@@ -292,26 +398,31 @@ export function GstCertificateScreen() {
             </View>
           </Animated.View>
         </Animated.View>
-        <View style={st.card}>
-          <View style={st.cardHeaderRow}><View style={st.cardIconBox}><Ionicons name="business" size={18} color="#1E5EFF" /></View><Text style={st.cardLabel}>GSTIN (15-Character) <Text style={st.star}>*</Text></Text></View>
+        <SectionCard icon="business" title={<>GSTIN (15-Character) <Text style={st.star}>*</Text></>}>
           <TextInput style={[st.input, isFocused && st.inputFocused, Boolean(gstinError) && st.inputError]} placeholder="e.g. 29AAAAA0000A1Z5" placeholderTextColor="#94A3B8" value={gstin} onChangeText={handleGstinChange} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} autoCapitalize="characters" maxLength={15} />
           {gstinError ? <Text style={st.errorText}>{gstinError}</Text> : <Text style={st.helperText}>Enter your 15-digit GST Identification Number</Text>}
-        </View>
-        <View style={st.card}>
-          <View style={st.contactHeaderRow}>
-            <View style={st.cardHeaderRow}><View style={st.cardIconBox}><Ionicons name="call" size={18} color="#1E5EFF" /></View><Text style={st.cardLabel}>Registered Contact Authorization</Text></View>
-            <TouchableOpacity style={st.editBtn} activeOpacity={0.7}><Ionicons name="create-outline" size={14} color="#1E5EFF" /><Text style={st.editText}>Edit</Text></TouchableOpacity>
-          </View>
-          <Text style={st.contactPhone}>{registeredMobile}</Text><Text style={st.contactEmail}>{registeredEmail}</Text>
+        </SectionCard>
+        <SectionCard
+          icon="call"
+          title="Registered Contact Authorization"
+          action={
+            <TouchableOpacity style={st.editBtn} activeOpacity={0.7}>
+              <Ionicons name="create-outline" size={14} color="#1E5EFF" />
+              <Text style={st.editText}>Edit</Text>
+            </TouchableOpacity>
+          }
+        >
+          <Text style={st.contactPhone}>{registeredMobile}</Text>
+          <Text style={st.contactEmail}>{registeredEmail}</Text>
           <Text style={st.contactSubText}>Official certificate copy will be issued to registered signatory credentials</Text>
-        </View>
-        <View style={st.card}>
-          <View style={st.cardHeaderRow}><View style={st.cardIconBox}><Ionicons name="document-text" size={18} color="#1E5EFF" /></View><Text style={st.cardLabel}>Request Type <Text style={st.star}>*</Text></Text></View>
+        </SectionCard>
+        <SectionCard icon="document-text" title={<>Request Type <Text style={st.star}>*</Text></>}>
           <TouchableOpacity style={[st.dropdownBox, Boolean(error) && st.inputError]} activeOpacity={0.7} onPress={() => setShowTypeModal(true)}>
-            <Text style={[st.dropdownText, !requestType && st.placeholderText]}>{requestType || "Select Request Type"}</Text><Ionicons name="chevron-down" size={18} color="#64748B" />
+            <Text style={[st.dropdownText, !requestType && st.placeholderText]}>{requestType || "Select Request Type"}</Text>
+            <Ionicons name="chevron-down" size={18} color="#64748B" />
           </TouchableOpacity>
           {error ? <Text style={st.errorText}>{error}</Text> : null}
-        </View>
+        </SectionCard>
         <View style={st.infoCard}>
           <Ionicons name="information-circle" size={20} color="#1E5EFF" style={{ marginRight: 10 }} />
           <Text style={st.infoText}>Your certificate will be generated using your GST registration details and saved as a PDF on your device.</Text>

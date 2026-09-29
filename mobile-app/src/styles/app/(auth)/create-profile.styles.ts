@@ -445,7 +445,7 @@ export const styles = StyleSheet.create({
   },
   customerTypeContainer: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 110,
+    paddingBottom: Spacing.base,
     marginTop: Spacing.base,
   },
   customerTypeCard: {

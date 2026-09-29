@@ -41,7 +41,7 @@ export class ApiClient {
   public interceptors: InterceptorManager;
 
   constructor(baseUrl: string = getDefaultBaseUrl()) {
-    this.baseUrl = baseUrl || `http://${SERVER_IP}:${SERVER_PORT}`;
+    this.baseUrl = baseUrl || getDefaultBaseUrl();
     this.interceptors = new InterceptorManager();
     this.loadCustomBaseUrl().catch(() => { });
   }
@@ -116,7 +116,9 @@ export class ApiClient {
     if (!base || base.trim() === "") {
       base = getDefaultBaseUrl();
       if (!base || base.trim() === "") {
-        base = `http://${SERVER_IP}:${SERVER_PORT}`;
+        throw new Error(
+          "API base URL is not configured. Set EXPO_PUBLIC_API_URL or save a server URL in the app.",
+        );
       }
       this.baseUrl = base;
     }

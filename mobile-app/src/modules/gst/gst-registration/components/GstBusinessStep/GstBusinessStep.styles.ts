@@ -75,12 +75,39 @@ export const styles = StyleSheet.create({
     borderColor: "#EF4444",
     backgroundColor: "#FEF2F2",
   },
+  inputReadOnly: {
+    backgroundColor: "#F8FAFC",
+    color: "#475569",
+  },
   errorText: {
     fontSize: 11.5,
     color: "#DC2626",
     marginTop: 4,
     fontWeight: "500",
     fontFamily: Platform.select({ ios: "System", android: "sans-serif" }),
+  },
+  lookupIndicator: {
+    marginTop: 5,
+    alignSelf: "flex-start",
+  },
+  lookupInfoText: {
+    color: "#64748B",
+    fontSize: 11.5,
+    marginTop: -6,
+    marginBottom: 10,
+  },
+  locationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 6,
+    minHeight: 38,
+    paddingVertical: 6,
+  },
+  locationButtonText: {
+    color: BrandColors.PRIMARY_ORANGE,
+    fontSize: 13,
+    fontWeight: "600",
   },
   selectInput: {
     height: 50,
@@ -197,6 +224,20 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
+  },
+  // Shared UniversalDatePicker, styled to match the existing GST date fields.
+  datePickerContainer: {
+    marginBottom: 0,
+  },
+  datePickerInput: {
+    paddingHorizontal: 10,
+    gap: 6,
+  },
+  datePickerText: {
+    fontSize: 13,
+    fontWeight: "400",
+    color: BrandColors.TEXT_PRIMARY,
+    fontFamily: Platform.select({ ios: "System", android: "sans-serif" }),
   },
   leftIcon: {
     marginRight: 10,

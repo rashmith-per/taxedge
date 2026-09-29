@@ -47,7 +47,6 @@ export const tdsReconciliationService = {
     if (hasForm16) {
       const salary = parsePositiveNumber(formData.income.salaryIncome);
       const expectedSalaryTds = Math.round(salary * 0.05); // indicative salary TDS
-      const diff = Math.abs(expectedSalaryTds - enteredTds);
       // Only flag if significant discrepancy and non-salary TDS not accounted
       items.push({
         source: "Form 16 (Part A - Employer TDS)",

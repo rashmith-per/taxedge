@@ -13,6 +13,7 @@ export const StepPromoters: React.FC = () => {
   const addDirector = useCompanyRegistrationStore((state) => state.addDirector);
   const updateDirector = useCompanyRegistrationStore((state) => state.updateDirector);
   const removeDirector = useCompanyRegistrationStore((state) => state.removeDirector);
+  const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
 
   const [expandedDirectorId, setExpandedDirectorId] = useState<string | null>(
     directors.length > 0 ? directors[0].id : null
@@ -45,12 +46,12 @@ export const StepPromoters: React.FC = () => {
       pan: '',
       dob: '',
       fatherName: '',
-      gender: 'Male',
-      nationality: 'Indian',
-      occupation: 'Professional',
-      educationalQualification: 'Graduate',
-      designation: 'Director',
-      category: 'Promoter Director',
+      gender: '',
+      nationality: '',
+      occupation: '',
+      educationalQualification: '',
+      designation: '',
+      category: '',
       email: '',
       phone: '',
       isResidentInIndia: true,
@@ -79,6 +80,10 @@ export const StepPromoters: React.FC = () => {
       <Text style={styles.subheading}>
         Enter essential details of all promoters/directors for CA processing.
       </Text>
+
+      {!!fieldErrors.directorsCount && (
+        <Text style={[styles.errorText, { marginBottom: 12 }]}>{fieldErrors.directorsCount}</Text>
+      )}
 
       {directors.map((director, idx) => (
         <PromoterDirectorCard

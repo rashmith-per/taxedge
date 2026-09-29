@@ -1,8 +1,7 @@
 package com.taxedge.gst.entity;
 
 import jakarta.persistence.*;
-import com.taxedge.gst.enums.AmendmentStatus;
-import com.taxedge.gst.enums.NatureOfBusiness;
+import com.taxedge.gst.enums.NatureOfPremises;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,40 +20,31 @@ public class AdditionalPlaceAmendmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String gstId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gst_id", referencedColumnName = "gst_id", nullable = false)
+    private Business business;
 
-    @Column(nullable = false)
+    @Column(name = "address", nullable = false)
     private String address;
 
-    @Column(nullable = false)
+    @Column(name = "city", nullable = false)
     private String city;
 
-    @Column(nullable = false)
+    @Column(name = "pin_code", nullable = false)
     private String pinCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NatureOfBusiness natureOfBusiness;
+    @Column(name = "nature_of_premises", nullable = false)
+    private NatureOfPremises natureOfPremises;
 
-    private String fileName;
-    private String fileType;
-
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
     private String imageData;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AmendmentStatus status;
-
-    private LocalDateTime requestedAt;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.requestedAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = AmendmentStatus.PENDING;
-        }
+        this.createdAt = LocalDateTime.now();
     }
 }

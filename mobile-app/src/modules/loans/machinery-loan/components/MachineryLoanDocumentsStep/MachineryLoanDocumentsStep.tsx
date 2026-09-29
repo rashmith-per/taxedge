@@ -83,17 +83,17 @@ export const MachineryLoanDocumentsStep: React.FC<MachineryLoanDocumentsStepProp
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Machinery Quotation & Tax Records</Text>
+      <Text style={styles.sectionTitle}>Required Documents</Text>
       <Text style={styles.sectionSubtitle}>
-        Upload OEM proforma quotation, machine specifications, GST returns, and audited accounts.
+        Upload minimum KYC, bank statement and OEM quotation to process machinery loan.
       </Text>
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Mandatory Document Progress</Text>
+          <Text style={styles.progressTitle}>Required documents</Text>
           <Text style={styles.progressCount}>
-            {uploadedRequired} of {totalRequired} ({progressPercent}%)
+            {uploadedRequired} / {totalRequired} ({progressPercent}%)
           </Text>
         </View>
         <View style={styles.progressBarTrack}>

@@ -1,6 +1,5 @@
 package com.taxedge.gst.entity;
 
-import com.taxedge.gst.enums.AmendmentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,14 +19,9 @@ public class ContactAmendmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "gst_id", nullable = false)
-    private String gstId;
-
-    @Column(name = "current_mobile_number")
-    private String currentMobileNumber;
-
-    @Column(name = "current_email")
-    private String currentEmail;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gst_id", referencedColumnName = "gst_id", nullable = false)
+    private Business business;
 
     @Column(name = "new_mobile_number", nullable = false)
     private String newMobileNumber;
@@ -35,21 +29,14 @@ public class ContactAmendmentEntity {
     @Column(name = "new_email", nullable = false)
     private String newEmail;
 
-    @Column(name = "file_name")
-    private String fileName;
-
-    @Column(name = "file_type")
-    private String fileType;
-
-    @Lob
     @Column(name = "image_data", columnDefinition = "LONGTEXT")
     private String imageData;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private AmendmentStatus status;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
-    @Builder.Default
-    @Column(name = "requested_at", nullable = false)
-    private LocalDateTime requestedAt = LocalDateTime.now();
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

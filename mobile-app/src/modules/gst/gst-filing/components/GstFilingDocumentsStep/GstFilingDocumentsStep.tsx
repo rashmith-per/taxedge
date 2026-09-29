@@ -11,9 +11,10 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import {
-  pickImageFromGallery,
-  pickImageFromCamera,
+  pickImageAssetFromGallery,
+  pickImageAssetFromCamera,
 } from "@/modules/gst/utils/imageUploadHelper";
+import { formatFileSize } from "@/modules/gst/utils/gstValidation";
 import { styles } from "./GstFilingDocumentsStep.styles";
 
 // const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -213,16 +214,17 @@ export const GstFilingDocumentsStep: React.FC<GstFilingDocumentsStepProps> = ({
   ];
 
   const handleUploadOption = async (docId: string, source: "gallery" | "camera") => {
-    const uri = source === "camera" ? await pickImageFromCamera() : await pickImageFromGallery();
-    if (uri) {
+    const asset =
+      source === "camera" ? await pickImageAssetFromCamera() : await pickImageAssetFromGallery();
+    if (asset) {
       const updatedList = documents.map((doc) => {
         if (doc.id === docId) {
-          const randomSize = (Math.random() * 1.5 + 1.2).toFixed(1);
           return {
             ...doc,
-            fileUri: uri,
+            fileUri: asset.uri,
             fileName: `${doc.name.replace(/[\s/()&]/g, "_")}.jpg`,
-            fileSize: `${randomSize} MB`,
+            // Real size reported by the picker; never a made-up value.
+            fileSize: asset.fileSize ? formatFileSize(asset.fileSize) : undefined,
             uploadedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           };
         }

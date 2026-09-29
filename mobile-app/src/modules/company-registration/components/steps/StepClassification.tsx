@@ -9,6 +9,7 @@ import { styles } from './StepClassification.styles';
 export const StepClassification: React.FC = () => {
   const company = useCompanyRegistrationStore((state) => state.draft.company);
   const updateDetails = useCompanyRegistrationStore((state) => state.updateCompanyDetails);
+  const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
 
   const getAvailableClasses = (): CompanyClass[] => {
     if (company.companyType === 'Public Limited') return ['Public'];
@@ -30,7 +31,6 @@ export const StepClassification: React.FC = () => {
   const classes = getAvailableClasses();
   const categories = getAvailableCategories();
   const subCategories = getAvailableSubCategories();
-
 
   return (
     <CompanySectionCard
@@ -54,6 +54,7 @@ export const StepClassification: React.FC = () => {
             );
           })}
         </View>
+        {!!fieldErrors.companyClass && <Text style={styles.errorText}>{fieldErrors.companyClass}</Text>}
       </View>
 
       {/* Category of Company */}
@@ -73,6 +74,7 @@ export const StepClassification: React.FC = () => {
             );
           })}
         </View>
+        {!!fieldErrors.companyCategory && <Text style={styles.errorText}>{fieldErrors.companyCategory}</Text>}
       </View>
 
       {/* Sub-Category */}
@@ -92,6 +94,7 @@ export const StepClassification: React.FC = () => {
             );
           })}
         </View>
+        {!!fieldErrors.companySubCategory && <Text style={styles.errorText}>{fieldErrors.companySubCategory}</Text>}
       </View>
 
       <View style={styles.infoCard}>

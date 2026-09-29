@@ -2,7 +2,6 @@ package com.taxedge.security.otp.controller;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,10 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OtpController {
 
-	@Autowired
     private final OtpService otpService;
-
-	@Autowired
     private final CustomerRepository customerRepository;
 
     @PostMapping("/generate")

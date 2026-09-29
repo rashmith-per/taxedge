@@ -39,7 +39,7 @@ export const StepSubmissionSuccess: React.FC = () => {
       </View>
 
       {/* Buttons */}
-      <TouchableOpacity style={styles.btnPrimary} onPress={() => setStep(9)}>
+      <TouchableOpacity style={styles.btnPrimary} onPress={() => setStep(10)}>
         <Text style={styles.btnPrimaryText}>View Application Status</Text>
       </TouchableOpacity>
     </View>

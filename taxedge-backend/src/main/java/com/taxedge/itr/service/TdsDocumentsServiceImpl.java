@@ -2,23 +2,23 @@ package com.taxedge.itr.service;
 
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.taxedge.itr.Exception.ResourceNotFoundException;
 import com.taxedge.itr.dto.TdsDocumentsDto;
+import com.taxedge.itr.entity.RefundBankAccount;
 import com.taxedge.itr.entity.TdsDocuments;
+import com.taxedge.itr.repository.RefundBankAccountRepository;
 import com.taxedge.itr.repository.TdsDocumentsRepository;
 
 @Service
+@RequiredArgsConstructor
 public class TdsDocumentsServiceImpl implements TdsDocumentsService {
 
-    @Autowired
-    private TdsDocumentsRepository repository;
-
-    @Autowired
-    private com.taxedge.itr.repository.RefundBankAccountRepository bankAccountRepository;
+    private final TdsDocumentsRepository repository;
+    private final RefundBankAccountRepository bankAccountRepository;
 
     @Override
     @Transactional
@@ -26,8 +26,12 @@ public class TdsDocumentsServiceImpl implements TdsDocumentsService {
 
         com.taxedge.itr.entity.RefundBankAccount bankAccount = null;
         TdsDocuments existing = null;
-        if (dto.getTdsRefundId() != null && !dto.getTdsRefundId().trim().isEmpty()) {
-            String refId = dto.getTdsRefundId().trim();
+
+        String refId = (dto.getTdsRefundId() != null && !dto.getTdsRefundId().trim().isEmpty())
+                ? dto.getTdsRefundId().trim()
+                : null;
+
+        if (refId != null) {
             bankAccount = bankAccountRepository.findById(refId).orElse(null);
             if (bankAccount == null) {
                 bankAccount = bankAccountRepository.findTopByCustIdOrderByCreatedAtDesc(refId).orElse(null);
@@ -38,19 +42,26 @@ public class TdsDocumentsServiceImpl implements TdsDocumentsService {
                     bankAccount = bankAccountRepository.findTopByCustIdOrderByCreatedAtDesc(cleanMob).orElse(null);
                 }
             }
-            if (bankAccount != null) {
-                existing = repository.findByRefundBankAccount_Id(bankAccount.getId()).orElse(null);
-            }
         }
 
         if (bankAccount == null) {
-            bankAccount = bankAccountRepository.findAll().stream().findFirst().orElse(null);
+            if (refId == null || refId.isEmpty()) {
+                refId = "TDSR-" + System.currentTimeMillis();
+            }
+            bankAccount = com.taxedge.itr.entity.RefundBankAccount.builder()
+                    .id(refId)
+                    .custId(refId)
+                    .accountHolderName("TDS Applicant")
+                    .accountNumber("N/A")
+                    .ifscCode("N/A")
+                    .accountType(com.taxedge.gst.enums.AccountType.SAVINGS)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build();
+            bankAccount = bankAccountRepository.save(bankAccount);
         }
+
         if (existing == null && bankAccount != null) {
             existing = repository.findByRefundBankAccount_Id(bankAccount.getId()).orElse(null);
-        }
-        if (existing == null) {
-            existing = repository.findAll().stream().findFirst().orElse(null);
         }
 
         TdsDocuments entity = TdsDocuments.builder()

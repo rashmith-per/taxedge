@@ -154,7 +154,13 @@ export interface AppNotification {
   body: string;
   type: NotificationType;
   read: boolean;
-  timestamp: string;
+  /** Creation time as ISO 8601 UTC (e.g. "2026-09-25T06:30:00.000Z"). */
+  createdAt?: string;
+  /**
+   * @deprecated Legacy display string (always "Just now"). Never shown; use
+   * `createdAt` with formatRelativeTime instead.
+   */
+  timestamp?: string;
 }
 
 /* ------------------------------------------------------------------ */

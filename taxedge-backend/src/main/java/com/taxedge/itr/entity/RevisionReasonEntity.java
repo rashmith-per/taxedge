@@ -7,6 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
 
@@ -15,14 +17,18 @@ import lombok.Data;
 @Data
 public class RevisionReasonEntity {
 
-    @Id
-    @Column(name = "revision_reason_id", nullable = false, unique = true)
-    private String revisionReasonId;
+	@Id
+	@Column(name = "revision_reason_id", nullable = false, unique = true)
+	private String revisionReasonId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "reason", nullable = false)
-    private RevisionReason reason;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "reason", nullable = false)
+	private RevisionReason reason;
 
-    @Column(name = "other_reason")
-    private String otherReason;
+	@Column(name = "other_reason")
+	private String otherReason;
+
+	@ManyToOne
+	@JoinColumn(name = "revised_itr_id", nullable = false)
+	private RevisedItr revisedItr;
 }

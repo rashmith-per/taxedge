@@ -1,15 +1,16 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { BrandColors } from "../../../../../shared/theme";
+import { View, Text } from "react-native";
 import {
   LoanDocumentItem,
   LoanDocumentCategory,
 } from "../../../types/loans.types";
 import {
-  pickLoanImageFromGallery,
-  pickLoanImageFromCamera,
-} from "../../../services/documentUploadHelper";
+  DocumentUploadModal,
+  UploadedFileInfo,
+} from "@/modules/itr/itr-filing/components/DocumentUploadModal/DocumentUploadModal";
+import { DocumentPreviewModal } from "@/modules/itr/itr-filing/components/DocumentPreviewModal/DocumentPreviewModal";
+import { TdsDocumentCard } from "@/modules/itr/tds/components/upload/TdsDocumentCard/TdsDocumentCard";
+import { TdsChecklistItem } from "@/modules/itr/tds/types/checklist.types";
 import { styles } from "./WorkingCapitalDocumentsStep.styles";
 
 export interface WorkingCapitalDocumentsStepProps {
@@ -33,82 +34,21 @@ export const WorkingCapitalDocumentsStep: React.FC<WorkingCapitalDocumentsStepPr
   documents,
   onDocumentUploaded,
 }) => {
-  const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [activeUploadDoc, setActiveUploadDoc] = useState<LoanDocumentItem | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<LoanDocumentItem | null>(null);
 
-  const totalRequired = documents.filter((d) => d.required).length;
-  const uploadedRequired = documents.filter(
-    (d) => d.required && Boolean(d.fileUri)
-  ).length;
-  const progressPercent =
-    totalRequired > 0
-      ? Math.round((uploadedRequired / totalRequired) * 100)
-      : 100;
-
-  const handleOpenUploadSheet = (docId: string) => {
-    setActiveDocId(docId);
-    setModalVisible(true);
+  const handleUploadClick = (doc: LoanDocumentItem) => {
+    setActiveUploadDoc(doc);
   };
 
-  const handlePickGallery = async () => {
-    setModalVisible(false);
-    if (!activeDocId) return;
-    const file = await pickLoanImageFromGallery();
-    if (file) {
-      onDocumentUploaded(activeDocId, file.uri, file.name, file.size);
-    }
-  };
-
-  const handlePickCamera = async () => {
-    setModalVisible(false);
-    if (!activeDocId) return;
-    const file = await pickLoanImageFromCamera();
-    if (file) {
-      onDocumentUploaded(activeDocId, file.uri, file.name, file.size);
-    }
-  };
-
-  const handleMockPdf = () => {
-    setModalVisible(false);
-    if (!activeDocId) return;
-    const doc = documents.find((d) => d.id === activeDocId);
-    const mockName = `${doc?.name.replace(/\s+/g, "_") || "stock_statement"}.pdf`;
-    onDocumentUploaded(
-      activeDocId,
-      `file:///mock/storage/${mockName}`,
-      mockName,
-      "2.6 MB"
-    );
+  const handleFilePicked = (file: UploadedFileInfo) => {
+    if (!activeUploadDoc) return;
+    onDocumentUploaded(activeUploadDoc.id, file.uri, file.name, file.size);
+    setActiveUploadDoc(null);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Working Capital Audit & Banking Dossier</Text>
-      <Text style={styles.sectionSubtitle}>
-        Checklist for Credit Line / CC. Upload 12-month bank statements, GST returns, and audited balance sheets.
-      </Text>
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Mandatory Document Progress</Text>
-          <Text style={styles.progressCount}>
-            {uploadedRequired} of {totalRequired} ({progressPercent}%)
-          </Text>
-        </View>
-        <View style={styles.progressBarTrack}>
-          <View
-            style={{
-              height: "100%",
-              width: `${progressPercent}%`,
-              backgroundColor:
-                progressPercent === 100 ? "#16A34A" : BrandColors.PRIMARY_BLUE,
-              borderRadius: 3,
-            }}
-          />
-        </View>
-      </View>
-
       {/* Categorized Document List */}
       {CATEGORIES.map((category) => {
         const categoryDocs = documents.filter((d) => d.category === category);
@@ -120,88 +60,26 @@ export const WorkingCapitalDocumentsStep: React.FC<WorkingCapitalDocumentsStepPr
             {categoryDocs.map((doc) => {
               const isUploaded = Boolean(doc.fileUri);
 
+              const tdsItem: TdsChecklistItem = {
+                id: doc.id,
+                title: doc.name,
+                subtitle: doc.subtitle,
+                isMandatory: doc.required,
+                status: isUploaded ? "uploaded" : "not_uploaded",
+                fileName: doc.fileName || (isUploaded ? `${doc.name}.pdf` : undefined),
+                fileSize: doc.fileSize || (isUploaded ? "< 2 MB" : undefined),
+                fileUri: doc.fileUri,
+              };
+
               return (
-                <View
+                <TdsDocumentCard
                   key={doc.id}
-                  style={[
-                    styles.docCard,
-                    isUploaded && styles.docCardUploaded,
-                  ]}
-                >
-                  <View style={styles.docLeft}>
-                    <View
-                      style={[
-                        styles.iconBox,
-                        { backgroundColor: doc.iconBg || "#F1F5F9" },
-                      ]}
-                    >
-                      <Ionicons
-                        name={(doc.iconName as any) || "document-text"}
-                        size={20}
-                        color={doc.iconColor || BrandColors.PRIMARY_BLUE}
-                      />
-                    </View>
-
-                    <View style={styles.docInfo}>
-                      <View style={styles.docNameRow}>
-                        <Text style={styles.docName}>{doc.name}</Text>
-                        {doc.required ? (
-                          <View style={styles.requiredBadge}>
-                            <Text style={styles.requiredText}>Required</Text>
-                          </View>
-                        ) : (
-                          <View style={styles.optionalBadge}>
-                            <Text style={styles.optionalText}>Optional</Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <Text style={styles.docSubtitle} numberOfLines={2}>
-                        {doc.subtitle}
-                      </Text>
-
-                      {isUploaded && (
-                        <View style={styles.fileMetaRow}>
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={14}
-                            color="#16A34A"
-                          />
-                          <Text style={styles.fileNameText} numberOfLines={1}>
-                            {doc.fileName || "Uploaded"}
-                          </Text>
-                          <Text style={styles.fileSizeText}>
-                            ({doc.fileSize || "2.1 MB"})
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {isUploaded ? (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => handleOpenUploadSheet(doc.id)}
-                      style={styles.replaceButton}
-                    >
-                      <Ionicons name="refresh" size={14} color="#16A34A" />
-                      <Text style={styles.replaceButtonText}>Replace</Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => handleOpenUploadSheet(doc.id)}
-                      style={styles.uploadButton}
-                    >
-                      <Ionicons
-                        name="cloud-upload-outline"
-                        size={14}
-                        color={BrandColors.PRIMARY_BLUE}
-                      />
-                      <Text style={styles.uploadButtonText}>Upload</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                  item={tdsItem}
+                  onUploadPress={() => handleUploadClick(doc)}
+                  onChange={() => handleUploadClick(doc)}
+                  onDelete={() => onDocumentUploaded(doc.id, "", "", "")}
+                  onView={() => setPreviewDoc(doc)}
+                />
               );
             })}
           </View>
@@ -209,65 +87,31 @@ export const WorkingCapitalDocumentsStep: React.FC<WorkingCapitalDocumentsStepPr
       })}
 
       {/* Upload Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <View style={styles.sheetContent}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select Upload Method</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
+      {activeUploadDoc && (
+        <DocumentUploadModal
+          visible={Boolean(activeUploadDoc)}
+          docTitle={activeUploadDoc.name}
+          onFilePicked={handleFilePicked}
+          onClose={() => setActiveUploadDoc(null)}
+        />
+      )}
 
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={handlePickCamera}
-            >
-              <Ionicons
-                name="camera-outline"
-                size={22}
-                color={BrandColors.PRIMARY_BLUE}
-              />
-              <Text style={styles.sheetOptionText}>Take Photo with Camera</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={handlePickGallery}
-            >
-              <Ionicons
-                name="images-outline"
-                size={22}
-                color={BrandColors.PRIMARY_BLUE}
-              />
-              <Text style={styles.sheetOptionText}>Choose from Gallery</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sheetOption}
-              onPress={handleMockPdf}
-            >
-              <Ionicons
-                name="document-attach-outline"
-                size={22}
-                color={BrandColors.PRIMARY_BLUE}
-              />
-              <Text style={styles.sheetOptionText}>Attach Stock Statement / Audited PDF</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      {/* Preview Modal */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          visible={Boolean(previewDoc)}
+          document={previewDoc as any}
+          onClose={() => setPreviewDoc(null)}
+          onChangeFile={(doc) => {
+            setPreviewDoc(null);
+            setActiveUploadDoc(doc as any);
+          }}
+        />
+      )}
     </View>
   );
 };
 
 export default WorkingCapitalDocumentsStep;
+
+

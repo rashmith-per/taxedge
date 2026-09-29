@@ -386,6 +386,121 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: BrandColors.TEXT_PRIMARY,
   },
+
+  // ─── Per-document upload state (selected file preview + status) ─────────
+  docCardError: {
+    borderColor: "#FCA5A5",
+    backgroundColor: "#FFFBFB",
+  },
+  filePreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  fileThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  fileThumbPdf: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: "#FFF7ED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fileMetaCol: {
+    flex: 1,
+  },
+  fileNameText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#06152D",
+  },
+  fileMetaText: {
+    fontSize: 11.5,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  processingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#FFF7ED",
+  },
+  processingText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0F3567",
+  },
+  statusReady: {
+    backgroundColor: "#FFF7ED",
+  },
+  statusReadyText: {
+    color: "#C2410C",
+  },
+  statusBusy: {
+    backgroundColor: "#EFF6FF",
+  },
+  statusBusyText: {
+    color: "#0F3567",
+  },
+  statusError: {
+    backgroundColor: "#FEF2F2",
+  },
+  statusErrorText: {
+    color: "#B91C1C",
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#FEF2F2",
+  },
+  errorBoxText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#B91C1C",
+  },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: "#FF7A00",
+  },
+  retryBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  actionDisabled: {
+    opacity: 0.45,
+  },
+  modalPdfPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: 24,
+  },
 });
 
 export const getProgressFillStyle = (progressPercent: number) => ({

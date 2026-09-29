@@ -258,7 +258,7 @@ export const GstRegistrationScreen: React.FC = () => {
       const missingNames = mandatoryMissing.map((d) => d.name).join(", ");
       Alert.alert(
         "Required Documents Missing",
-        `Please upload the following required documents before proceeding:\n\nâ€¢ ${missingNames.split(", ").join("\nâ€¢ ")}`,
+        `Please upload the following required documents before proceeding:\n\n\u2022 ${missingNames.split(", ").join("\n\u2022 ")}`,
       );
       return false;
     }
@@ -356,10 +356,16 @@ export const GstRegistrationScreen: React.FC = () => {
       reason = "INPUT_SERVICE_DISTRIBUTOR";
 
     const formatDate = (dateStr: string) => {
-      if (!dateStr) return new Date().toISOString().split("T")[0];
+      if (!dateStr || dateStr.trim() === "") return new Date().toISOString().split("T")[0];
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/");
+        if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      }
       if (dateStr.includes("-")) {
         const parts = dateStr.split("-");
-        if (parts[0].length === 2) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        if (parts[0].length === 2 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        }
       }
       return dateStr;
     };
@@ -442,9 +448,10 @@ export const GstRegistrationScreen: React.FC = () => {
             });
           }
           setScreenIndex(1);
-        } catch (err) {
-          Alert.alert("Error", "Failed to save business details");
-          console.error(err);
+        } catch (err: any) {
+          const msg = err?.message || "Failed to save business details";
+          Alert.alert("Registration Error", msg);
+          console.error("GST Registration submit error:", err);
         }
       } else if (screenIndex === 1) {
         if (!validateDocuments()) return;

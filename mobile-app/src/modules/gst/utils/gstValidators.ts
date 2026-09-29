@@ -1,9 +1,27 @@
+import { isFutureDate, parseDDMMYYYY } from "@/shared/formatters/dateFormatter";
+import {
+  validateEmail,
+  validateFullName,
+} from "@/shared/validators/indianTaxValidators";
+
 /**
  * GST & Tax Validation Utilities
  * Follows standard Indian Government format rules for PAN, Aadhaar, GSTIN, IFSC, etc.
  */
 
 export const GstValidators = {
+  isValidBusinessName: (value: string): boolean => {
+    const clean = value.trim();
+    if (!clean || clean !== value || /\s{2,}/.test(clean)) return false;
+    return /^[\p{L}\p{N}]+(?:[ .,&'()\/-][\p{L}\p{N}]+)*$/u.test(clean);
+  },
+
+  isValidBranchName: (value: string): boolean => {
+    const clean = value.trim();
+    if (!clean || clean !== value || /\s{2,}/.test(clean)) return false;
+    return /^[\p{L}\p{N}]+(?:[ .,&'()\/-][\p{L}\p{N}]+)*$/u.test(clean);
+  },
+
   /**
    * Validates Indian PAN Number: 5 letters, 4 digits, 1 letter (e.g. ABCDE1234F)
    */
@@ -33,10 +51,11 @@ export const GstValidators = {
    * Validates Email Address format
    */
   isValidEmail: (email: string): boolean => {
-    const cleanEmail = email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(cleanEmail);
+    return validateEmail(email);
   },
+
+  isBankAccountMatch: (account: string, confirmation: string): boolean =>
+    account.trim() === confirmation.trim(),
 
   /**
    * Validates Indian 15-character GSTIN (e.g. 29PAVAN1234K1Z5)
@@ -132,11 +151,13 @@ export const GstValidators = {
   validateBusinessField: (field: string, value: string): string => {
     switch (field) {
       case "legalName":
-        if (!GstValidators.isNotEmpty(value, 2)) return "Legal Name is required";
+        if (!value.trim()) return "Legal Name is required";
+        if (!GstValidators.isValidBusinessName(value)) return "Enter a valid legal business name";
         return "";
       case "businessName":
       case "registeredBusinessName":
-        if (!GstValidators.isNotEmpty(value, 2)) return "Business / Trade Name is required";
+        if (!value.trim()) return "Business / Trade Name is required";
+        if (!GstValidators.isValidBusinessName(value)) return "Enter a valid business or trade name";
         return "";
       case "businessType":
         if (!GstValidators.isNotEmpty(value, 2)) return "Please select a business type";
@@ -145,7 +166,12 @@ export const GstValidators = {
         if (!GstValidators.isNotEmpty(value, 2)) return "Please select nature of business";
         return "";
       case "businessStartDate":
-        if (!GstValidators.isNotEmpty(value, 8)) return "Business start date is required";
+        if (!GstValidators.isNotEmpty(value, 1)) return "Business start date is required";
+        {
+          const startDate = parseDDMMYYYY(value);
+          if (!startDate) return "Enter a valid date in DD-MM-YYYY format";
+          if (isFutureDate(startDate)) return "Commencement date cannot be in the future";
+        }
         return "";
       case "reasonForRegistration":
         if (!GstValidators.isNotEmpty(value, 2)) return "Please select a reason";
@@ -178,7 +204,8 @@ export const GstValidators = {
         if (!/^\d{4,8}$/.test(value)) return "HSN/SAC code must be 4 to 8 digits";
         return "";
       case "accountHolderName":
-        if (!GstValidators.isNotEmpty(value, 2)) return "Account holder name is required";
+        if (!value.trim()) return "Account holder name is required";
+        if (!validateFullName(value)) return "Enter a valid account holder name";
         return "";
       case "bankAccountNumber":
         if (!value.trim()) return "Bank account number is required";
@@ -186,7 +213,6 @@ export const GstValidators = {
         return "";
       case "confirmBankAccountNumber":
         if (!value.trim()) return "Confirm account number is required";
-        // Cannot cross-validate easily in this signature without full data, UI logic or form validator handles exact match if needed. Let's just check length.
         if (!GstValidators.isValidBankAccount(value)) return "Enter a valid bank account number";
         return "";
       case "ifscCode":
@@ -197,20 +223,26 @@ export const GstValidators = {
         if (!GstValidators.isNotEmpty(value, 2)) return "Bank name is required";
         return "";
       case "branchName":
-        if (!GstValidators.isNotEmpty(value, 2)) return "Branch name is required";
+        if (!value.trim()) return "Branch name is required";
+        if (!GstValidators.isValidBranchName(value)) return "Enter a valid branch name";
         return "";
       case "accountType":
         if (!GstValidators.isNotEmpty(value, 2)) return "Account type is required";
         return "";
       case "signatoryName":
-        if (!GstValidators.isNotEmpty(value, 2)) return "Signatory name is required";
+        if (!value.trim()) return "Signatory name is required";
+        if (!validateFullName(value)) return "Enter a valid signatory name";
         return "";
       case "signatoryPan":
         if (!GstValidators.isValidPan(value)) return "Enter a valid 10-character PAN";
         return "";
-      case "signatoryDob":
-        if (!GstValidators.isNotEmpty(value, 8)) return "Date of birth is required";
+      case "signatoryDob": {
+        if (!GstValidators.isNotEmpty(value, 1)) return "Date of birth is required";
+        const dob = parseDDMMYYYY(value);
+        if (!dob) return "Enter a valid date in DD-MM-YYYY format";
+        if (isFutureDate(dob)) return "Date of birth cannot be in the future";
         return "";
+      }
       case "signatoryDesignation":
         if (!GstValidators.isNotEmpty(value, 2)) return "Designation is required";
         return "";
@@ -218,7 +250,7 @@ export const GstValidators = {
         if (!GstValidators.isValidMobile(value)) return "Enter a valid 10-digit mobile number";
         return "";
       case "signatoryEmail":
-        if (!GstValidators.isValidEmail(value)) return "Enter a valid email address";
+        if (!validateEmail(value)) return "Enter a valid email address";
         return "";
       default:
         return "";
@@ -259,11 +291,21 @@ export const GstValidators = {
       "signatoryEmail",
       "aadhaarConsent",
     ];
-    return fields.reduce<Record<string, string>>((acc, key) => {
+    const errors = fields.reduce<Record<string, string>>((acc, key) => {
       const rawValue = data[key] || (key === "businessName" ? data["registeredBusinessName"] : "");
       const value = typeof rawValue === "boolean" ? String(rawValue) : String(rawValue || "");
       const error = GstValidators.validateBusinessField(key, value);
       return error ? { ...acc, [key]: error } : acc;
     }, {});
+
+    if (
+      !errors.bankAccountNumber &&
+      !errors.confirmBankAccountNumber &&
+      !GstValidators.isBankAccountMatch(data.bankAccountNumber, data.confirmBankAccountNumber)
+    ) {
+      errors.confirmBankAccountNumber = "Account numbers do not match.";
+    }
+
+    return errors;
   },
 };

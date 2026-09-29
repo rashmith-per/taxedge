@@ -5,4 +5,7 @@ export * from "./HomeLoanEmploymentStep";
 export * from "./HomeLoanBankingStep";
 export * from "./HomeLoanDocumentsStep";
 export * from "./HomeLoanReviewStep";
-export * from "./DocumentPreviewModal";
+export {
+  DocumentPreviewModal as HomeLoanDocumentPreviewModal,
+  DocumentPreviewModalProps as HomeLoanDocumentPreviewModalProps,
+} from "./DocumentPreviewModal";

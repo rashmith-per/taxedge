@@ -4,10 +4,10 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  StatusBar,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -27,6 +27,7 @@ const CATEGORY_TABS: { id: "ALL" | ServiceCategoryId; label: string }[] = [
   { id: "ALL", label: "All" },
   { id: "GST", label: "GST" },
   { id: "ITR", label: "ITR" },
+  { id: "LOANS", label: "Loans" },
 ];
 
 /** Custom Tagged Document Icon (GST / ITR) */
@@ -280,7 +281,7 @@ export default function ApplicationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? colors.background : "#F8FAFC" }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A2346" />
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor="#0A2346" />
 
       {/* ---------------- ROYAL NAVY HEADER ---------------- */}
       <View style={[styles.navyHeader, { paddingTop: insets.top + 12 }]}>
@@ -553,7 +554,9 @@ export default function ApplicationsScreen() {
                   <View style={styles.metaChip}>
                     <Ionicons name="card-outline" size={12} color="#64748B" />
                     <Text style={styles.metaChipText}>
-                      {item.paymentStatus}
+                      {item.category === "LOANS" && item.formData?.requestedAmount
+                        ? `₹${Number(item.formData.requestedAmount).toLocaleString("en-IN")}`
+                        : item.paymentStatus}
                     </Text>
                   </View>
                   <View style={styles.cardActionTextWrap}>

@@ -5,11 +5,11 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   Alert,
   Modal,
   TouchableWithoutFeedback,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -136,7 +136,7 @@ Meera Iyer, Tax Executive`;
 
   return (
     <View style={[styles.container, getContainerInsetsStyle(insets.top)]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
       <TaxNoticeHeader subtitle="Review Response" />

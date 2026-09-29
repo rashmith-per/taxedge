@@ -5,8 +5,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,13 +19,11 @@ import com.taxedge.gst.repository.GstComplianceRepository;
 import com.taxedge.gst.service.GstComplianceService;
 
 @Service
+@RequiredArgsConstructor
 public class GstComplianceServiceImpl implements GstComplianceService {
 
-    @Autowired
-    private GstComplianceRepository complianceRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private final GstComplianceRepository complianceRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public String createCompliance(

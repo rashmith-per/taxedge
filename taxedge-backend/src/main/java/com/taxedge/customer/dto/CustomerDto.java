@@ -35,6 +35,7 @@ public class CustomerDto {
     private String pincode;
     private String state;
     private String address;
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
     private String password;
     private LocalDateTime createdAt;
     private String pushToken;

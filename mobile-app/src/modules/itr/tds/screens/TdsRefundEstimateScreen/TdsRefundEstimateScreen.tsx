@@ -4,11 +4,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -17,14 +16,11 @@ import { useApplicationStore } from "@/store/applicationStore";
 import { TdsCustomerIncomeFormData } from "../../types/customerIncome.types";
 import { TdsChecklistItem } from "../../types/checklist.types";
 import { TaxCalculationBreakdown } from "../../types/estimate.types";
-import { TdsReconciliationSummary } from "../../types/reconciliation.types";
 import { formatCurrency } from "../../utils/tdsValidation";
-import { tdsDraftService, INITIAL_TDS_FORM_DATA } from "../../services/tdsDraftService";
+import { tdsDraftService, INITIAL_TDS_FORM_DATA, getTdsCustId } from "../../services/tdsDraftService";
 import { tdsCalculationService } from "../../services/tdsCalculationService";
-import { tdsReconciliationService } from "../../services/tdsReconciliationService";
 import { tdsApiService } from "../../services/tdsApiService";
 import { TaxCalculationBreakdownCard } from "../../components/estimate/TaxCalculationBreakdownCard";
-import { TdsReconciliationCard } from "../../components/estimate/TdsReconciliationCard";
 import { styles } from "./TdsRefundEstimateScreen.styles";
 
 export const TdsRefundEstimateScreen: React.FC = () => {
@@ -34,7 +30,6 @@ export const TdsRefundEstimateScreen: React.FC = () => {
   const [formData, setFormData] = useState<TdsCustomerIncomeFormData>(INITIAL_TDS_FORM_DATA);
   const [documents, setDocuments] = useState<TdsChecklistItem[]>([]);
   const [calculation, setCalculation] = useState<TaxCalculationBreakdown | null>(null);
-  const [reconciliation, setReconciliation] = useState<TdsReconciliationSummary | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -44,15 +39,15 @@ export const TdsRefundEstimateScreen: React.FC = () => {
       const savedDocs = await tdsDraftService.getDocumentsDraft();
       const existingAppId = await tdsDraftService.getApplicationId();
 
-      const custId = savedForm.personal?.mobileNumber
-        ? savedForm.personal.mobileNumber.replace(/\D/g, "")
-        : "CUST-DEFAULT";
+      const custId = getTdsCustId(savedForm.personal?.mobileNumber);
 
       let finalForm = savedForm;
       let finalDocs = savedDocs || [];
 
       try {
-        const backendApp = await tdsApiService.fetchFullTdsApplication(custId, existingAppId || undefined);
+        const backendApp = custId
+          ? await tdsApiService.fetchFullTdsApplication(custId, existingAppId || undefined)
+          : null;
         if (backendApp) {
           if (backendApp.bank) finalForm.bank = { ...finalForm.bank, ...backendApp.bank };
           if (backendApp.income) finalForm.income = { ...finalForm.income, ...backendApp.income };
@@ -71,8 +66,6 @@ export const TdsRefundEstimateScreen: React.FC = () => {
         const calcResult = tdsCalculationService.calculate(finalForm);
         setCalculation(calcResult);
 
-        const reconResult = tdsReconciliationService.reconcile(finalForm, finalDocs);
-        setReconciliation(reconResult);
       }
     })();
     return () => {
@@ -140,7 +133,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
       <View style={[styles.headerBar, { paddingTop: Math.max(insets.top, 12) + 6 }]}>

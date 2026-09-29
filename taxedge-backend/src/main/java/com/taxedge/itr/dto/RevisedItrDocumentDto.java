@@ -1,17 +1,21 @@
 package com.taxedge.itr.dto;
 
-import com.taxedge.itr.enums.RevisedItrDocumentType;
-
 import lombok.Data;
 
 @Data
 public class RevisedItrDocumentDto {
 
-    private RevisedItrDocumentType documentType;
+	private String revisedItrId;
 
-    private String fileName;
+	private String panCard;
 
-    private String fileType;
+	private String aadhaarCard;
 
-    private String imageData;
+	private String form16Form16A;
+
+	private String aisTisStatement;
+
+	private String bankStatements;
+
+	private String investmentProofs;
 }

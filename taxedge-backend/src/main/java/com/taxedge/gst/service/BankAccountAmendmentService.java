@@ -9,8 +9,6 @@ public interface BankAccountAmendmentService {
 
     BankAccountAmendmentViewDto getExistingBankAccountDetails(String gstId);
 
-    BankAccountAmendmentViewDto getNewBankAccountAmendmentDetails(String gstId);
-
     String submitBankAccountAmendment(String gstId, String bankName, String accountNumber,
                                       String ifscCode, AccountType accountType, MultipartFile file) throws IOException;
 }

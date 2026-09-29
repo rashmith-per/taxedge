@@ -1,20 +1,33 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TdsCustomerIncomeFormData } from "../types/customerIncome.types";
-import { TdsChecklistItem } from "../types/checklist.types";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { authStorage } from "@/modules/authentication/services/authStorage";
 import { addDraftToIndex, removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
 
-function getCleanMobile(): string {
+function getAuthMobile(): string {
   const state = useAuthStore.getState();
-  const rawMobile =
+  return String(
     state.customer?.mobile ||
-    state.authenticatedUser?.mobileNumber ||
-    (state.authenticatedUser as any)?.mobile ||
-    authStorage.getSession().activeMobile ||
-    state.mobileNumber ||
-    "user";
-  return String(rawMobile).replace(/\D/g, "") || "user";
+      state.authenticatedUser?.mobileNumber ||
+      (state.authenticatedUser as any)?.mobile ||
+      authStorage.getSession().activeMobile ||
+      state.mobileNumber ||
+      ""
+  );
+}
+
+function getCleanMobile(): string {
+  return getAuthMobile().replace(/\D/g, "") || "user";
+}
+
+/**
+ * Backend `custId` for TDS records: the logged-in customer's 10-digit mobile.
+ * The session identity wins over the editable form mobile so one customer can
+ * never save to (or read) another customer's refund. Returns "" when unknown.
+ */
+export function getTdsCustId(fallbackMobile?: string): string {
+  const raw = getAuthMobile() || fallbackMobile || "";
+  return raw.replace(/\D/g, "").slice(-10);
 }
 
 const getStorageKeyForm = () => `@taxedge_draft_${getCleanMobile()}_tds-refund`;

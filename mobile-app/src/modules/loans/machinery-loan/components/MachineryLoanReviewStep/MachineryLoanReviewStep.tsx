@@ -27,7 +27,6 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
   businessDetails,
   bankingDetails,
   documents,
-  profile,
   isConsentChecked,
   onConsentToggle,
   onGoToStep,
@@ -49,39 +48,13 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Machinery Loan Dossier Review</Text>
       <Text style={styles.sectionSubtitle}>
-        Review your plant equipment details, supplier parameters, and banking accounts.
+        Review your machinery financing request, business profile, and banking details.
       </Text>
 
-      {/* Promoter Identity Card */}
+      {/* Loan Details Card */}
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Promoter Information</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
-            <Text style={{ fontSize: 11, fontWeight: "600", color: "#16A34A" }}>
-              Verified Profile
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Applicant Name</Text>
-          <Text style={styles.value}>{profile?.name || "Client Name"}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Mobile</Text>
-          <Text style={styles.value}>{profile?.mobile || "—"}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>PAN</Text>
-          <Text style={styles.value}>{profile?.pan || "—"}</Text>
-        </View>
-      </View>
-
-      {/* Equipment Loan Facility Card */}
-      <View style={styles.summaryCard}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Equipment Financing Terms</Text>
+          <Text style={styles.cardTitle}>Loan Details</Text>
           <TouchableOpacity
             style={styles.editAction}
             onPress={() => onGoToStep(0)}
@@ -96,14 +69,16 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
         </View>
 
         <View style={styles.row}>
-          <Text style={styles.label}>Requested Amount</Text>
+          <Text style={styles.label}>Loan Amount</Text>
           <Text style={styles.highlightValue}>
             {formatCurrency(loanDetails.requiredAmount)}
           </Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Machinery Category</Text>
-          <Text style={styles.value}>{loanDetails.purpose || "—"}</Text>
+          <Text style={styles.label}>Equipment Type</Text>
+          <Text style={styles.value}>
+            {loanDetails.customEquipmentType || loanDetails.purpose || "—"}
+          </Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.label}>Tenure</Text>
@@ -113,10 +88,10 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
         </View>
       </View>
 
-      {/* Enterprise Details Card */}
+      {/* Business Details Card */}
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Enterprise Profile</Text>
+          <Text style={styles.cardTitle}>Business Details</Text>
           <TouchableOpacity
             style={styles.editAction}
             onPress={() => onGoToStep(1)}
@@ -131,39 +106,37 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
         </View>
 
         <View style={styles.row}>
-          <Text style={styles.label}>Enterprise Name</Text>
+          <Text style={styles.label}>Business Name</Text>
           <Text style={styles.value}>{businessDetails.businessName}</Text>
         </View>
-        {businessDetails.gstin ? (
-          <View style={styles.row}>
-            <Text style={styles.label}>GSTIN</Text>
-            <Text style={styles.value}>{businessDetails.gstin}</Text>
-          </View>
-        ) : null}
-        {businessDetails.udyamRegistration ? (
-          <View style={styles.row}>
-            <Text style={styles.label}>Udyam Reg.</Text>
-            <Text style={styles.value}>{businessDetails.udyamRegistration}</Text>
-          </View>
-        ) : null}
         <View style={styles.row}>
-          <Text style={styles.label}>Vintage</Text>
-          <Text style={styles.value}>{businessDetails.businessVintageYears} Years</Text>
+          <Text style={styles.label}>Business Type</Text>
+          <Text style={styles.value}>
+            {businessDetails.otherBusinessType || businessDetails.businessType}
+          </Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Turnover</Text>
+          <Text style={styles.label}>Business Vintage</Text>
+          <Text style={styles.value}>{businessDetails.businessVintageYears}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>Annual Turnover</Text>
           <Text style={styles.value}>{formatCurrency(businessDetails.annualTurnover)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Net Profit</Text>
-          <Text style={styles.value}>{formatCurrency(businessDetails.netProfit)}</Text>
+          <Text style={styles.label}>GST status</Text>
+          <Text style={styles.value}>
+            {businessDetails.isGstRegistered
+              ? `Registered (${businessDetails.gstin || "—"})`
+              : "Not Registered"}
+          </Text>
         </View>
       </View>
 
-      {/* Current Account Card */}
+      {/* Banking Details Card */}
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Disbursement Current Account</Text>
+          <Text style={styles.cardTitle}>Banking</Text>
           <TouchableOpacity
             style={styles.editAction}
             onPress={() => onGoToStep(2)}
@@ -184,19 +157,19 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
           </Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>Account Number</Text>
+          <Text style={styles.label}>Masked Account Number</Text>
           <Text style={styles.value}>{maskAcc(bankingDetails.accountNumber)}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>IFSC Code</Text>
+          <Text style={styles.label}>IFSC</Text>
           <Text style={styles.value}>{bankingDetails.ifscCode || "—"}</Text>
         </View>
       </View>
 
-      {/* Uploaded Records Card */}
+      {/* Uploaded Documents Card */}
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Uploaded Records</Text>
+          <Text style={styles.cardTitle}>Documents Uploaded</Text>
           <TouchableOpacity
             style={styles.editAction}
             onPress={() => onGoToStep(3)}
@@ -244,7 +217,7 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
         </View>
         <Text style={styles.consentText}>
           I authorize TaxEdge to transmit machinery quotes and business financial records
-          to equipment finance divisions of partner NBFCs and commercial banks.
+          to machinery finance partner NBFCs and commercial banks.
         </Text>
       </TouchableOpacity>
     </View>
@@ -252,3 +225,4 @@ export const MachineryLoanReviewStep: React.FC<MachineryLoanReviewStepProps> = (
 };
 
 export default MachineryLoanReviewStep;
+

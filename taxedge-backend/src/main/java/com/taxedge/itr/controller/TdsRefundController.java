@@ -1,6 +1,6 @@
 package com.taxedge.itr.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,19 +22,13 @@ import com.taxedge.itr.service.TdsTaxesPaidService;
 
 @RestController
 @RequestMapping("/itr")
-public class TdsRefundController{
+@RequiredArgsConstructor
+public class TdsRefundController {
 	
-	@Autowired
-	private  RefundBankAccountService service;
-
-	@Autowired
-	private  TdsTaxesPaidService tdsservice;
-
-	@Autowired
-	private  IncomeTaxInfoService incomeservice;
-	
-	@Autowired
-	 private  TdsDocumentsService docservice;
+	private final RefundBankAccountService service;
+	private final TdsTaxesPaidService tdsservice;
+	private final IncomeTaxInfoService incomeservice;
+	private final TdsDocumentsService docservice;
 	
 		@PostMapping("/refund-bank-account/save")
 		public ResponseEntity<String> save(@RequestBody RefundBankAccountDto dto) {

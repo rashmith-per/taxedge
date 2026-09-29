@@ -12,8 +12,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "../../../../../shared/theme";
 import { useAuthStore } from "../../../../authentication/store/authStore";
+import { useApplicationStore } from "../../../../../store/applicationStore";
 import { loansApi } from "../../../services/loansApi";
-import { BUSINESS_DOCUMENTS_TEMPLATE } from "../../../mock/loanServices";
+import { MACHINERY_DOCUMENTS_TEMPLATE } from "../../../mock/loanServices";
 import {
   LoanDetailsFormData,
   LoanBusinessFormData,
@@ -22,14 +23,10 @@ import {
   LoanApplicationDraft,
 } from "../../../types/loans.types";
 import {
-  validateLoanDetails,
-  validateLoanBusiness,
-  validateLoanBanking,
-  validateLoanDocuments,
-} from "../../../validation/loansSchema";
+  validateGstin,
+} from "../../../../../shared/validators/indianTaxValidators";
 import {
   MachineryLoanStepIndicator,
-  MachineryLoanCustomerCard,
   MachineryLoanFinancialsStep,
   MachineryLoanBusinessStep,
   MachineryLoanBankingStep,
@@ -38,7 +35,7 @@ import {
 } from "../../components";
 import { styles } from "./MachineryLoanScreen.styles";
 
-const STEPS = ["Financials", "Manufacturing", "Banking", "Documents", "Review"];
+const STEPS = ["Loan Details", "Business Details", "Banking", "Documents & Review"];
 
 export const MachineryLoanScreen: React.FC = () => {
   const router = useRouter();
@@ -52,43 +49,39 @@ export const MachineryLoanScreen: React.FC = () => {
   const [isConsentChecked, setIsConsentChecked] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 1: Financials
+  // Step 1: Loan Details
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>({
     loanType: "Machinery Loan",
     requiredAmount: "3000000",
-    purpose: "CNC Automation Tool",
+    purpose: "CNC / Automation Machinery",
     preferredTenureMonths: "48",
     hasExistingLoans: false,
     existingEmi: "",
-    monthlyIncomeOrTurnover: "350000",
+    monthlyIncomeOrTurnover: "",
     employmentType: "Business Owner",
   });
 
-  // Step 2: Manufacturing enterprise details
+  // Step 2: Business Details
   const [businessDetails, setBusinessDetails] = useState<LoanBusinessFormData>({
     businessName: "",
+    businessType: "Proprietorship",
+    businessVintageYears: "3–5 years",
+    annualTurnover: "",
+    isGstRegistered: false,
     gstin: "",
-    udyamRegistration: "",
-    businessVintageYears: "4",
-    annualTurnover: "4500000",
-    netProfit: "700000",
+    netProfit: "0",
   });
 
-  // Step 3: Banking
+  // Step 3: Banking Details
   const [bankingDetails, setBankingDetails] = useState<LoanBankingFormData>({
     primaryBankName: "",
     accountNumber: "",
     ifscCode: "",
-    existingLenderName: "",
-    existingLoanOutstanding: "",
-    itrFilingStatus: "Filed",
-    itrAckNumber: "",
-    grossTotalIncome: "",
   });
 
   // Step 4: Documents
   const [documents, setDocuments] = useState<LoanDocumentItem[]>(() =>
-    JSON.parse(JSON.stringify(BUSINESS_DOCUMENTS_TEMPLATE))
+    JSON.parse(JSON.stringify(MACHINERY_DOCUMENTS_TEMPLATE))
   );
 
   const handleDetailsChange = (field: keyof LoanDetailsFormData, value: any) => {
@@ -152,37 +145,76 @@ export const MachineryLoanScreen: React.FC = () => {
   };
 
   const validateCurrentStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
     if (currentStepIndex === 0) {
-      const errs = validateLoanDetails(loanDetails);
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+      if (!loanDetails.requiredAmount) {
+        newErrors.requiredAmount = "Select required loan amount";
+      }
+      if (!loanDetails.purpose) {
+        newErrors.purpose = "Select equipment type";
+      } else if (
+        loanDetails.purpose === "Other" &&
+        (!loanDetails.customEquipmentType || !loanDetails.customEquipmentType.trim())
+      ) {
+        newErrors.customEquipmentType = "Specify machinery/equipment details";
+      }
+      if (!loanDetails.preferredTenureMonths) {
+        newErrors.preferredTenureMonths = "Select repayment tenure";
+      }
     }
 
     if (currentStepIndex === 1) {
-      const errs = validateLoanBusiness(businessDetails);
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+      if (!businessDetails.businessName || !businessDetails.businessName.trim()) {
+        newErrors.businessName = "Enter business name";
+      }
+      if (!businessDetails.businessType) {
+        newErrors.businessType = "Select business type";
+      }
+      if (!businessDetails.businessVintageYears) {
+        newErrors.businessVintageYears = "Select business vintage";
+      }
+      if (!businessDetails.annualTurnover || !businessDetails.annualTurnover.trim()) {
+        newErrors.annualTurnover = "Enter annual turnover";
+      }
+      if (businessDetails.isGstRegistered) {
+        if (!businessDetails.gstin || !businessDetails.gstin.trim()) {
+          newErrors.gstin = "GSTIN is required for GST registered business";
+        } else if (!validateGstin(businessDetails.gstin.trim())) {
+          newErrors.gstin = "Enter valid 15-character GSTIN";
+        }
+      }
     }
 
     if (currentStepIndex === 2) {
-      const errs = validateLoanBanking(bankingDetails);
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+      if (!bankingDetails.primaryBankName || !bankingDetails.primaryBankName.trim()) {
+        newErrors.primaryBankName = "Enter bank name";
+      }
+      const acc = (bankingDetails.accountNumber || "").trim();
+      if (!acc || !/^\d{9,18}$/.test(acc)) {
+        newErrors.accountNumber = "Enter valid current account number (9-18 digits)";
+      }
+      const ifsc = (bankingDetails.ifscCode || "").trim().toUpperCase();
+      if (!ifsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) {
+        newErrors.ifscCode = "Enter valid 11-character IFSC code";
+      }
     }
 
     if (currentStepIndex === 3) {
-      const { isValid, missingDocs } = validateLoanDocuments(documents);
-      if (!isValid) {
+      const missingRequired = documents.filter(
+        (d) => d.required && (!d.fileUri || !d.fileUri.trim())
+      );
+      if (missingRequired.length > 0) {
         Alert.alert(
-          "Mandatory Documents Required",
-          `Please upload all required machinery quotation and tax files to proceed:\n\n• ${missingDocs.slice(0, 3).join("\n• ")}`
+          "Required Documents Missing",
+          `Please upload mandatory files:\n\n• ${missingRequired.map((d) => d.name).join("\n• ")}`
         );
         return false;
       }
-      return true;
     }
 
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
@@ -229,15 +261,49 @@ export const MachineryLoanScreen: React.FC = () => {
       };
 
       const response = await loansApi.applyLoan(draft);
+      const appId = response.applicationId || `MCH-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      // Create & store application into store so it appears in My Applications
+      const appStore = useApplicationStore.getState();
+      const amountVal = Number(loanDetails.requiredAmount) || 3000000;
+      appStore.createApplication(
+        "machinery-loan",
+        "Machinery Loan",
+        "LOANS",
+        {
+          loanType: "Machinery Loan",
+          requestedAmount: amountVal,
+          equipmentType: loanDetails.customEquipmentType || loanDetails.purpose,
+          tenureMonths: loanDetails.preferredTenureMonths,
+          businessName: businessDetails.businessName,
+          businessType: businessDetails.businessType,
+          businessVintage: businessDetails.businessVintageYears,
+          annualTurnover: businessDetails.annualTurnover,
+          isGstRegistered: businessDetails.isGstRegistered,
+          gstin: businessDetails.gstin,
+          bankName: bankingDetails.primaryBankName,
+          accountNumber: bankingDetails.accountNumber,
+          ifscCode: bankingDetails.ifscCode,
+        },
+        documents.map((d) => ({
+          name: d.name,
+          status: d.fileUri ? "Uploaded" : "Pending",
+          fileUri: d.fileUri,
+        })),
+        0,
+        "Paid",
+        true
+      );
+
       Alert.alert(
         "Machinery Loan Submitted",
-        `Your application (Ref: ${response.referenceNumber}) has been submitted. Our equipment finance officer will process the quotation and issue sanction details shortly.`,
+        `Your application (Ref: ${response.referenceNumber || appId}) has been submitted. Our TaxEdge Loan Agent will process the application shortly.`,
         [
           {
             text: "Track Status",
             onPress: () => {
               router.replace(
-                `/service/loan-status?id=${response.applicationId}&loanType=Machinery+Loan` as any
+                `/service/loan-status?id=${appId}&loanType=Machinery+Loan` as any
               );
             },
           },
@@ -254,14 +320,11 @@ export const MachineryLoanScreen: React.FC = () => {
     switch (currentStepIndex) {
       case 0:
         return (
-          <>
-            <MachineryLoanCustomerCard profile={customer || undefined} />
-            <MachineryLoanFinancialsStep
-              data={loanDetails}
-              onChange={handleDetailsChange}
-              errors={errors}
-            />
-          </>
+          <MachineryLoanFinancialsStep
+            data={loanDetails}
+            onChange={handleDetailsChange}
+            errors={errors}
+          />
         );
       case 1:
         return (
@@ -277,32 +340,31 @@ export const MachineryLoanScreen: React.FC = () => {
             data={bankingDetails}
             onChange={handleBankingChange}
             errors={errors}
-            hasExistingLoans={loanDetails.hasExistingLoans}
+            hasExistingLoans={false}
           />
         );
       case 3:
-        return (
-          <MachineryLoanDocumentsStep
-            documents={documents}
-            onDocumentUploaded={handleDocumentUploaded}
-          />
-        );
-      case 4:
       default:
         return (
-          <MachineryLoanReviewStep
-            loanDetails={loanDetails}
-            businessDetails={businessDetails}
-            bankingDetails={bankingDetails}
-            documents={documents}
-            profile={customer || undefined}
-            isConsentChecked={isConsentChecked}
-            onConsentToggle={setIsConsentChecked}
-            onGoToStep={(stepIdx) => {
-              setCurrentStepIndex(stepIdx);
-              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-            }}
-          />
+          <>
+            <MachineryLoanDocumentsStep
+              documents={documents}
+              onDocumentUploaded={handleDocumentUploaded}
+            />
+            <View style={{ height: 24 }} />
+            <MachineryLoanReviewStep
+              loanDetails={loanDetails}
+              businessDetails={businessDetails}
+              bankingDetails={bankingDetails}
+              documents={documents}
+              isConsentChecked={isConsentChecked}
+              onConsentToggle={setIsConsentChecked}
+              onGoToStep={(stepIdx) => {
+                setCurrentStepIndex(stepIdx);
+                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            />
+          </>
         );
     }
   };
@@ -324,13 +386,6 @@ export const MachineryLoanScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity
-          style={styles.saveDraftButton}
-          onPress={() => Alert.alert("Draft Saved", "Machinery loan draft saved successfully.")}
-        >
-          <Text style={styles.saveDraftText}>Save Draft</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Step Progress Stepper */}
@@ -367,7 +422,7 @@ export const MachineryLoanScreen: React.FC = () => {
           disabled={isSubmitting}
         >
           <Text style={styles.backButtonText}>
-            {currentStepIndex === 0 ? "Cancel" : "Back"}
+            {currentStepIndex === 0 ? "Back" : "Back"}
           </Text>
         </TouchableOpacity>
 
@@ -397,3 +452,4 @@ export const MachineryLoanScreen: React.FC = () => {
 };
 
 export default MachineryLoanScreen;
+

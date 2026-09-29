@@ -5,12 +5,11 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -20,18 +19,13 @@ import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { authStorage } from "@/modules/authentication/services/authStorage";
 import { useCustomerStore } from "@/modules/customer/store/customerStore";
 import { authApi } from "@/modules/authentication/services/authApi";
+import { ApiError } from "@/core/api/apiError";
 import type { Customer } from "@/shared/types/domain";
 import {
   TdsCustomerIncomeFormData,
-  BankAccountType,
-  TaxRegimeType,
   PersonalDetails,
 } from "../../types/customerIncome.types";
-import {
-  cleanIfsc,
-  cleanAccountNumber,
-  formatCurrency,
-} from "../../utils/tdsValidation";
+import { cleanIfsc, formatCurrency } from "../../utils/tdsValidation";
 import {
   validateCustomerIncomeForm,
   CustomerFormErrors,
@@ -40,12 +34,36 @@ import { tdsCalculationService } from "../../services/tdsCalculationService";
 import {
   tdsDraftService,
   INITIAL_TDS_FORM_DATA,
+  getTdsCustId,
 } from "../../services/tdsDraftService";
 import { tdsApiService } from "../../services/tdsApiService";
-import { TdsRefundPersonalInfoCard } from "../../components/personal/TdsRefundPersonalInfoCard";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import {
+  PersonalInfoSection,
+  RefundBankAccountSection,
+  IncomeTaxInfoSection,
+  TdsTaxesPaidSection,
+  TdsFormInputRefs,
+  UpdateBankField,
+  UpdateIncomeField,
+} from "./TdsRefundFormSections";
 import { styles } from "./TdsRefundFormScreen.styles";
+
+/** Turns a failed TDS save into a user-facing message, keeping the backend's own message. */
+const describeSaveError = (err: unknown): string => {
+  if (err instanceof ApiError) {
+    if (err.code === "NETWORK_ERROR") return err.message;
+    if (err.statusCode === 401) {
+      return "Your session has expired. Please log in again and retry.";
+    }
+    if (err.statusCode === 403) {
+      return `${err.message}\n\nThe server refused this request. Please log in again; if it persists, the TDS service may not be available on this server.`;
+    }
+    return err.message;
+  }
+  return (err as any)?.message || "Failed to save your TDS details. Please try again.";
+};
 
 export const TdsRefundFormScreen: React.FC = () => {
   const router = useRouter();
@@ -95,6 +113,22 @@ export const TdsRefundFormScreen: React.FC = () => {
   const tcsRef = useRef<TextInput>(null);
   const advanceTaxRef = useRef<TextInput>(null);
   const selfTaxRef = useRef<TextInput>(null);
+  const inputRefs: TdsFormInputRefs = {
+    accHolderRef,
+    accNumRef,
+    confirmAccNumRef,
+    ifscRef,
+    salaryRef,
+    otherIncomeRef,
+    interestRef,
+    tdsRef,
+    tcsRef,
+    advanceTaxRef,
+    selfTaxRef,
+  };
+
+  // Guards against double-taps creating duplicate backend records
+  const isSavingRef = useRef(false);
 
   // Auto-fetch profile from central Auth/Customer store & API
   const fetchAndPopulateProfile = async (): Promise<PersonalDetails | null> => {
@@ -225,12 +259,14 @@ export const TdsRefundFormScreen: React.FC = () => {
         useAuthStore.getState().mobileNumber ||
         freshPersonal?.mobileNumber;
 
-      const custId = currentMobile ? String(currentMobile).replace(/\D/g, "") : "CUST-DEFAULT";
+      const custId = getTdsCustId(freshPersonal?.mobileNumber);
 
       // 2. Fetch existing TDS Refund application from backend if available
       try {
         const existingAppId = await tdsDraftService.getApplicationId();
-        const backendApp = await tdsApiService.fetchFullTdsApplication(custId, existingAppId || undefined);
+        const backendApp = custId
+          ? await tdsApiService.fetchFullTdsApplication(custId, existingAppId || undefined)
+          : null;
         if (backendApp && backendApp.bank) {
           if (backendApp.tdsRefundId) {
             await tdsDraftService.saveApplicationId(backendApp.tdsRefundId);
@@ -384,7 +420,7 @@ export const TdsRefundFormScreen: React.FC = () => {
   const liveCalculation = tdsCalculationService.calculate(formData);
 
   // Field updater helpers
-  const updateBank = (field: keyof typeof formData.bank, value: any) => {
+  const updateBank: UpdateBankField = (field, value) => {
     setHasUserEdited(true);
     setFormData((prev) => ({
       ...prev,
@@ -401,7 +437,7 @@ export const TdsRefundFormScreen: React.FC = () => {
     }
   };
 
-  const updateIncome = (field: keyof typeof formData.income, value: any) => {
+  const updateIncome: UpdateIncomeField = (field, value) => {
     setHasUserEdited(true);
     setFormData((prev) => ({
       ...prev,
@@ -470,26 +506,32 @@ export const TdsRefundFormScreen: React.FC = () => {
       return;
     }
 
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+
+    // Keep the local draft regardless, so nothing typed is lost if the server save fails
+    await tdsDraftService.saveFormDraft(formData);
+
     try {
-      const activeMobile = formData.personal.mobileNumber || useAuthStore.getState().customer?.mobile || "CUST-DEFAULT";
-      const custId = activeMobile.replace(/\D/g, "");
+      const custId = getTdsCustId(formData.personal.mobileNumber);
       const existingAppId = await tdsDraftService.getApplicationId();
 
+      // Bank -> income -> taxes paid; any non-2xx rejects and stops the flow
       const savedTdsId = await tdsApiService.saveFullTdsApplication(
         formData,
         [],
         custId,
         existingAppId || undefined
       );
-
-      if (savedTdsId) {
-        await tdsDraftService.saveApplicationId(savedTdsId);
-      }
+      await tdsDraftService.saveApplicationId(savedTdsId);
     } catch (err) {
-      console.warn("[TDS Screen] Backend save warning:", err);
+      console.error("[TDS Screen] Backend save failed:", err);
+      Alert.alert("Unable to Save Application", describeSaveError(err));
+      return;
+    } finally {
+      isSavingRef.current = false;
     }
 
-    await tdsDraftService.saveFormDraft(formData);
     markSubmitted();
     router.push("/service/tds-checklist" as any);
   };
@@ -500,7 +542,7 @@ export const TdsRefundFormScreen: React.FC = () => {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Top Header Bar */}
       <View style={[styles.headerBar, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
@@ -553,656 +595,32 @@ export const TdsRefundFormScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ========================================================
-            SECTION 1: PERSONAL INFORMATION (COMPACT CARD)
-        ======================================================== */}
-        <TdsRefundPersonalInfoCard
-          personalData={formData.personal}
+        <PersonalInfoSection
+          personal={formData.personal}
           isLoading={isProfileLoading}
-          isError={Boolean(profileFetchError)}
-          errorMessage={profileFetchError || undefined}
+          errorMessage={profileFetchError}
           onRetry={fetchAndPopulateProfile}
           onSaveProfile={handleSaveProfile}
         />
 
-        {/* ========================================================
-            SECTION 2: REFUND BANK ACCOUNT
-        ======================================================== */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionNumberBadge}>
-              <Text style={styles.sectionNumberText}>2</Text>
-            </View>
-            <Text style={styles.sectionTitle}>Refund Bank Account</Text>
-          </View>
+        <RefundBankAccountSection
+          bank={formData.bank}
+          errors={errors}
+          inputs={inputRefs}
+          isIfscLoading={isIfscLoading}
+          ifscError={ifscError}
+          updateBank={updateBank}
+          onIfscChange={handleIfscChange}
+        />
 
-          {/* Account Holder Name */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Account Holder Name <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              ref={accHolderRef}
-              style={[styles.textInput, errors["bank.accountHolderName"] ? styles.textInputError : null]}
-              placeholder="Enter account holder name"
-              placeholderTextColor="#94A3B8"
-              value={formData.bank.accountHolderName}
-              onChangeText={(t) => updateBank("accountHolderName", t)}
-              returnKeyType="next"
-              onSubmitEditing={() => accNumRef.current?.focus()}
-            />
-            {errors["bank.accountHolderName"] && (
-              <Text style={styles.errorText}>{errors["bank.accountHolderName"]}</Text>
-            )}
-          </View>
+        <IncomeTaxInfoSection income={formData.income} inputs={inputRefs} updateIncome={updateIncome} />
 
-          {/* Bank Account Number (Full Width for clean fit) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Bank Account Number <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              ref={accNumRef}
-              style={[styles.textInput, errors["bank.accountNumber"] ? styles.textInputError : null]}
-              placeholder="Enter account number"
-              placeholderTextColor="#94A3B8"
-              keyboardType="number-pad"
-              value={formData.bank.accountNumber}
-              onChangeText={(t) => updateBank("accountNumber", cleanAccountNumber(t))}
-              returnKeyType="next"
-              onSubmitEditing={() => confirmAccNumRef.current?.focus()}
-            />
-            {errors["bank.accountNumber"] && (
-              <Text style={styles.errorText}>{errors["bank.accountNumber"]}</Text>
-            )}
-          </View>
-
-          {/* Confirm Account Number (Full Width for clean fit) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Confirm Account Number <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              ref={confirmAccNumRef}
-              style={[styles.textInput, errors["bank.confirmAccountNumber"] ? styles.textInputError : null]}
-              placeholder="Re-enter account number"
-              placeholderTextColor="#94A3B8"
-              keyboardType="number-pad"
-              value={formData.bank.confirmAccountNumber}
-              onChangeText={(t) => updateBank("confirmAccountNumber", cleanAccountNumber(t))}
-              returnKeyType="next"
-              onSubmitEditing={() => ifscRef.current?.focus()}
-            />
-            {errors["bank.confirmAccountNumber"] && (
-              <Text style={styles.errorText}>{errors["bank.confirmAccountNumber"]}</Text>
-            )}
-          </View>
-
-          {/* IFSC Code with Auto-Lookup */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              IFSC Code <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <View style={styles.ifscRow}>
-              <View style={styles.ifscInputWrap}>
-                <TextInput
-                  ref={ifscRef}
-                  style={[
-                    styles.textInput,
-                    errors["bank.ifscCode"] || ifscError ? styles.textInputError : null,
-                  ]}
-                  placeholder="Enter IFSC"
-                  placeholderTextColor="#94A3B8"
-                  autoCapitalize="characters"
-                  maxLength={11}
-                  value={formData.bank.ifscCode}
-                  onChangeText={handleIfscChange}
-                  returnKeyType="next"
-                  onSubmitEditing={() => salaryRef.current?.focus()}
-                />
-              </View>
-              {isIfscLoading && <ActivityIndicator size="small" color={BrandColors.PRIMARY_ORANGE} />}
-            </View>
-
-            {/* IFSC Status */}
-            {isIfscLoading && (
-              <View style={styles.ifscLoadingBox}>
-                <Text style={styles.ifscLoadingText}>Verifying IFSC with RBI directory...</Text>
-              </View>
-            )}
-
-            {formData.bank.isIfscVerified && formData.bank.bankName && (
-              <View style={styles.ifscSuccessBox}>
-                <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                <Text style={styles.ifscSuccessText} numberOfLines={1}>
-                  {formData.bank.bankName} • {formData.bank.branchName}
-                </Text>
-              </View>
-            )}
-
-            {(errors["bank.ifscCode"] || ifscError) && (
-              <Text style={styles.errorText}>{errors["bank.ifscCode"] || ifscError}</Text>
-            )}
-          </View>
-
-          {/* Bank Name & Branch (Read-Only after lookup) */}
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>Bank Name</Text>
-              <TextInput
-                style={[styles.textInput, styles.textInputReadOnly]}
-                editable={false}
-                placeholder="Auto-fetched via IFSC"
-                placeholderTextColor="#94A3B8"
-                value={formData.bank.bankName}
-              />
-            </View>
-
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>Branch</Text>
-              <TextInput
-                style={[styles.textInput, styles.textInputReadOnly]}
-                editable={false}
-                placeholder="Auto-fetched via IFSC"
-                placeholderTextColor="#94A3B8"
-                value={formData.bank.branchName}
-              />
-            </View>
-          </View>
-
-          {/* Account Type */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Account Type</Text>
-            <View style={styles.chipGroup}>
-              {(["savings", "current"] as BankAccountType[]).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  activeOpacity={0.8}
-                  onPress={() => updateBank("accountType", type)}
-                  style={[
-                    styles.chip,
-                    formData.bank.accountType === type ? styles.chipActive : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      formData.bank.accountType === type ? styles.chipTextActive : null,
-                    ]}
-                  >
-                    {type === "savings" ? "Savings Account" : "Current Account"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* ========================================================
-            SECTION 3: INCOME & TAX INFORMATION
-        ======================================================== */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionNumberBadge}>
-              <Text style={styles.sectionNumberText}>3</Text>
-            </View>
-            <Text style={styles.sectionTitle}>Income & Tax Information</Text>
-          </View>
-
-          {/* Regime Selector */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Tax Regime</Text>
-            <View style={styles.regimeSelector}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => updateIncome("taxRegime", "NEW")}
-                style={[
-                  styles.regimeOption,
-                  formData.income.taxRegime === "NEW" ? styles.regimeOptionActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.regimeTitle,
-                    formData.income.taxRegime === "NEW" ? styles.regimeTitleActive : null,
-                  ]}
-                >
-                  New Tax Regime
-                </Text>
-                <Text style={styles.regimeDesc}>u/s 115BAC • Standard Slab</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => updateIncome("taxRegime", "OLD")}
-                style={[
-                  styles.regimeOption,
-                  formData.income.taxRegime === "OLD" ? styles.regimeOptionActive : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.regimeTitle,
-                    formData.income.taxRegime === "OLD" ? styles.regimeTitleActive : null,
-                  ]}
-                >
-                  Old Tax Regime
-                </Text>
-                <Text style={styles.regimeDesc}>Supports 80C, 80D, Home Loan</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Salary Income */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Salaried Gross Income (₹)</Text>
-            <TextInput
-              ref={salaryRef}
-              style={styles.textInput}
-              placeholder="Enter salary"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={formData.income.salaryIncome}
-              onChangeText={(t) => updateIncome("salaryIncome", t)}
-              returnKeyType="next"
-              onSubmitEditing={() => otherIncomeRef.current?.focus()}
-            />
-          </View>
-
-          {/* Other & Interest Income */}
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>Other Income (₹)</Text>
-              <TextInput
-                ref={otherIncomeRef}
-                style={styles.textInput}
-                placeholder="Enter other income"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={formData.income.otherIncome}
-                onChangeText={(t) => updateIncome("otherIncome", t)}
-                returnKeyType="next"
-                onSubmitEditing={() => interestRef.current?.focus()}
-              />
-            </View>
-
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>Interest Income (₹)</Text>
-              <TextInput
-                ref={interestRef}
-                style={styles.textInput}
-                placeholder="Enter interest"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={formData.income.interestIncome}
-                onChangeText={(t) => updateIncome("interestIncome", t)}
-                returnKeyType="next"
-                onSubmitEditing={() => tdsRef.current?.focus()}
-              />
-            </View>
-          </View>
-
-          {/* Progressive Disclosure 1: Rental Income */}
-          <View style={styles.toggleSection}>
-            <View style={styles.toggleHeader}>
-              <View style={styles.toggleTextGroup}>
-                <Text style={styles.toggleQuestion}>Rental Income</Text>
-                <Text style={styles.toggleSubtitle}>House property rent</Text>
-              </View>
-              <View style={styles.toggleChips}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasRentalIncome", true)}
-                  style={[styles.toggleChip, formData.income.hasRentalIncome ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, formData.income.hasRentalIncome ? styles.toggleChipTextActive : null]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasRentalIncome", false)}
-                  style={[styles.toggleChip, !formData.income.hasRentalIncome ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, !formData.income.hasRentalIncome ? styles.toggleChipTextActive : null]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.income.hasRentalIncome && (
-              <View style={styles.conditionalFields}>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Annual Rent Received (₹)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter rental income"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={formData.income.rentalIncome}
-                    onChangeText={(t) => updateIncome("rentalIncome", t)}
-                  />
-                </View>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Property Taxes Paid (₹)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter municipal taxes"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={formData.income.municipalTaxesPaid}
-                    onChangeText={(t) => updateIncome("municipalTaxesPaid", t)}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Progressive Disclosure 2: Capital Gains */}
-          <View style={styles.toggleSection}>
-            <View style={styles.toggleHeader}>
-              <View style={styles.toggleTextGroup}>
-                <Text style={styles.toggleQuestion}>Capital Gains</Text>
-                <Text style={styles.toggleSubtitle}>Stocks / MF / Property</Text>
-              </View>
-              <View style={styles.toggleChips}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasCapitalGains", true)}
-                  style={[styles.toggleChip, formData.income.hasCapitalGains ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, formData.income.hasCapitalGains ? styles.toggleChipTextActive : null]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasCapitalGains", false)}
-                  style={[styles.toggleChip, !formData.income.hasCapitalGains ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, !formData.income.hasCapitalGains ? styles.toggleChipTextActive : null]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.income.hasCapitalGains && (
-              <View style={styles.conditionalFields}>
-                <View style={styles.fieldRow}>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>Short-Term Gains (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter STCG"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.shortTermCapitalGains}
-                      onChangeText={(t) => updateIncome("shortTermCapitalGains", t)}
-                    />
-                  </View>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>Long-Term Gains (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter LTCG"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.longTermCapitalGains}
-                      onChangeText={(t) => updateIncome("longTermCapitalGains", t)}
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Progressive Disclosure 3: Business Income */}
-          <View style={styles.toggleSection}>
-            <View style={styles.toggleHeader}>
-              <View style={styles.toggleTextGroup}>
-                <Text style={styles.toggleQuestion}>Business / Profession</Text>
-                <Text style={styles.toggleSubtitle}>Freelance or business income</Text>
-              </View>
-              <View style={styles.toggleChips}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasBusinessIncome", true)}
-                  style={[styles.toggleChip, formData.income.hasBusinessIncome ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, formData.income.hasBusinessIncome ? styles.toggleChipTextActive : null]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasBusinessIncome", false)}
-                  style={[styles.toggleChip, !formData.income.hasBusinessIncome ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, !formData.income.hasBusinessIncome ? styles.toggleChipTextActive : null]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.income.hasBusinessIncome && (
-              <View style={styles.conditionalFields}>
-                <View style={styles.fieldRow}>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>Turnover (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter turnover"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.grossTurnover}
-                      onChangeText={(t) => updateIncome("grossTurnover", t)}
-                    />
-                  </View>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>Net Profit (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter profit"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.netBusinessProfit}
-                      onChangeText={(t) => updateIncome("netBusinessProfit", t)}
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Progressive Disclosure 4: Home Loan */}
-          <View style={styles.toggleSection}>
-            <View style={styles.toggleHeader}>
-              <View style={styles.toggleTextGroup}>
-                <Text style={styles.toggleQuestion}>Home Loan Interest</Text>
-                <Text style={styles.toggleSubtitle}>Self-occupied house property</Text>
-              </View>
-              <View style={styles.toggleChips}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasHomeLoan", true)}
-                  style={[styles.toggleChip, formData.income.hasHomeLoan ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, formData.income.hasHomeLoan ? styles.toggleChipTextActive : null]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasHomeLoan", false)}
-                  style={[styles.toggleChip, !formData.income.hasHomeLoan ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, !formData.income.hasHomeLoan ? styles.toggleChipTextActive : null]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.income.hasHomeLoan && (
-              <View style={styles.conditionalFields}>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Interest Paid (Sec 24b) (₹)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter interest paid"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={formData.income.homeLoanInterestSec24b}
-                    onChangeText={(t) => updateIncome("homeLoanInterestSec24b", t)}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-
-          {/* Progressive Disclosure 5: Deductions (80C, 80D) */}
-          <View style={styles.toggleSection}>
-            <View style={styles.toggleHeader}>
-              <View style={styles.toggleTextGroup}>
-                <Text style={styles.toggleQuestion}>Tax Deductions</Text>
-                <Text style={styles.toggleSubtitle}>Section 80C, 80D, 80G</Text>
-              </View>
-              <View style={styles.toggleChips}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasDeductions", true)}
-                  style={[styles.toggleChip, formData.income.hasDeductions ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, formData.income.hasDeductions ? styles.toggleChipTextActive : null]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => updateIncome("hasDeductions", false)}
-                  style={[styles.toggleChip, !formData.income.hasDeductions ? styles.toggleChipActive : null]}
-                >
-                  <Text style={[styles.toggleChipText, !formData.income.hasDeductions ? styles.toggleChipTextActive : null]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {formData.income.hasDeductions && (
-              <View style={styles.conditionalFields}>
-                <View style={styles.fieldRow}>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>80C (PPF, ELSS, LIC) (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Up to ₹1.5L"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.deductions80C}
-                      onChangeText={(t) => updateIncome("deductions80C", t)}
-                    />
-                  </View>
-                  <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-                    <Text style={styles.fieldLabel}>80D (Health Ins.) (₹)</Text>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Up to ₹75k"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="numeric"
-                      value={formData.income.deductions80D}
-                      onChangeText={(t) => updateIncome("deductions80D", t)}
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* ========================================================
-            SECTION 4: TDS & TAXES PAID (TAX CREDITS)
-        ======================================================== */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionNumberBadge}>
-              <Text style={styles.sectionNumberText}>4</Text>
-            </View>
-            <Text style={styles.sectionTitle}>TDS & Taxes Paid</Text>
-          </View>
-
-          {/* Total TDS Deducted (Full Width) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>
-              Total TDS Deducted (₹) <Text style={styles.requiredAsterisk}>*</Text>
-            </Text>
-            <TextInput
-              ref={tdsRef}
-              style={[styles.textInput, errors["income.totalTdsDeducted"] ? styles.textInputError : null]}
-              placeholder="Enter TDS amount"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={formData.income.totalTdsDeducted}
-              onChangeText={(t) => updateIncome("totalTdsDeducted", t)}
-              returnKeyType="next"
-              onSubmitEditing={() => tcsRef.current?.focus()}
-            />
-            {errors["income.totalTdsDeducted"] && (
-              <Text style={styles.errorText}>{errors["income.totalTdsDeducted"]}</Text>
-            )}
-          </View>
-
-          {/* TCS & Advance Tax (2 Columns - Spacious & Fits) */}
-          <View style={styles.fieldRow}>
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>TCS Amount (₹)</Text>
-              <TextInput
-                ref={tcsRef}
-                style={styles.textInput}
-                placeholder="Enter TCS"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={formData.income.tcsAmount}
-                onChangeText={(t) => updateIncome("tcsAmount", t)}
-                returnKeyType="next"
-                onSubmitEditing={() => advanceTaxRef.current?.focus()}
-              />
-            </View>
-
-            <View style={[styles.fieldGroup, styles.fieldRowItem]}>
-              <Text style={styles.fieldLabel}>Advance Tax (₹)</Text>
-              <TextInput
-                ref={advanceTaxRef}
-                style={styles.textInput}
-                placeholder="Enter advance tax"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={formData.income.advanceTaxPaid}
-                onChangeText={(t) => updateIncome("advanceTaxPaid", t)}
-                returnKeyType="next"
-                onSubmitEditing={() => selfTaxRef.current?.focus()}
-              />
-            </View>
-          </View>
-
-          {/* Self Assessment Tax (Full Width - Fits cleanly without clipping) */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Self Assessment Tax Paid (₹)</Text>
-            <TextInput
-              ref={selfTaxRef}
-              style={styles.textInput}
-              placeholder="Enter self-assessment tax"
-              placeholderTextColor="#94A3B8"
-              keyboardType="numeric"
-              value={formData.income.selfAssessmentTaxPaid}
-              onChangeText={(t) => updateIncome("selfAssessmentTaxPaid", t)}
-              returnKeyType="done"
-            />
-          </View>
-        </View>
+        <TdsTaxesPaidSection
+          income={formData.income}
+          errors={errors}
+          inputs={inputRefs}
+          updateIncome={updateIncome}
+        />
       </ScrollView>
 
       {/* Sticky Bottom CTA */}

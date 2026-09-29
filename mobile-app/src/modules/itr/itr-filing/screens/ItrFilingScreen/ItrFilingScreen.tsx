@@ -3,10 +3,10 @@ import {
   View,
   Text,
   ScrollView,
-  StatusBar,
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -216,7 +216,7 @@ export const ItrFilingScreen: React.FC = () => {
   if (!isCategoryConfirmed) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View style={styles.categoryHeader}>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -259,7 +259,7 @@ export const ItrFilingScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Top Header & Step Progress Bar */}
       <ItrStepIndicator

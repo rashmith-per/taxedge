@@ -6,6 +6,7 @@ import { ThemeProvider } from "../design-system/theme";
 import { AnimatedSplashOverlay } from "../components/animated-icon";
 import { CompleteProfileModal } from "../shared/components/CompleteProfileModal";
 import { ErrorBoundary } from "../core/error-handling/ErrorBoundary";
+import { RootStatusBar } from "../shared/components/FocusAwareStatusBar";
 import { AppBootstrap } from "./bootstrap/AppBootstrap";
 
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +24,8 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
+          {/* Single app-wide status-bar default. Screens with dark headers use FocusAwareStatusBar. */}
+          <RootStatusBar />
           <AnimatedSplashOverlay />
           <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />

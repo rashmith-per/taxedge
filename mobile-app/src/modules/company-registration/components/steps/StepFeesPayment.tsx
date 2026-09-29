@@ -25,7 +25,7 @@ export const StepFeesPayment: React.FC = () => {
     setTimeout(() => {
       processPayment(selectedMethod);
       setIsSubmitting(false);
-      setStep(10); // Navigate to Application Submitted Successfully screen
+      setStep(9); // Navigate to Application Submitted Successfully screen
     }, 1500);
   };
 

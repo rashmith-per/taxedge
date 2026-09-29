@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "../../../../../shared/theme";
+import { formatIndianCurrency } from "../../../../../shared/formatters/currencyFormatter";
+import { paymentService } from "../../../../payments/services/paymentService";
 import {
   styles,
   getIconBoxStyle,
@@ -50,12 +52,16 @@ const UPI_APPS = [
 
 export interface GstRegistrationPaymentStepProps {
   businessName?: string;
+  amount?: number;
+  applicationId?: string;
   onPaymentSuccess: (txnId: string, method: string) => void;
   onBackToReview?: () => void;
 }
 
 export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProps> = ({
   businessName = "Your Business",
+  amount,
+  applicationId,
   onPaymentSuccess,
 }) => {
   const [selectedMethod, setSelectedMethod] = useState<string>("upi");
@@ -85,16 +91,22 @@ export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProp
       setUpiError("");
     }
 
+    if (!Number.isFinite(amount) || !amount || !applicationId) {
+      setPaymentError("Payment amount or application reference is unavailable.");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const order = await paymentService.createOrder(amount, applicationId);
+      if (!order) {
+        setPaymentError("Online payment processing is not configured yet. Your application was not marked as paid.");
+        return;
+      }
 
-      const generatedTxnId = `TXN-GST-${Date.now().toString().slice(-8)}`;
-      setIsProcessing(false);
-      onPaymentSuccess(generatedTxnId, selectedMethod.toUpperCase());
+      setPaymentError("Payment provider checkout and verification are not configured yet. Your application was not marked as paid.");
     } catch (err: any) {
-      setIsProcessing(false);
       const isNetwork =
         err?.message?.toLowerCase().includes("network") ||
         err?.message?.toLowerCase().includes("failed");
@@ -103,6 +115,8 @@ export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProp
         : "Payment failed. Please try again.";
       setPaymentError(errorMsg);
       Alert.alert("Payment Failed", errorMsg);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -125,11 +139,11 @@ export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProp
         {/* Cost Breakdown */}
         <View style={styles.feeRow}>
           <Text style={styles.feeLabel}>GST Registration Service</Text>
-          <Text style={styles.feeValue}>?1,270.34</Text>
+          <Text style={styles.feeValue}>{Number.isFinite(amount) ? formatIndianCurrency((amount || 0) / 1.18, 2) : "Unavailable"}</Text>
         </View>
         <View style={styles.feeRow}>
           <Text style={styles.feeLabel}>Applicable Taxes (18% GST)</Text>
-          <Text style={styles.feeValue}>?228.66</Text>
+          <Text style={styles.feeValue}>{Number.isFinite(amount) ? formatIndianCurrency((amount || 0) - (amount || 0) / 1.18, 2) : "Unavailable"}</Text>
         </View>
 
         <View style={styles.divider} />
@@ -140,7 +154,7 @@ export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProp
             <Text style={styles.totalHeading}>Total Amount</Text>
             <Text style={styles.inclusiveText}>Includes all taxes & CA review</Text>
           </View>
-          <Text style={styles.totalAmountText}>?1,499</Text>
+          <Text style={styles.totalAmountText}>{Number.isFinite(amount) ? formatIndianCurrency(amount) : "Amount unavailable"}</Text>
         </View>
       </View>
 
@@ -256,7 +270,7 @@ export const GstRegistrationPaymentStep: React.FC<GstRegistrationPaymentStepProp
         ) : (
           <View style={styles.processingRow}>
             <Ionicons name="lock-closed" size={16} color="#FFFFFF" />
-            <Text style={styles.payBtnText}>Pay ?1,499</Text>
+            <Text style={styles.payBtnText}>{Number.isFinite(amount) ? `Pay ${formatIndianCurrency(amount)}` : "Payment unavailable"}</Text>
           </View>
         )}
       </TouchableOpacity>

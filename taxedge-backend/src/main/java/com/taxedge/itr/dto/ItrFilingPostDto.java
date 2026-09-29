@@ -5,15 +5,17 @@ import lombok.Data;
 @Data
 public class ItrFilingPostDto {
 
-    private String assessmentYear;
+	private String customerId;
 
-    private String residentialStatus;
+	private String assessmentYear;
 
-    private String filingType;
+	private String residentialStatus;
 
-    private String bankName;
+	private String filingType;
 
-    private String accountNumber;
+	private String bankName;
 
-    private String ifscCode;
+	private String accountNumber;
+
+	private String ifscCode;
 }

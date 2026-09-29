@@ -38,7 +38,7 @@ export const styles = StyleSheet.create({
   progressCount: {
     fontSize: Typography.fontSize.sm,
     fontWeight: "700",
-    color: BrandColors.PRIMARY_BLUE,
+    color: "#EA580C",
   },
   progressBarTrack: {
     height: 6,
@@ -73,11 +73,15 @@ export const styles = StyleSheet.create({
     borderColor: "#86EFAC",
     backgroundColor: "#F0FDF4",
   },
+  docTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    flex: 1,
+  },
   docLeft: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
-    marginRight: 10,
   },
   iconBox: {
     width: 40,
@@ -86,6 +90,9 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+  },
+  iconBoxDone: {
+    backgroundColor: "#DCFCE7",
   },
   docInfo: {
     flex: 1,
@@ -136,19 +143,29 @@ export const styles = StyleSheet.create({
   fileNameText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#15803D",
-    maxWidth: 160,
+    color: "#166534",
+    maxWidth: 180,
   },
   fileSizeText: {
     fontSize: 10,
     color: "#64748B",
   },
+  docActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
+  },
   uploadButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#FFF7ED",
     borderWidth: 1,
-    borderColor: BrandColors.PRIMARY_BLUE,
+    borderColor: "#EA580C",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 6,
@@ -157,7 +174,42 @@ export const styles = StyleSheet.create({
   uploadButtonText: {
     fontSize: Typography.fontSize.xs,
     fontWeight: "600",
-    color: BrandColors.PRIMARY_BLUE,
+    color: "#EA580C",
+  },
+  viewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    gap: 4,
+  },
+  viewBtnText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "600",
+    color: "#083B75",
+  },
+  changeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF0E6",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    gap: 4,
+  },
+  changeBtnText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: "600",
+    color: "#EA580C",
+  },
+  removeBtn: {
+    backgroundColor: "#FEF2F2",
+    padding: 6,
+    borderRadius: 6,
   },
   replaceButton: {
     flexDirection: "row",

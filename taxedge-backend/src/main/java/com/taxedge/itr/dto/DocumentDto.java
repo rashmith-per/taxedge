@@ -1,17 +1,17 @@
 package com.taxedge.itr.dto;
 
-import com.taxedge.itr.enums.ItrDocumentType;
-
 import lombok.Data;
 
 @Data
 public class DocumentDto {
 
-    private ItrDocumentType documentType;
+    private String form16PartAPartB;
 
-    private String fileName;
+    private String form26as;
 
-    private String fileType;
+    private String aisTis;
 
-    private String imageData;
+    private String bankAccountStatement;
+
+    private String salaryPayslips;
 }

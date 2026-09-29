@@ -2,7 +2,6 @@ package com.taxedge.gst.entity;
 
 import jakarta.persistence.*;
 import com.taxedge.gst.enums.AccountType;
-import com.taxedge.gst.enums.AmendmentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,41 +15,36 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BankAccountAmendmentEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String gstId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gst_id", referencedColumnName = "gst_id", nullable = false)
+    private Business business;
 
-    private String currentBankName;
-    private String currentBankAccountNumber;
-    private String currentIfscCode;
-    @Enumerated(EnumType.STRING)
-    private AccountType currentAccountType;
-
-    @Column(nullable = false)
+    @Column(name = "new_bank_name", nullable = false)
     private String newBankName;
-    @Column(nullable = false)
+
+    @Column(name = "new_bank_account_number", nullable = false)
     private String newBankAccountNumber;
-    @Column(nullable = false)
+
+    @Column(name = "new_ifsc_code", nullable = false)
     private String newIfscCode;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "new_account_type", nullable = false)
     private AccountType newAccountType;
 
-    private String fileName;
-    private String fileType;
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
     private String imageData;
-    @Enumerated(EnumType.STRING)
-    private AmendmentStatus status;
-    private LocalDateTime requestedAt;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     @PrePersist
     public void prePersist() {
-        this.requestedAt = LocalDateTime.now();
-        if (this.status == null) this.status = AmendmentStatus.PENDING;
+        this.createdAt = LocalDateTime.now();
     }
 }

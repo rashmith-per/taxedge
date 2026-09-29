@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
  
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.taxedge.gst")
 @Component("gstGlobalExceptionHandler")
 public class GlobalExceptionHandler {
  

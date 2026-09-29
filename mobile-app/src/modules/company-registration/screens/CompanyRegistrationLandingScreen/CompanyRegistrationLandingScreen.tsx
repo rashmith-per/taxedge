@@ -12,11 +12,11 @@ type Tab = 'Overview' | 'Documents' | 'Benefits';
 export const CompanyRegistrationLandingScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const setStep = useCompanyRegistrationStore((state) => state.setStep);
+  const resetRegistration = useCompanyRegistrationStore((state) => state.resetRegistration);
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
 
   const handleApply = () => {
-    setStep(0); // Reset wizard to Step 0 (Select Company Type)
+    resetRegistration();
     router.push('/service/company-registration-wizard');
   };
 

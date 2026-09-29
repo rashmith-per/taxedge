@@ -35,6 +35,13 @@ export const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: "500",
   },
+  manualInput: {
+    flex: 1,
+    height: "100%",
+    fontSize: 14.5,
+    fontWeight: "500",
+    paddingVertical: 0,
+  },
   errorText: {
     fontSize: 12,
     color: "#DC2626",

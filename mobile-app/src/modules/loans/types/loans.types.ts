@@ -79,10 +79,12 @@ export interface LoanDetailsFormData {
   estimatedPropertyValue?: string;
   propertyCity?: string;
   preferredTenureMonths: string;
-  hasExistingLoans: boolean;
+  hasExistingLoans?: boolean;
   existingEmi: string;
   monthlyIncomeOrTurnover: string;
-  employmentType: LoanEmploymentType;
+  employmentType?: LoanEmploymentType;
+  equipmentType?: string;
+  customEquipmentType?: string;
 }
 
 export interface ExistingLoanDetail {
@@ -93,12 +95,64 @@ export interface ExistingLoanDetail {
   loanType: string;
 }
 
+export interface LoanApplicantFormData {
+  fullName: string;
+  pan: string;
+  mobile: string;
+  dob: string;
+  currentAddress: string;
+  gender: string;
+  maritalStatus: string;
+  residenceType: string;
+  yearsAtCurrentAddress: string;
+  employerCategory: string;
+  employerName: string;
+  totalWorkExperience: string;
+  yearsInCurrentJob: string;
+  annualIncome: string;
+  hasExistingLoans: any;
+}
+
+export interface LoanPropertyFormData {
+  pincode: string;
+  city: string;
+  district: string;
+  state: string;
+  propertyAddress: string;
+  landmark: string;
+  propertyType: string;
+  propertySubType: string;
+  constructionStatus: string;
+  currentUsage: string;
+  areaType: string;
+  area: string;
+  propertyAge: string;
+  approvingAuthority: string;
+  estimatedMarketValue: string;
+  ownershipType?: string;
+}
+
+export interface LoanOwnershipFormData {
+  ownershipType: string;
+  coOwnerFullName: string;
+  coOwnerRelationship: string;
+  coOwnerPan: string;
+  coOwnerMobile: string;
+  currentLender: string;
+  existingLoanType: string;
+  outstandingLoanAmount: string;
+  isConfirmationChecked: boolean;
+}
+
 export interface LoanBusinessFormData {
   businessName: string;
+  businessType?: string;
+  otherBusinessType?: string;
+  isGstRegistered?: boolean;
   businessConstitution?: string;
   hasUdyam?: boolean;
   gstin: string;
-  udyamRegistration: string;
+  udyamRegistration?: string;
   businessVintageYears: string;
   annualTurnover: string;
   netProfit: string;
@@ -112,9 +166,11 @@ export interface LoanBankingFormData {
   accountNumber: string;
   confirmAccountNumber?: string;
   ifscCode: string;
+  branchName?: string;
+  isIfscVerified?: boolean;
   existingLenderName?: string;
   existingLoanOutstanding?: string;
-  itrFilingStatus: "Filed" | "Not Filed" | "Exempt";
+  itrFilingStatus?: "Filed" | "Not Filed" | "Exempt";
   itrAckNumber?: string;
   grossTotalIncome?: string;
 }
@@ -123,8 +179,8 @@ export type LoanDocumentCategory =
   | "Identity & Address"
   | "Income & Banking"
   | "Business & Tax"
-  | "Property & Collateral"
-  | "Collateral & Others";
+  | "Collateral & Others"
+  | "Property & Collateral";
 
 export interface LoanDocumentItem {
   id: string;
@@ -148,6 +204,9 @@ export interface LoanApplicationDraft {
   loanTypeId: LoanTypeId;
   customerProfile: Partial<CustomerProfileSummary>;
   loanDetails: LoanDetailsFormData;
+  applicantDetails?: LoanApplicantFormData;
+  propertyDetails?: LoanPropertyFormData;
+  ownershipDetails?: LoanOwnershipFormData;
   businessDetails?: LoanBusinessFormData;
   bankingDetails: LoanBankingFormData;
   documents: LoanDocumentItem[];
@@ -163,6 +222,13 @@ export interface LoanApplicationResponse {
   loanType: string;
   status: LoanApplicationStatus;
   amount: number;
+  equipmentType?: string;
+  tenureMonths?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  businessName?: string;
+  applicantName?: string;
   createdAt: string;
   timeline: {
     status: LoanApplicationStatus;

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   KeyboardAvoidingView,
@@ -11,6 +10,11 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
+import {
+  formatIndianCurrency,
+  formatIndianNumberInput,
+  toRawNumericString,
+} from "@/shared/formatters/currencyFormatter";
 import { styles } from "./GstFilingReviewStep.styles";
 
 export interface GstFilingReviewStepProps {
@@ -40,7 +44,8 @@ export interface GstFilingReviewStepProps {
   onUpdateComputation?: (turnover: number, itc: number) => void;
 }
 
-const formatInr = (val: number): string => "₹" + Math.round(val).toLocaleString("en-IN");
+// Display only; values passed to callbacks/API stay numeric.
+const formatInr = (val: number): string => formatIndianCurrency(Math.round(val));
 
 const parseNumeric = (val: number | string | undefined, defaultVal: number): number => {
   if (typeof val === "number") return isNaN(val) ? defaultVal : val;
@@ -53,19 +58,19 @@ const parseNumeric = (val: number | string | undefined, defaultVal: number): num
 };
 
 export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
-  gstin = "29AAAAA0000A1Z5",
-  businessName = "Shree Deshmukh Traders",
+  gstin = "Not provided",
+  businessName = "Registered Business",
   taxpayerScheme = "Regular Scheme",
   filingNature = "Regular Return",
   financialYear = "FY 2025-26",
   filingMonth = "August 2025",
   filingType = "GSTR-1",
   filingFrequency = "Monthly",
-  uploadedDocsCount = 12,
-  totalRequiredDocsCount = 3,
+  uploadedDocsCount = 0,
+  totalRequiredDocsCount = 0,
   missingDocsCount = 0,
-  grossTaxableTurnover = 425000,
-  eligibleItc = 22500,
+  grossTaxableTurnover = 0,
+  eligibleItc = 0,
   caFee = 1986,
   platformGst = 358,
   totalPayable = 2344,
@@ -79,20 +84,11 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
   onUpdateComputation,
 }) => {
   // Numeric computation state
-  const baseTurnover = parseNumeric(grossTaxableTurnover, 425000);
-  const baseItc = parseNumeric(eligibleItc, 22500);
+  const baseTurnover = parseNumeric(grossTaxableTurnover, 0);
+  const baseItc = parseNumeric(eligibleItc, 0);
 
   const [currentTurnover, setCurrentTurnover] = useState(baseTurnover);
   const [currentItc, setCurrentItc] = useState(baseItc);
-
-  // Sync state if props change from external edits
-  useEffect(() => {
-    setCurrentTurnover(baseTurnover);
-  }, [baseTurnover]);
-
-  useEffect(() => {
-    setCurrentItc(baseItc);
-  }, [baseItc]);
 
   // Derived reconciled calculations
   const outputGst = Math.round(currentTurnover * 0.18);
@@ -337,8 +333,8 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
               <TextInput
                 style={styles.modalInput}
                 keyboardType="numeric"
-                value={editTurnoverStr}
-                onChangeText={setEditTurnoverStr}
+                value={formatIndianNumberInput(editTurnoverStr)}
+                onChangeText={(val) => setEditTurnoverStr(toRawNumericString(val))}
                 placeholder="e.g. 4,25,000"
                 placeholderTextColor="#94A3B8"
               />
@@ -349,8 +345,8 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
               <TextInput
                 style={styles.modalInput}
                 keyboardType="numeric"
-                value={editItcStr}
-                onChangeText={setEditItcStr}
+                value={formatIndianNumberInput(editItcStr)}
+                onChangeText={(val) => setEditItcStr(toRawNumericString(val))}
                 placeholder="e.g. 22,500"
                 placeholderTextColor="#94A3B8"
               />

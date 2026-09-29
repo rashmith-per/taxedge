@@ -193,6 +193,7 @@ export const styles = StyleSheet.create({
   modalContainer: {
     borderRadius: 18,
     padding: Spacing.lg,
+    maxHeight: "85%",
   },
   modalTitle: {
     fontSize: Typography.fontSize.lg,
@@ -201,6 +202,73 @@ export const styles = StyleSheet.create({
   },
   modalBody: {
     paddingVertical: Spacing.sm,
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  readOnlyNote: {
+    fontSize: Typography.fontSize.xs,
+    marginBottom: Spacing.sm,
+  },
+  editField: {
+    marginBottom: Spacing.sm,
+  },
+  editLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semiBold,
+    marginBottom: 5,
+  },
+  editInput: {
+    minHeight: 44,
+    borderWidth: BorderWidth.thin,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: Typography.fontSize.base,
+    backgroundColor: BrandColors.WHITE,
+  },
+  fieldError: {
+    color: "#DC2626",
+    fontSize: Typography.fontSize.xs,
+    marginTop: 4,
+  },
+  formError: {
+    color: "#DC2626",
+    fontSize: Typography.fontSize.sm,
+    marginBottom: Spacing.sm,
+  },
+  personalActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  cancelEditButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: BorderRadius.md,
+    borderWidth: BorderWidth.thin,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelEditText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  saveEditButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: BorderRadius.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  saveEditText: {
+    color: BrandColors.WHITE,
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
   },
   modalNote: {
     fontSize: Typography.fontSize.xs - 0.5,

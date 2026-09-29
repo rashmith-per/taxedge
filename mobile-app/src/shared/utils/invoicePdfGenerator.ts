@@ -214,7 +214,7 @@ export const buildInvoiceHtml = (data: InvoiceData): string => {
       <div class="meta-label">Invoice Details</div>
       <div class="meta-value">${data.invoiceNo}</div>
       <div class="meta-sub">Date: ${currentDate}</div>
-      <div class="meta-sub">Txn ID: ${data.txnId || "TXN202608942"}</div>
+      <div class="meta-sub">Txn ID: ${data.txnId || "Not available"}</div>
     </div>
     <div>
       <div class="meta-label">Billed To (Taxpayer)</div>

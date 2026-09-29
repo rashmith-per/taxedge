@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@/shared/hooks/useTheme";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { BrandColors } from "@/shared/theme";
 import {
   styles,
@@ -43,6 +44,7 @@ export const ComplianceHeader: React.FC<ComplianceHeaderProps> = ({
 
   return (
     <View style={[styles.container, getContainerStyle(isDark, insets.top)]}>
+      <FocusAwareStatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       {/* Top App Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity

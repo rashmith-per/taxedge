@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
+  TextInput,
   TouchableOpacity,
   Alert,
   Modal,
@@ -24,6 +25,11 @@ import { styles } from "../../styles/app/(main)/profile.styles";
  
 import { SecondaryButton } from "../../components/SecondaryButton";
 import type { IconName } from "../../types/domain";
+import {
+  validateDateOfBirth,
+  validateEmail,
+  validateFullName,
+} from "../../shared/validators/indianTaxValidators";
 
 /**
  * Account hub. Rows either navigate to a screen that exists, open one of the
@@ -216,7 +222,7 @@ const compactRupees = (value: number): string => {
 export default function ProfileScreen() {
   const colors = useTheme();
   const router = useRouter();
-  const { customer, logout, setAvatar } = useAuthStore();
+  const { customer, logout, setAvatar, fetchAndSyncProfile } = useAuthStore();
   const applications = useApplicationStore((state) => state.applications);
 
   const [pickingPhoto, setPickingPhoto] = useState(false);
@@ -224,8 +230,17 @@ export default function ProfileScreen() {
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [fetchingPersonal, setFetchingPersonal] = useState(false);
   const [personalDetails, setPersonalDetails] = useState<any>(null);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [savingPersonal, setSavingPersonal] = useState(false);
+  const [personalErrors, setPersonalErrors] = useState<Record<string, string>>({});
+  const [personalForm, setPersonalForm] = useState({
+    name: "",
+    email: "",
+    dob: "",
+    address: "",
+  });
 
-  const fetchPersonalDetails = async () => {
+  const fetchPersonalDetails = useCallback(async () => {
     const custId = customer?.customerId;
     if (!custId) {
       console.warn("⚠️ [Profile] No customerId found to fetch personal details");
@@ -238,6 +253,12 @@ export default function ProfileScreen() {
       if (res.success && res.data) {
         console.log("✅ [Profile] Personal details fetched successfully:", res.data);
         setPersonalDetails(res.data);
+        setPersonalForm({
+          name: res.data.name || customer?.name || "",
+          email: res.data.email || customer?.email || "",
+          dob: res.data.dob || customer?.dob || "",
+          address: res.data.address || customer?.address || "",
+        });
       } else {
         console.warn("⚠️ [Profile] Failed to fetch personal details:", res.message);
       }
@@ -246,13 +267,76 @@ export default function ProfileScreen() {
     } finally {
       setFetchingPersonal(false);
     }
+  }, [customer]);
+
+  const updatePersonalField = (field: keyof typeof personalForm, value: string) => {
+    setPersonalForm((current) => ({ ...current, [field]: value }));
+    if (personalErrors[field]) {
+      setPersonalErrors((current) => ({ ...current, [field]: "" }));
+    }
+  };
+
+  const handleSavePersonal = async () => {
+    const errors: Record<string, string> = {};
+    if (!validateFullName(personalForm.name)) {
+      errors.name = "Enter a valid full name";
+    }
+    if (!validateEmail(personalForm.email)) {
+      errors.email = "Enter a valid email address";
+    }
+    if (!validateDateOfBirth(personalForm.dob)) {
+      errors.dob = "Please enter a valid date of birth.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPersonalErrors(errors);
+      return;
+    }
+
+    setSavingPersonal(true);
+    setPersonalErrors({});
+    try {
+      const payload = {
+        ...(personalDetails || {}),
+        customerId: personalDetails?.customerId || customer?.customerId,
+        custId: personalDetails?.custId || customer?.customerId,
+        mobileNumber: personalDetails?.mobileNumber || customer?.mobile,
+        name: personalForm.name.trim().replace(/\s+/g, " "),
+        email: personalForm.email.trim(),
+        dob: personalForm.dob.trim(),
+        address: personalForm.address.trim(),
+      };
+      const result = await authApi.updateCustomerProfile(payload);
+      if (!result.success) {
+        setPersonalErrors({ form: "Unable to update personal information. Please try again." });
+        return;
+      }
+
+      await fetchAndSyncProfile(customer?.mobile);
+      await fetchPersonalDetails();
+      setIsEditingPersonal(false);
+      Alert.alert("Profile updated", "Your personal information was updated successfully.");
+    } catch {
+      setPersonalErrors({ form: "Unable to update personal information. Please try again." });
+    } finally {
+      setSavingPersonal(false);
+    }
+  };
+
+  const closePersonalModal = () => {
+    if (savingPersonal) return;
+    setIsEditingPersonal(false);
+    setPersonalErrors({});
+    setShowPersonalModal(false);
   };
 
   useEffect(() => {
-    if (customer?.customerId) {
-      fetchPersonalDetails();
-    }
-  }, [customer?.customerId]);
+    if (!customer?.customerId) return;
+    const fetchTimer = setTimeout(() => {
+      void fetchPersonalDetails();
+    }, 0);
+    return () => clearTimeout(fetchTimer);
+  }, [customer, fetchPersonalDetails]);
 
   /* ---------- Stats ---------- */
   const activeCount = applications.filter(
@@ -559,7 +643,7 @@ export default function ProfileScreen() {
         visible={showPersonalModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowPersonalModal(false)}
+        onRequestClose={closePersonalModal}
       >
         <View style={styles.modalOverlay}>
           <View
@@ -580,33 +664,72 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.modalBody}>
-                {infoRow("Full Name", personalDetails?.name || customer?.name || "N/A")}
-                {infoRow("Mobile", personalDetails?.mobileNumber || customer?.mobile || "N/A")}
-                {infoRow("Email", personalDetails?.email || customer?.email || "N/A")}
-                {infoRow("Date of Birth", personalDetails?.dob || customer?.dob || "N/A")}
-                {infoRow("Customer Type", personalDetails?.customerType || customer?.customerType || "N/A")}
-                {infoRow(
-                  "Address",
-                  personalDetails?.address ||
-                    customer?.address ||
-                    [
-                      personalDetails?.addressLine1,
-                      personalDetails?.city,
-                      personalDetails?.state,
-                      personalDetails?.pincode,
-                    ]
-                      .filter(Boolean)
-                      .join(", ") ||
-                    "N/A",
+              <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled">
+                {isEditingPersonal ? (
+                  <View style={styles.modalBody}>
+                    <Text style={[styles.readOnlyNote, { color: colors.textSecondary }]}>Mobile number and customer type cannot be changed here.</Text>
+                    {([
+                      ["name", "Full Name", personalForm.name],
+                      ["email", "Email", personalForm.email],
+                      ["dob", "Date of Birth", personalForm.dob],
+                      ["address", "Address", personalForm.address],
+                    ] as const).map(([field, label, value]) => (
+                      <View key={field} style={styles.editField}>
+                        <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{label}</Text>
+                        <TextInput
+                          value={value}
+                          onChangeText={(text) => updatePersonalField(field, text)}
+                          style={[
+                            styles.editInput,
+                            { color: colors.text, borderColor: personalErrors[field] ? colors.error : colors.border },
+                          ]}
+                          keyboardType={field === "email" ? "email-address" : "default"}
+                          autoCapitalize={field === "email" ? "none" : "words"}
+                          multiline={field === "address"}
+                        />
+                        {personalErrors[field] ? <Text style={styles.fieldError}>{personalErrors[field]}</Text> : null}
+                      </View>
+                    ))}
+                    {personalErrors.form ? <Text style={styles.formError}>{personalErrors.form}</Text> : null}
+                    <View style={styles.personalActions}>
+                      <TouchableOpacity style={styles.cancelEditButton} onPress={() => { setIsEditingPersonal(false); setPersonalErrors({}); }} disabled={savingPersonal}>
+                        <Text style={[styles.cancelEditText, { color: colors.text }]}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.saveEditButton, { backgroundColor: colors.orange }]} onPress={handleSavePersonal} disabled={savingPersonal}>
+                        {savingPersonal ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.saveEditText}>Save</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.modalBody}>
+                    {infoRow("Full Name", personalDetails?.name || customer?.name || "N/A")}
+                    {infoRow("Mobile", personalDetails?.mobileNumber || customer?.mobile || "N/A")}
+                    {infoRow("Email", personalDetails?.email || customer?.email || "N/A")}
+                    {infoRow("Date of Birth", personalDetails?.dob || customer?.dob || "N/A")}
+                    {infoRow("Customer Type", personalDetails?.customerType || customer?.customerType || "N/A")}
+                    {infoRow(
+                      "Address",
+                      personalDetails?.address ||
+                        customer?.address ||
+                        [personalDetails?.addressLine1, personalDetails?.city, personalDetails?.state, personalDetails?.pincode]
+                          .filter(Boolean)
+                          .join(", ") ||
+                        "N/A",
+                    )}
+                  </View>
                 )}
-              </View>
+              </ScrollView>
             )}
 
-            <SecondaryButton
-              title="Close"
-              onPress={() => setShowPersonalModal(false)}
-            />
+            {!isEditingPersonal && (
+              <View style={styles.personalActions}>
+                <SecondaryButton title="Close" onPress={closePersonalModal} />
+                <TouchableOpacity style={[styles.saveEditButton, { backgroundColor: colors.orange }]} onPress={() => setIsEditingPersonal(true)}>
+                  <Ionicons name="pencil" size={16} color="#FFFFFF" />
+                  <Text style={styles.saveEditText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>

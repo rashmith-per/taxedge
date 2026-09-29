@@ -5,8 +5,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,17 +18,13 @@ import com.taxedge.gst.repository.GstFilingDocumentsRepository;
 import com.taxedge.gst.repository.GstFilingRepository;
 
 @Service
+@RequiredArgsConstructor
 public class GstFilingDocumentsServiceImpl
         implements GstFilingDocumentsService {
 
-    @Autowired
-    private GstFilingDocumentsRepository documentsRepository;
-
-    @Autowired
-    private GstFilingRepository filingRepository;
-
-    @Autowired
-    private ModelMapper modelMapper;
+    private final GstFilingDocumentsRepository documentsRepository;
+    private final GstFilingRepository filingRepository;
+    private final ModelMapper modelMapper;
 
     @Override
     public String uploadDocument(

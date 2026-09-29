@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { LoanBusinessFormData } from "../../../types/loans.types";
 import { styles } from "./WorkingCapitalBusinessStep.styles";
 
@@ -23,11 +24,16 @@ export const WorkingCapitalBusinessStep: React.FC<WorkingCapitalBusinessStepProp
   errors = {},
 }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Business Operations & Financials</Text>
-      <Text style={styles.sectionSubtitle}>
-        Provide enterprise details, GSTIN compliance, and annual trading numbers.
-      </Text>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <Ionicons name="business" size={26} color="#EA580C" style={styles.headerIcon} />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.sectionTitle}>Business Operations & Financials</Text>
+          <Text style={styles.sectionSubtitle}>
+            Provide enterprise details, GSTIN compliance, and annual trading numbers.
+          </Text>
+        </View>
+      </View>
 
       {/* Business Name */}
       <View style={styles.fieldGroup}>
@@ -126,7 +132,7 @@ export const WorkingCapitalBusinessStep: React.FC<WorkingCapitalBusinessStepProp
         </Text>
         <TextInput
           style={[styles.input, errors.annualTurnover && styles.inputError]}
-          placeholder="e.g. 12000000"
+          placeholder="e.g. 4000000"
           placeholderTextColor="#94A3B8"
           keyboardType="numeric"
           value={data.annualTurnover}
@@ -144,7 +150,7 @@ export const WorkingCapitalBusinessStep: React.FC<WorkingCapitalBusinessStepProp
         </Text>
         <TextInput
           style={[styles.input, errors.netProfit && styles.inputError]}
-          placeholder="e.g. 1800000"
+          placeholder="e.g. 600000"
           placeholderTextColor="#94A3B8"
           keyboardType="numeric"
           value={data.netProfit}

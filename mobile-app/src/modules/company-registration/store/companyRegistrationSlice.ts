@@ -4,9 +4,14 @@ import type { CompanyType, CompanyDetails } from '../types/company.types';
 import type { DirectorInfo, OpcNomineeInfo, PartnerInfo } from '../types/director.types';
 import type { DocumentStatus, Application } from '../../../types/domain';
 import { useApplicationStore } from '../../../store/applicationStore';
+import { getSuffixForType } from '../validation/companySchema';
 
 interface CompanyRegistrationState {
   draft: CompanyRegistrationDraft;
+  fieldErrors: Record<string, string>;
+  setFieldErrors: (errors: Record<string, string>) => void;
+  clearFieldError: (key: string) => void;
+  clearAllFieldErrors: () => void;
   setCompanyType: (type: CompanyType) => void;
   updateCompanyDetails: (details: Partial<CompanyDetails>) => void;
   addDirector: (director: DirectorInfo) => void;
@@ -22,114 +27,51 @@ interface CompanyRegistrationState {
   resetRegistration: () => void;
 }
 
-const initialDraft: CompanyRegistrationDraft = {
-  id: 'INC-2026-89421',
+const removeErrorKeys = (errors: Record<string, string>, keysToRemove: string[]): Record<string, string> =>
+  Object.fromEntries(Object.entries(errors).filter(([key]) => !keysToRemove.includes(key)));
+
+const createInitialDraft = (): CompanyRegistrationDraft => ({
+  id: '',
   company: {
-    companyType: 'Private Limited',
-    companyClass: 'Private',
-    companyCategory: 'Company limited by Shares',
-    companySubCategory: 'Indian Non-Government Company',
-    primaryActivity: 'Information Technology & Software Services',
-    nicCode: '62011',
-    secondaryActivity: 'Data Processing & Hosting Services',
-    proposedName1: 'TaxEdge Tech Private Limited',
-    proposedName2: 'TaxEdge Financial Innovations Pvt Ltd',
-    proposedName3: 'TaxEdge Solutions Private Limited',
-    nameSuffix: 'Private Limited',
+    companyType: '' as CompanyType,
+    companyClass: '' as any,
+    companyCategory: '' as any,
+    companySubCategory: '' as any,
+    primaryActivity: '',
+    nicCode: '',
+    secondaryActivity: '',
+    proposedName1: '',
+    proposedName2: '',
+    proposedName3: '',
+    nameSuffix: '',
     nameAvailabilityStatus: 'Available',
-    registeredAddressLine: 'Plot 42, Tech Park Phase 2, HITEC City',
-    registeredCity: 'Hyderabad',
-    registeredDistrict: 'Rangareddy',
-    registeredState: 'Telangana',
-    registeredPincode: '500081',
-    premisesOwnership: 'Rented',
-    companyEmail: 'contact@taxedgetech.com',
-    companyMobile: '9876543210',
-    officeAddressProofName: 'Electricity_Bill.pdf',
+    registeredAddressLine: '',
+    registeredCity: '',
+    registeredDistrict: '',
+    registeredState: '',
+    registeredPincode: '',
+    premisesOwnership: '' as any,
+    companyEmail: '',
+    companyMobile: '',
+    officeAddressProofName: '',
     officeAddressProofUri: '',
-    ownershipDocName: 'Rent_Agreement_Office.pdf',
+    ownershipDocName: '',
     ownershipDocUri: '',
-    ownerNocName: 'Owner_NOC.pdf',
+    ownerNocName: '',
     ownerNocUri: '',
-    authorizedCapital: 100000,
-    paidUpCapital: 100000,
-    numberOfShares: 10000,
-    faceValuePerShare: 10,
+    authorizedCapital: 0,
+    paidUpCapital: 0,
+    numberOfShares: 0,
+    faceValuePerShare: 0,
   },
-  directors: [
-    {
-      id: 'dir-1',
-      name: 'Rajesh Kumar',
-      pan: 'ABCDE1234F',
-      aadhaar: '123456789012',
-      dob: '1988-05-14',
-      fatherName: 'Suresh Kumar',
-      gender: 'Male',
-      nationality: 'Indian',
-      placeOfBirth: 'Hyderabad',
-      occupation: 'Professional',
-      educationalQualification: 'Post Graduate',
-      designation: 'Director',
-      category: 'Promoter Director',
-      email: 'rajesh@taxedge.com',
-      phone: '9876543210',
-      hasDin: true,
-      din: '08492014',
-      hasDsc: true,
-      sharesPercentage: 60,
-      residentialAddress: 'Flat 302, Green Acres, Hyderabad',
-      addressLine1: 'Flat 302, Green Acres, Road No 12',
-      city: 'Hyderabad',
-      district: 'Rangareddy',
-      state: 'Telangana',
-      pinCode: '500034',
-      isResidentInIndia: true,
-      sameAsPermanentAddress: true,
-      numberOfShares: 6000,
-      amountSubscribed: 60000,
-      identityProofDocName: 'Aadhaar_Card_Rajesh.pdf',
-      residentialAddressProofDocName: 'Passport_Rajesh.pdf',
-    },
-    {
-      id: 'dir-2',
-      name: 'Anita Sharma',
-      pan: 'XYZPS9876K',
-      aadhaar: '987654321098',
-      dob: '1990-11-20',
-      fatherName: 'Ramesh Sharma',
-      gender: 'Female',
-      nationality: 'Indian',
-      placeOfBirth: 'Hyderabad',
-      occupation: 'Business',
-      educationalQualification: 'Graduate',
-      designation: 'Director',
-      category: 'Promoter Director',
-      email: 'anita@taxedge.com',
-      phone: '9812345678',
-      hasDin: false,
-      hasDsc: true,
-      sharesPercentage: 40,
-      residentialAddress: 'H.No 12-4, Jubliee Hills, Hyderabad',
-      addressLine1: 'H.No 12-4, Jubilee Hills, Road No 36',
-      city: 'Hyderabad',
-      district: 'Hyderabad',
-      state: 'Telangana',
-      pinCode: '500033',
-      isResidentInIndia: true,
-      sameAsPermanentAddress: true,
-      numberOfShares: 4000,
-      amountSubscribed: 40000,
-      identityProofDocName: 'Aadhaar_Card_Anita.pdf',
-      residentialAddressProofDocName: '',
-    },
-  ],
+  directors: [],
   opcNominee: {
-    name: 'Vikram Sharma',
-    pan: 'NOMEE4321P',
-    aadhaar: '456789123045',
-    email: 'vikram.nominee@taxedge.com',
-    phone: '9765432109',
-    relationship: 'Brother',
+    name: '',
+    pan: '',
+    aadhaar: '',
+    email: '',
+    phone: '',
+    relationship: '',
   },
   partners: [],
   documents: [
@@ -143,13 +85,13 @@ const initialDraft: CompanyRegistrationDraft = {
     { id: 'doc-aoa', name: 'Draft e-AoA (Articles of Association)', category: 'Statutory Docs', required: false, status: 'Pending' },
   ],
   linkedRegistrations: {
-    pan: true,
-    tan: true,
-    gst: true,
-    esic: true,
-    epfo: true,
-    professionalTax: true,
-    bankAccount: true,
+    pan: false,
+    tan: false,
+    gst: false,
+    esic: false,
+    epfo: false,
+    professionalTax: false,
+    bankAccount: false,
   },
   feeBreakdown: {
     professionalFee: 4999,
@@ -158,9 +100,9 @@ const initialDraft: CompanyRegistrationDraft = {
     totalAmount: 7399,
   },
   trackingStages: [
-    { id: 'stg-1', title: 'Draft Creation', description: 'Application initiated by user', status: 'completed', updatedAt: '18 Sep 2026' },
-    { id: 'stg-2', title: 'KYC & Document Verification', description: 'Reviewing PAN, Aadhaar & Office Proofs', status: 'completed', updatedAt: '18 Sep 2026' },
-    { id: 'stg-3', title: 'Under Review', description: 'TaxEdge compliance expert validation', status: 'current', updatedAt: 'In Progress' },
+    { id: 'stg-1', title: 'Draft Creation', description: 'Application initiated by user', status: 'pending' },
+    { id: 'stg-2', title: 'KYC & Document Verification', description: 'Reviewing PAN, Aadhaar & Office Proofs', status: 'pending' },
+    { id: 'stg-3', title: 'Under Review', description: 'TaxEdge compliance expert validation', status: 'pending' },
     { id: 'stg-4', title: 'Name Reservation (RUN / SPICe+ Part A)', description: 'Filing preferred names with MCA CRC', status: 'pending' },
     { id: 'stg-5', title: 'DSC & DIN Processing', description: 'Digital signature token generation', status: 'pending' },
     { id: 'stg-6', title: 'Ready for SPICe+ Part B Filing', description: 'Final incorporation payload compilation', status: 'pending' },
@@ -171,28 +113,69 @@ const initialDraft: CompanyRegistrationDraft = {
   totalFee: 4999,
   paymentStatus: 'Pending',
   status: 'Draft',
-  createdAt: '2026-09-18',
-};
+  createdAt: '',
+});
+
+const createReceipt = (draft: CompanyRegistrationDraft, paymentMethod: string): ApplicationReceipt => ({
+  applicationId: draft.id,
+  companyName: draft.company.proposedName1,
+  companyType: draft.company.companyType,
+  appliedDate: new Date().toISOString().split('T')[0],
+  totalAmount: draft.feeBreakdown.totalAmount,
+  paymentStatus: 'Paid',
+  paymentMethod,
+  transactionId: `TXN-${Math.floor(10000000 + Math.random() * 90000000)}`,
+});
+
+const createApplicationObject = (draft: CompanyRegistrationDraft): Application => ({
+  id: draft.id,
+  serviceId: 'company-registration',
+  serviceName: 'Company Registration',
+  category: 'BUSINESS',
+  status: 'Under Verification',
+  progress: 100,
+  assignedExecutive: 'TaxEdge Compliance Team',
+  paymentAmount: draft.feeBreakdown.totalAmount,
+  paymentStatus: 'Paid',
+  createdAt: new Date().toISOString().split('T')[0],
+  formData: {
+    companyType: draft.company.companyType,
+    proposedName: draft.company.proposedName1,
+  },
+  documents: draft.documents.map((d) => ({ name: d.name, status: d.status, fileUri: d.fileUri })),
+  timeline: (draft.trackingStages || []).map((stg) => ({
+    title: stg.title,
+    description: stg.description,
+    status: stg.status,
+    date: stg.updatedAt || 'Today',
+  })),
+  chatHistory: [],
+});
 
 export const useCompanyRegistrationStore = create<CompanyRegistrationState>((set) => ({
-  draft: initialDraft,
+  draft: createInitialDraft(),
+  fieldErrors: {},
+  setFieldErrors: (fieldErrors) => set({ fieldErrors }),
+  clearFieldError: (key) => set((state) => ({ fieldErrors: removeErrorKeys(state.fieldErrors, [key]) })),
+  clearAllFieldErrors: () => set({ fieldErrors: {} }),
   setCompanyType: (type) =>
     set((state) => {
       const isOpc = type === 'One Person Company (OPC)';
-      let directors = state.draft.directors;
-      if (isOpc && directors.length > 0) {
-        directors = [{ ...directors[0], sharesPercentage: 100 }];
-      }
+      const directors = isOpc && state.draft.directors.length > 0
+        ? [{ ...state.draft.directors[0], sharesPercentage: 100 }]
+        : state.draft.directors;
       return {
+        fieldErrors: removeErrorKeys(state.fieldErrors, ['companyType', 'nameSuffix']),
         draft: {
           ...state.draft,
-          company: { ...state.draft.company, companyType: type },
+          company: { ...state.draft.company, companyType: type, nameSuffix: getSuffixForType(type) },
           directors,
         },
       };
     }),
   updateCompanyDetails: (details) =>
     set((state) => ({
+      fieldErrors: removeErrorKeys(state.fieldErrors, Object.keys(details)),
       draft: {
         ...state.draft,
         company: { ...state.draft.company, ...details },
@@ -200,10 +183,9 @@ export const useCompanyRegistrationStore = create<CompanyRegistrationState>((set
     })),
   addDirector: (director) =>
     set((state) => {
-      if (state.draft.company.companyType === 'One Person Company (OPC)') {
-        return state; // Prevent adding more than 1 director/promoter for OPC
-      }
+      if (state.draft.company.companyType === 'One Person Company (OPC)') return state;
       return {
+        fieldErrors: removeErrorKeys(state.fieldErrors, ['directorsCount']),
         draft: {
           ...state.draft,
           directors: [...state.draft.directors, director],
@@ -212,6 +194,10 @@ export const useCompanyRegistrationStore = create<CompanyRegistrationState>((set
     }),
   updateDirector: (id, updatedFields) =>
     set((state) => ({
+      fieldErrors: removeErrorKeys(
+        state.fieldErrors,
+        Object.keys(updatedFields).flatMap((k) => [`dir_${id}_${k}`, k])
+      ),
       draft: {
         ...state.draft,
         directors: state.draft.directors.map((d) => (d.id === id ? { ...d, ...updatedFields } : d)),
@@ -259,70 +245,19 @@ export const useCompanyRegistrationStore = create<CompanyRegistrationState>((set
         ? state.draft.documents.map((doc) => (doc.id === documentId ? { ...doc, status, fileUri, fileName } : doc))
         : [...state.draft.documents, { id: documentId, name: documentId, category: 'Conditional Doc', required: true, status, fileUri, fileName }];
       return {
-        draft: {
-          ...state.draft,
-          documents: updatedDocs,
-        },
+        fieldErrors: removeErrorKeys(state.fieldErrors, [documentId, 'documentsChecklist']),
+        draft: { ...state.draft, documents: updatedDocs },
       };
     }),
-  setStep: (currentStep) =>
-    set((state) => ({
-      draft: { ...state.draft, currentStep },
-    })),
+  setStep: (currentStep) => set((state) => ({ draft: { ...state.draft, currentStep } })),
   processPayment: (paymentMethod) =>
     set((state) => {
-      const receipt: ApplicationReceipt = {
-        applicationId: state.draft.id,
-        companyName: state.draft.company.proposedName1,
-        companyType: state.draft.company.companyType,
-        appliedDate: new Date().toISOString().split("T")[0],
-        totalAmount: state.draft.feeBreakdown.totalAmount,
-        paymentStatus: 'Paid',
-        paymentMethod,
-        transactionId: `TXN-${Math.floor(10000000 + Math.random() * 90000000)}`,
-      };
-
-      const mappedApp: Application = {
-        id: state.draft.id,
-        serviceId: 'company-registration',
-        serviceName: 'Company Registration',
-        category: 'BUSINESS',
-        status: 'Under Verification',
-        progress: 100,
-        assignedExecutive: 'TaxEdge Compliance Team',
-        paymentAmount: state.draft.feeBreakdown.totalAmount,
-        paymentStatus: 'Paid',
-        createdAt: new Date().toISOString().split("T")[0],
-        formData: {
-          companyType: state.draft.company.companyType,
-          proposedName: state.draft.company.proposedName1,
-        },
-        documents: state.draft.documents.map(d => ({
-          name: d.name,
-          status: d.status as any,
-          fileUri: d.fileUri
-        })),
-        timeline: state.draft.trackingStages?.map((stg) => ({
-          title: stg.title,
-          description: stg.description,
-          status: stg.status as "completed" | "current" | "pending",
-          date: stg.updatedAt || 'Today',
-        })) || [],
-        chatHistory: [],
-      };
-
-      useApplicationStore.getState().addApplication(mappedApp);
-
+      const receipt = createReceipt(state.draft, paymentMethod);
+      const app = createApplicationObject(state.draft);
+      useApplicationStore.getState().addApplication(app);
       return {
-        draft: {
-          ...state.draft,
-          paymentStatus: 'Paid',
-          status: 'Submitted',
-          receipt,
-        },
+        draft: { ...state.draft, paymentStatus: 'Paid', status: 'Submitted', receipt },
       };
     }),
-  resetRegistration: () => set({ draft: initialDraft }),
+  resetRegistration: () => set({ draft: createInitialDraft(), fieldErrors: {} }),
 }));
-
-

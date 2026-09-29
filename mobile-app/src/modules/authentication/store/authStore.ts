@@ -5,12 +5,17 @@ import { authService } from "../services/authService";
 import { authStorage } from "../services/authStorage";
 import { authApi } from "../services/authApi";
 import { biometricService } from "../services/biometricService";
+import { useNotificationStore } from "../../../store/notificationStore";
 import {
   validateLoginPhone,
   validateOtp,
   validatePasscode,
   validatePasscodeMatch,
 } from "../validation/authSchema";
+
+const refreshNotificationsForActiveCustomer = () => {
+  useNotificationStore.getState().loadPersisted().catch(() => {});
+};
 
 const toCustomer = (u: DevUser): Customer => {
   const isPlaceholderName =
@@ -332,6 +337,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoggedIn: false,
           error: null,
         });
+        refreshNotificationsForActiveCustomer();
         return {
           success: true,
           isExistingUser: true,
@@ -365,6 +371,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           customer: toCustomer(placeholderUser),
           error: null,
         });
+        refreshNotificationsForActiveCustomer();
         return {
           success: true,
           isExistingUser: false,
@@ -414,6 +421,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           error: null,
           isCompleteProfileModalOpen: false,
         });
+        refreshNotificationsForActiveCustomer();
 
         // Hydrate profile from storage
         try {
@@ -649,6 +657,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { useApplicationStore } = require("../../../store/applicationStore");
       useApplicationStore.getState().resetStore?.();
     } catch {}
+    refreshNotificationsForActiveCustomer();
   },
 
   syncFromDevAuth: () => {

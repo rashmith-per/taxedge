@@ -1,4 +1,5 @@
 import { apiClient, SERVER_IP, SERVER_PORT } from "../../../core/api/apiClient";
+import { tokenManager } from "../../../core/authentication/tokenManager";
 import type { GstRegistrationDraft, GstFilingDraft } from "../types/gstTypes";
 
 export interface GstinEntityDetails {
@@ -45,11 +46,14 @@ export const gstApi = {
       registrationDate: "12-Aug-2022",
     };
   },
+  getBusiness: async (gstId: string) => {
+    return apiClient.get<any>(`/api/v1/gst/business/${gstId}`);
+  },
   submitRegistration: async (businessData: any) => {
-    return apiClient.post<any>("/gst/business/register", businessData);
+    return apiClient.post<any>("/api/v1/gst/business/register", businessData);
   },
   updateRegistration: async (gstId: string, businessData: any) => {
-    return apiClient.put<any>(`/gst/business/update/${gstId}`, businessData);
+    return apiClient.put<any>(`/api/v1/gst/business/update/${gstId}`, businessData);
   },
   uploadDocument: async (
     gstId: string,
@@ -77,12 +81,18 @@ export const gstApi = {
     // Bypassing fetch entirely using XMLHttpRequest which is bulletproof in React Native
     const baseUrl =
       apiClient.getBaseUrl() || `http://${SERVER_IP}:${SERVER_PORT}`;
-    const url = `${baseUrl}/gst/documents/upload`;
+    const url = `${baseUrl}/api/v1/gst/documents/upload`;
     console.log("Uploading direct via XHR to:", url);
+
+    const token = await tokenManager.getAccessToken();
 
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url);
+
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -107,10 +117,10 @@ export const gstApi = {
     });
   },
   createFiling: async (payload: any) => {
-    return apiClient.post<string>("/gst/filing/create", payload);
+    return apiClient.post<string>("/api/v1/gst/filing/create", payload);
   },
   updateFiling: async (filingId: string, payload: any) => {
-    return apiClient.put<string>(`/gst/filing/${filingId}`, payload);
+    return apiClient.put<string>(`/api/v1/gst/filing/${filingId}`, payload);
   },
   uploadFilingDocument: async (
     filingId: string,
@@ -132,12 +142,18 @@ export const gstApi = {
 
     const baseUrl =
       apiClient.getBaseUrl() || `http://${SERVER_IP}:${SERVER_PORT}`;
-    const url = `${baseUrl}/gst/filing/documents/upload`;
+    const url = `${baseUrl}/api/v1/gst/filing/documents/upload`;
     console.log("Uploading filing doc via XHR to:", url);
+
+    const token = await tokenManager.getAccessToken();
 
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url);
+
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -162,11 +178,11 @@ export const gstApi = {
     });
   },
   fetchFilings: async (gstin: string) => {
-    return apiClient.get<any[]>(`/gst/filing/${gstin}`);
+    return apiClient.get<any[]>(`/api/v1/gst/filing/${gstin}`);
   },
   fetchStatus: async (applicationId: string) => {
     return apiClient.get<{ status: string; timeline: any[] }>(
-      `/gst/status/${applicationId}`,
+      `/api/v1/gst/status/${applicationId}`,
     );
   },
 };

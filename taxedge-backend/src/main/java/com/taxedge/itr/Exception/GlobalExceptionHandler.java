@@ -2,11 +2,13 @@ package com.taxedge.itr.Exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.taxedge.itr.Exception.ErrorResponse;
 
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.taxedge.itr")
+@Component("itrGlobalExceptionHandler")
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ResourceNotFoundException.class)

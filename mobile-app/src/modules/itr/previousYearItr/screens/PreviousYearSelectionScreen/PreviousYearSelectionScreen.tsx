@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   ScrollView,
-  StatusBar,
 } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PreviousYearHeader } from "../../components/PreviousYearHeader";
@@ -80,7 +80,7 @@ export const PreviousYearSelectionScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, getContainerInsetsStyle(insets.top)]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
       <PreviousYearHeader />

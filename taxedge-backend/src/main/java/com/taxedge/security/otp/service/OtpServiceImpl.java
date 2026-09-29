@@ -2,19 +2,19 @@ package com.taxedge.security.otp.service;
 
 import java.security.SecureRandom;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.taxedge.security.otp.entity.Otp;
 import com.taxedge.security.otp.repository.OtpRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OtpServiceImpl implements OtpService {
 
-	@Autowired
     private final OtpRepository otpRepository;
 
     private final SecureRandom secureRandom = new SecureRandom();
@@ -36,7 +36,7 @@ public class OtpServiceImpl implements OtpService {
 
         otpRepository.save(otpEntity);
 
-        System.out.println("OTP for " + otp.getMobileNumber() + " is: " + otpCode);
+        log.info("OTP for {} is: {}", otp.getMobileNumber(), otpCode);
 
         return "OTP sent successfully";
     }

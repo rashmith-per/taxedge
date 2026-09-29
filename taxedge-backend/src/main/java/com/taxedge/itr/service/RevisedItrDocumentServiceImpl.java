@@ -2,8 +2,6 @@ package com.taxedge.itr.service;
 
 import java.io.IOException;
 import java.util.Base64;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,40 +11,45 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.taxedge.itr.Exception.ResourceNotFoundException;
 import com.taxedge.itr.dto.RevisedItrDocumentDto;
+import com.taxedge.itr.entity.RevisedItr;
 import com.taxedge.itr.entity.RevisedItrDocument;
-import com.taxedge.itr.enums.RevisedItrDocumentType;
 import com.taxedge.itr.helper.RandomNumberGenerator;
 import com.taxedge.itr.repository.RevisedItrDocumentRepository;
+import com.taxedge.itr.repository.RevisedItrRepository;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @Service
 public class RevisedItrDocumentServiceImpl implements RevisedItrDocumentService {
 
-	@Autowired
-	private RevisedItrDocumentRepository documentRepository;
+	
+	private final  RevisedItrDocumentRepository revisedItrDocumentRepository;
+
+	
+	private final RevisedItrRepository revisedItrRepository;
 
 	@Autowired
 	@Qualifier("itrModelMapper")
 	private ModelMapper modelMapper;
 
 	@Override
-	public String registerDocument(String revisedItrId, String documentType, MultipartFile file) throws IOException {
+	public String registerDocuments(String revisedItrId, MultipartFile panCard, MultipartFile aadhaarCard,
+			MultipartFile form16Form16A, MultipartFile aisTisStatement, MultipartFile bankStatements,
+			MultipartFile investmentProofs) throws IOException {
 
-		if (file == null || file.isEmpty()) {
-			throw new IllegalArgumentException("File is required");
+		RevisedItr revisedItr = revisedItrRepository.findById(revisedItrId).orElseThrow(
+				() -> new ResourceNotFoundException("Revised ITR not found with revisedItrId: " + revisedItrId));
+
+		if (panCard == null && aadhaarCard == null && form16Form16A == null && aisTisStatement == null
+				&& bankStatements == null && investmentProofs == null) {
+
+			throw new IllegalArgumentException("Please select at least one document");
 		}
 
-		RevisedItrDocumentType type;
+		if (!revisedItrDocumentRepository.findByRevisedItrRevisedItrId(revisedItrId).isEmpty()) {
 
-		try {
-			type = RevisedItrDocumentType.valueOf(documentType.toUpperCase());
-		} catch (IllegalArgumentException e) {
-			throw new IllegalArgumentException("Invalid document type: " + documentType);
-		}
-
-		boolean alreadyExists = documentRepository.existsByRevisedItrIdAndDocumentType(revisedItrId, type);
-
-		if (alreadyExists) {
-			throw new IllegalArgumentException("Document already uploaded for: " + type);
+			throw new IllegalArgumentException("Documents already exist for this Revised ITR");
 		}
 
 		RevisedItrDocument document = new RevisedItrDocument();
@@ -54,69 +57,111 @@ public class RevisedItrDocumentServiceImpl implements RevisedItrDocumentService 
 		String documentId = RandomNumberGenerator.generateRevisedItrDocumentId();
 
 		document.setDocumentId(documentId);
-		document.setRevisedItrId(revisedItrId);
-		document.setDocumentType(type);
-		document.setFileName(file.getOriginalFilename());
-		document.setFileType(file.getContentType());
 
-		String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
+		document.setRevisedItr(revisedItr);
 
-		document.setImageData(base64Data);
-
-		documentRepository.save(document);
-
-		return "Revised ITR document uploaded successfully. Document ID: " + documentId;
-	}
-
-	@Override
-	public String updateDocument(String documentId, MultipartFile file) throws IOException {
-
-		if (file == null || file.isEmpty()) {
-			throw new IllegalArgumentException("File is required");
+		if (panCard != null && !panCard.isEmpty()) {
+			document.setPanCard(convertFile(panCard));
 		}
 
-		RevisedItrDocument document = documentRepository.findById(documentId)
-				.orElseThrow(() -> new ResourceNotFoundException("Document not found with documentId: " + documentId));
+		if (aadhaarCard != null && !aadhaarCard.isEmpty()) {
+			document.setAadhaarCard(convertFile(aadhaarCard));
+		}
 
-		document.setFileName(file.getOriginalFilename());
+		if (form16Form16A != null && !form16Form16A.isEmpty()) {
+			document.setForm16Form16A(convertFile(form16Form16A));
+		}
 
-		document.setFileType(file.getContentType());
+		if (aisTisStatement != null && !aisTisStatement.isEmpty()) {
+			document.setAisTisStatement(convertFile(aisTisStatement));
+		}
 
-		String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
+		if (bankStatements != null && !bankStatements.isEmpty()) {
+			document.setBankStatements(convertFile(bankStatements));
+		}
 
-		document.setImageData(base64Data);
+		if (investmentProofs != null && !investmentProofs.isEmpty()) {
+			document.setInvestmentProofs(convertFile(investmentProofs));
+		}
 
-		documentRepository.save(document);
+		revisedItrDocumentRepository.save(document);
 
-		return "Revised ITR document updated successfully";
+		return "Revised ITR documents uploaded successfully. Document ID: " + documentId;
 	}
 
 	@Override
-	public RevisedItrDocumentDto getDocument(String documentId) {
+	public String updateDocuments(String documentId, MultipartFile panCard, MultipartFile aadhaarCard,
+			MultipartFile form16Form16A, MultipartFile aisTisStatement, MultipartFile bankStatements,
+			MultipartFile investmentProofs) throws IOException {
 
-		RevisedItrDocument document = documentRepository.findById(documentId)
-				.orElseThrow(() -> new ResourceNotFoundException("Document not found with documentId: " + documentId));
+		RevisedItrDocument document = revisedItrDocumentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("Revised ITR documents not found with documentId: " + documentId));
 
-		return modelMapper.map(document, RevisedItrDocumentDto.class);
+		if (panCard == null && aadhaarCard == null && form16Form16A == null && aisTisStatement == null
+				&& bankStatements == null && investmentProofs == null) {
+
+			throw new IllegalArgumentException("Please select at least one document");
+		}
+
+		if (panCard != null && !panCard.isEmpty()) {
+			document.setPanCard(convertFile(panCard));
+		}
+
+		if (aadhaarCard != null && !aadhaarCard.isEmpty()) {
+			document.setAadhaarCard(convertFile(aadhaarCard));
+		}
+
+		if (form16Form16A != null && !form16Form16A.isEmpty()) {
+			document.setForm16Form16A(convertFile(form16Form16A));
+		}
+
+		if (aisTisStatement != null && !aisTisStatement.isEmpty()) {
+			document.setAisTisStatement(convertFile(aisTisStatement));
+		}
+
+		if (bankStatements != null && !bankStatements.isEmpty()) {
+			document.setBankStatements(convertFile(bankStatements));
+		}
+
+		if (investmentProofs != null && !investmentProofs.isEmpty()) {
+			document.setInvestmentProofs(convertFile(investmentProofs));
+		}
+
+		revisedItrDocumentRepository.save(document);
+
+		return "Revised ITR documents updated successfully";
 	}
 
 	@Override
-	public List<RevisedItrDocumentDto> getDocuments(String revisedItrId) {
+	public RevisedItrDocumentDto getDocuments(String documentId) {
 
-		List<RevisedItrDocument> documents = documentRepository.findByRevisedItrId(revisedItrId);
+		RevisedItrDocument document = revisedItrDocumentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("Revised ITR documents not found with documentId: " + documentId));
 
-		return documents.stream().map(document -> modelMapper.map(document, RevisedItrDocumentDto.class))
-				.collect(Collectors.toList());
+		RevisedItrDocumentDto dto = modelMapper.map(document, RevisedItrDocumentDto.class);
+
+		dto.setRevisedItrId(document.getRevisedItr().getRevisedItrId());
+
+		return dto;
 	}
 
 	@Override
-	public String deleteDocument(String documentId) {
+	public String deleteDocuments(String documentId) {
 
-		RevisedItrDocument document = documentRepository.findById(documentId)
-				.orElseThrow(() -> new ResourceNotFoundException("Document not found with documentId: " + documentId));
+		RevisedItrDocument document = revisedItrDocumentRepository.findById(documentId).orElseThrow(
+				() -> new ResourceNotFoundException("Revised ITR documents not found with documentId: " + documentId));
 
-		documentRepository.delete(document);
+		revisedItrDocumentRepository.delete(document);
 
-		return "Revised ITR document deleted successfully";
+		return "Revised ITR documents deleted successfully";
+	}
+
+	private String convertFile(MultipartFile file) throws IOException {
+
+		if (file == null || file.isEmpty()) {
+			throw new IllegalArgumentException("Document file is empty");
+		}
+
+		return Base64.getEncoder().encodeToString(file.getBytes());
 	}
 }

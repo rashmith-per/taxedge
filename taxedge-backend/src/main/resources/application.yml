@@ -11,7 +11,7 @@ spring:
 
 
 server:
-  port: ${PORT:8086}
+  port: 8086
 
   error:
     include-message: always

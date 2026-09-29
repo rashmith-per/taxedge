@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
@@ -27,7 +28,7 @@ export function GstCancellationReview({
   
     return (
       <View style={styles.root}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View
           style={[
             styles.headerBar,

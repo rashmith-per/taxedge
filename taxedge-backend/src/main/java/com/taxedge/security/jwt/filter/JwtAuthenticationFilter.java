@@ -29,19 +29,18 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
 
-    @Autowired
-    private JwtService jwtService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final JwtService jwtService;
+    private final ObjectMapper objectMapper;
 
     
     @Override

@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { LoanDetailsFormData, LoanEmploymentType } from "../../../types/loans.types";
+import { View, Text, TextInput } from "react-native";
+import { LoanDetailsFormData } from "../../../types/loans.types";
+import { Dropdown } from "../../../../../shared/components/Dropdown";
 import { styles } from "./MachineryLoanFinancialsStep.styles";
 
 export interface MachineryLoanFinancialsStepProps {
@@ -9,257 +10,124 @@ export interface MachineryLoanFinancialsStepProps {
   errors?: Record<string, string>;
 }
 
-const MACHINERY_CATEGORIES = [
-  "CNC & Automation Tool",
-  "Medical & Diagnostic Gear",
-  "Printing & Packaging Unit",
-  "Heavy Construction Crane",
-  "Food Processing Plant",
-  "Textile Weaving Machine",
-];
-
-const TENURE_OPTIONS = [
-  { label: "24 M (2 Yrs)", value: "24" },
-  { label: "36 M (3 Yrs)", value: "36" },
-  { label: "48 M (4 Yrs)", value: "48" },
-  { label: "60 M (5 Yrs)", value: "60" },
-  { label: "84 M (7 Yrs)", value: "84" },
-];
-
-const AMOUNT_PRESETS = [
+export const MACHINERY_AMOUNT_OPTIONS = [
+  { label: "₹5 Lakhs", value: "500000" },
+  { label: "₹10 Lakhs", value: "1000000" },
   { label: "₹15 Lakhs", value: "1500000" },
+  { label: "₹25 Lakhs", value: "2500000" },
   { label: "₹30 Lakhs", value: "3000000" },
   { label: "₹50 Lakhs", value: "5000000" },
   { label: "₹1 Crore", value: "10000000" },
   { label: "₹2.5 Crores", value: "25000000" },
 ];
 
-const EMPLOYMENT_TYPES: { label: string; value: LoanEmploymentType }[] = [
-  { label: "Manufacturing Enterprise", value: "Business Owner" },
-  { label: "Service Provider / Lab", value: "Self-Employed Professional" },
-  { label: "Private Limited / LLP", value: "Salaried" },
+export const MACHINERY_EQUIPMENT_OPTIONS = [
+  "CNC / Automation Machinery",
+  "Medical Equipment",
+  "Printing / Packaging Machinery",
+  "Construction Machinery",
+  "Food Processing Machinery",
+  "Textile Machinery",
+  "Other",
 ];
+
+export const MACHINERY_TENURE_OPTIONS = [
+  12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48,
+  51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84,
+].map((months) => ({
+  label: `${months} Months`,
+  value: String(months),
+}));
 
 export const MachineryLoanFinancialsStep: React.FC<MachineryLoanFinancialsStepProps> = ({
   data,
   onChange,
   errors = {},
 }) => {
+  const isOtherEquipment =
+    data.purpose === "Other" ||
+    (Boolean(data.purpose) &&
+      !MACHINERY_EQUIPMENT_OPTIONS.slice(0, -1).includes(data.purpose));
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Machinery & Equipment Capital</Text>
+      <Text style={styles.sectionTitle}>Machinery Loan Details</Text>
       <Text style={styles.sectionSubtitle}>
-        Specify equipment financing required, machinery category, and repayment tenure.
+        Specify required loan amount, machinery category, and repayment tenure.
       </Text>
 
       {/* Required Loan Amount */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Requested Financing Amount (₹) <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, errors.requiredAmount && styles.inputError]}
-          placeholder="e.g. 3000000"
-          placeholderTextColor="#94A3B8"
-          keyboardType="numeric"
+        <Dropdown
+          label="Required Loan Amount"
+          required
+          placeholder="Select amount"
+          options={MACHINERY_AMOUNT_OPTIONS}
           value={data.requiredAmount}
-          onChangeText={(text) => onChange("requiredAmount", text)}
+          onSelect={(val) => onChange("requiredAmount", val)}
+          error={errors.requiredAmount}
         />
-        <View style={styles.chipRow}>
-          {AMOUNT_PRESETS.map((item) => (
-            <TouchableOpacity
-              key={item.value}
-              onPress={() => onChange("requiredAmount", item.value)}
-              style={styles.chip}
-            >
-              <Text style={styles.chipText}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {errors.requiredAmount && (
-          <Text style={styles.errorText}>{errors.requiredAmount}</Text>
-        )}
       </View>
 
-      {/* Machinery Purpose */}
+      {/* Machinery / Equipment Type */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Machinery / Equipment Type <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, errors.purpose && styles.inputError]}
-          placeholder="e.g. 5-Axis CNC Milling Machine"
-          placeholderTextColor="#94A3B8"
-          value={data.purpose}
-          onChangeText={(text) => onChange("purpose", text)}
+        <Dropdown
+          label="Machinery / Equipment Type"
+          required
+          placeholder="Select equipment type"
+          options={MACHINERY_EQUIPMENT_OPTIONS}
+          value={isOtherEquipment && data.purpose !== "Other" ? "Other" : data.purpose}
+          onSelect={(val) => {
+            if (val === "Other") {
+              onChange("purpose", "Other");
+            } else {
+              onChange("purpose", val);
+              onChange("customEquipmentType", "");
+            }
+          }}
+          error={errors.purpose}
         />
-        <View style={styles.chipRow}>
-          {MACHINERY_CATEGORIES.map((category) => {
-            const isSelected = data.purpose === category;
-            return (
-              <TouchableOpacity
-                key={category}
-                onPress={() => onChange("purpose", category)}
-                style={[styles.chip, isSelected && styles.chipActive]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    isSelected && styles.chipTextActive,
-                  ]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {errors.purpose && (
-          <Text style={styles.errorText}>{errors.purpose}</Text>
-        )}
-      </View>
 
-      {/* Preferred Tenure */}
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Repayment Tenure <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <View style={styles.tenureGrid}>
-          {TENURE_OPTIONS.map((item) => {
-            const isSelected = data.preferredTenureMonths === item.value;
-            return (
-              <TouchableOpacity
-                key={item.value}
-                activeOpacity={0.7}
-                onPress={() => onChange("preferredTenureMonths", item.value)}
-                style={[styles.tenureBox, isSelected && styles.tenureBoxActive]}
-              >
-                <Text
-                  style={[
-                    styles.tenureText,
-                    isSelected && styles.tenureTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {errors.preferredTenureMonths && (
-          <Text style={styles.errorText}>{errors.preferredTenureMonths}</Text>
-        )}
-      </View>
-
-      {/* Business Category */}
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Enterprise Profile <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <View style={styles.chipRow}>
-          {EMPLOYMENT_TYPES.map((emp) => {
-            const isSelected = data.employmentType === emp.value;
-            return (
-              <TouchableOpacity
-                key={emp.value}
-                onPress={() => onChange("employmentType", emp.value)}
-                style={[styles.chip, isSelected && styles.chipActive]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    isSelected && styles.chipTextActive,
-                  ]}
-                >
-                  {emp.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Monthly Net Turnover */}
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>
-          Monthly Production Turnover / Inflows (₹) <Text style={styles.requiredStar}>*</Text>
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            errors.monthlyIncomeOrTurnover && styles.inputError,
-          ]}
-          placeholder="e.g. 400000"
-          placeholderTextColor="#94A3B8"
-          keyboardType="numeric"
-          value={data.monthlyIncomeOrTurnover}
-          onChangeText={(text) => onChange("monthlyIncomeOrTurnover", text)}
-        />
-        {errors.monthlyIncomeOrTurnover && (
-          <Text style={styles.errorText}>{errors.monthlyIncomeOrTurnover}</Text>
-        )}
-      </View>
-
-      {/* Existing Loans */}
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Any active machinery or business loans?</Text>
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            onPress={() => onChange("hasExistingLoans", false)}
-            style={[
-              styles.toggleButton,
-              !data.hasExistingLoans && styles.toggleButtonActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                !data.hasExistingLoans && styles.toggleTextActive,
-              ]}
-            >
-              No Existing Loans
+        {isOtherEquipment && (
+          <View style={styles.customFieldWrapper}>
+            <Text style={styles.label}>
+              Specify Equipment <Text style={styles.requiredStar}>*</Text>
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onChange("hasExistingLoans", true)}
-            style={[
-              styles.toggleButton,
-              data.hasExistingLoans && styles.toggleButtonActive,
-            ]}
-          >
-            <Text
+            <TextInput
               style={[
-                styles.toggleText,
-                data.hasExistingLoans && styles.toggleTextActive,
+                styles.input,
+                errors.customEquipmentType && styles.inputError,
               ]}
-            >
-              Yes, Active EMIs
-            </Text>
-          </TouchableOpacity>
-        </View>
+              placeholder="e.g. Laser Cutting & Engraving System"
+              placeholderTextColor="#94A3B8"
+              value={data.customEquipmentType || (data.purpose !== "Other" ? data.purpose : "")}
+              onChangeText={(text) => {
+                onChange("customEquipmentType", text);
+                onChange("purpose", text || "Other");
+              }}
+            />
+            {errors.customEquipmentType && (
+              <Text style={styles.errorText}>{errors.customEquipmentType}</Text>
+            )}
+          </View>
+        )}
       </View>
 
-      {/* Existing EMI */}
-      {data.hasExistingLoans && (
-        <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            Total Ongoing Monthly EMI (₹) <Text style={styles.requiredStar}>*</Text>
-          </Text>
-          <TextInput
-            style={[styles.input, errors.existingEmi && styles.inputError]}
-            placeholder="e.g. 20000"
-            placeholderTextColor="#94A3B8"
-            keyboardType="numeric"
-            value={data.existingEmi}
-            onChangeText={(text) => onChange("existingEmi", text)}
-          />
-          {errors.existingEmi && (
-            <Text style={styles.errorText}>{errors.existingEmi}</Text>
-          )}
-        </View>
-      )}
+      {/* Repayment Tenure */}
+      <View style={styles.fieldGroup}>
+        <Dropdown
+          label="Repayment Tenure"
+          required
+          placeholder="Select tenure"
+          options={MACHINERY_TENURE_OPTIONS}
+          value={data.preferredTenureMonths}
+          onSelect={(val) => onChange("preferredTenureMonths", val)}
+          error={errors.preferredTenureMonths}
+        />
+      </View>
     </View>
   );
 };
 
 export default MachineryLoanFinancialsStep;
+

@@ -49,6 +49,12 @@
         }
       ],
       "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TaxEdge uses your location to fill the GST business address."
+        }
+      ],
       "./plugins/withUcropDone",
       [
         "expo-notifications",
@@ -62,7 +68,7 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": false
           }
         }
       ],

@@ -161,7 +161,7 @@ export const BusinessLoanScreen: React.FC = () => {
 
   const validateCurrentStep = (): boolean => {
     if (currentStepIndex === 0) {
-      const step1Errors = validateLoanDetails(loanDetails);
+      const step1Errors = validateLoanDetails(loanDetails, { requireExistingEmi: false });
       if (Object.keys(step1Errors).length > 0) {
         setErrors(step1Errors);
         Alert.alert(
