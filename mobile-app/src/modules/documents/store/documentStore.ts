@@ -1,1 +1,0 @@
-export { useDocumentVaultStore } from './documentVaultStore';

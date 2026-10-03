@@ -1,1 +1,0 @@
-export { SuccessCelebrationHeader } from "./SuccessCelebrationHeader";

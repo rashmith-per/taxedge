@@ -1,1 +1,0 @@
-export { VerifiedSplashScreen } from "./VerifiedSplashScreen";

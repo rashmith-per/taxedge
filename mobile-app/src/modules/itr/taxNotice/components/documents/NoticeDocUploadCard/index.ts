@@ -1,1 +1,0 @@
-export { NoticeDocUploadCard } from "./NoticeDocUploadCard";

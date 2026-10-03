@@ -1,1 +1,0 @@
-export { ProfessionCard } from "./ProfessionCard";

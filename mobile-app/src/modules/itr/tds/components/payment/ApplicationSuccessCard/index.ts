@@ -1,1 +1,0 @@
-export { ApplicationSuccessCard } from "./ApplicationSuccessCard";

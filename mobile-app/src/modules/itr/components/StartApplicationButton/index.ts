@@ -1,1 +1,0 @@
-export { StartApplicationButton } from "./StartApplicationButton";

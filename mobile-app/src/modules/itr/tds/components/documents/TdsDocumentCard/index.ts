@@ -1,1 +1,0 @@
-export { TdsDocumentCard } from './TdsDocumentCard';

@@ -1,1 +1,0 @@
-export { TdsRefundCardIllustration } from "./TdsRefundCardIllustration";

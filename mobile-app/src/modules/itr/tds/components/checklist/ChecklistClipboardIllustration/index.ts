@@ -1,1 +1,0 @@
-export { ChecklistClipboardIllustration } from "./ChecklistClipboardIllustration";

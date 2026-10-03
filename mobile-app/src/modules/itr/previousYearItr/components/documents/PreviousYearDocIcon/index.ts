@@ -1,1 +1,0 @@
-export { PreviousYearDocIcon } from "./PreviousYearDocIcon";

@@ -1,1 +1,0 @@
-export { TdsHeroCard } from "./TdsHeroCard";

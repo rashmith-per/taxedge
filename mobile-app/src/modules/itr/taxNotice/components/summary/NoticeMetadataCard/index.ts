@@ -1,1 +1,0 @@
-export { NoticeMetadataCard } from "./NoticeMetadataCard";
