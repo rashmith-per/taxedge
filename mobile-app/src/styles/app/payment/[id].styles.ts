@@ -5,6 +5,7 @@
  */
 
 import { StyleSheet } from "react-native";
+import type { ThemeTokens } from "@/shared/constants/theme";
 
 export const styles = StyleSheet.create({
   container: {
@@ -214,7 +215,7 @@ export const styles = StyleSheet.create({
   },
 });
 
-export type ThemeTokens = Record<string, any>;
+export type { ThemeTokens };
 
 /** Dynamic styles for payment method card */
 export const getMethodCardThemedStyle = (

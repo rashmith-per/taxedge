@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { ifscService, type IfscDetails } from "../../gst/services/ifscService";
+import { ifscService, type IfscDetails } from "@/shared/services/lookup/ifscService";
 
 /**
  * When a typed IFSC triggers a lookup — the two behaviours the loan banking steps use today:

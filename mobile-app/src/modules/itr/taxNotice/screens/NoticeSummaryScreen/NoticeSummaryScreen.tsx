@@ -89,7 +89,7 @@ export const NoticeSummaryScreen: React.FC = () => {
   const handleContinue = () => {
     // Navigate to Screen 4: Additional Documents Required & Customer Upload
     router.push({
-      pathname: "/service/tax-notice-documents" as any,
+      pathname: "/service/tax-notice-documents",
       params: {
         pan,
         noticeNumber,

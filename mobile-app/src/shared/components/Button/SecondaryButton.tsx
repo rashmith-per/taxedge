@@ -8,7 +8,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 
 export interface SecondaryButtonProps {
   title: string;
@@ -27,8 +27,9 @@ export function SecondaryButton({
   style,
   textStyle,
 }: SecondaryButtonProps) {
-  const borderColor = disabled ? "#E2E8F0" : Colors.primary;
-  const textColor = disabled ? "#94A3B8" : Colors.primary;
+  const colors = useTheme();
+  const borderColor = colors.border;
+  const textColor = disabled ? colors.textSecondary : colors.primary;
 
   return (
     <TouchableOpacity

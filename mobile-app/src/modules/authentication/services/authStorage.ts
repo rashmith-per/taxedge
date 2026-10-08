@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { DevUser } from "../types/auth.types";
+import type { AuthSession, StoredUser } from "../types/auth.types";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const KEY_USERS = "taxEdgeDevUsersMap";
 const KEY_SESSION = "taxEdgeDevSession";
@@ -8,11 +10,15 @@ const memory: Record<string, string> = {};
 // Eagerly pre-populate in-memory cache from AsyncStorage on app launch
 AsyncStorage.getItem(KEY_SESSION).then((val) => {
   if (val) memory[KEY_SESSION] = val;
-}).catch(() => {});
+}).catch((err) => {
+  logger.debug("[AuthStorage] Pre-populating session cache from storage failed", { error: getErrorMessage(err) });
+});
 
 AsyncStorage.getItem(KEY_USERS).then((val) => {
   if (val) memory[KEY_USERS] = val;
-}).catch(() => {});
+}).catch((err) => {
+  logger.debug("[AuthStorage] Pre-populating users cache from storage failed", { error: getErrorMessage(err) });
+});
 
 const get = (k: string) => {
   if (memory[k]) return memory[k];
@@ -20,7 +26,9 @@ const get = (k: string) => {
     if (typeof window !== "undefined" && window.localStorage) {
       return window.localStorage.getItem(k);
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[AuthStorage] Window localStorage read failed, falling back", { key: k, error: getErrorMessage(err) });
+  }
   return null;
 };
 
@@ -30,8 +38,12 @@ const set = (k: string, v: string) => {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem(k, v);
     }
-  } catch {}
-  AsyncStorage.setItem(k, v).catch(() => {});
+  } catch (err) {
+    logger.debug("[AuthStorage] Window localStorage write failed", { key: k, error: getErrorMessage(err) });
+  }
+  AsyncStorage.setItem(k, v).catch((err) => {
+    logger.warn("[AuthStorage] AsyncStorage write failed, preserved in memory fallback", { key: k, error: getErrorMessage(err) });
+  });
 };
 
 const del = (k: string) => {
@@ -40,8 +52,12 @@ const del = (k: string) => {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem(k);
     }
-  } catch {}
-  AsyncStorage.removeItem(k).catch(() => {});
+  } catch (err) {
+    logger.debug("[AuthStorage] Window localStorage remove failed", { key: k, error: getErrorMessage(err) });
+  }
+  AsyncStorage.removeItem(k).catch((err) => {
+    logger.warn("[AuthStorage] AsyncStorage removeItem failed", { key: k, error: getErrorMessage(err) });
+  });
 };
 
 export const authStorage = {
@@ -53,25 +69,28 @@ export const authStorage = {
       ]);
       if (session) memory[KEY_SESSION] = session;
       if (users) memory[KEY_USERS] = users;
-    } catch {}
+    } catch (err) {
+      logger.warn("[AuthStorage] AsyncStorage initAsync failed, using in-memory state", { error: getErrorMessage(err) });
+    }
   },
-  getUsersMap: (): Record<string, DevUser> => {
+  getUsersMap: (): Record<string, StoredUser> => {
     try {
       return JSON.parse(get(KEY_USERS) || "{}");
-    } catch {
+    } catch (err) {
+      logger.warn("[AuthStorage] Failed to parse users map from storage, defaulting to empty", { error: getErrorMessage(err) });
       return {};
     }
   },
-  getUserByMobile: (mobile: string): DevUser | null => {
+  getUserByMobile: (mobile: string): StoredUser | null => {
     if (!mobile) return null;
     const clean = mobile.replace(/\D/g, "").slice(-10);
     return authStorage.getUsersMap()[clean] || null;
   },
-  getUser: (): DevUser | null => {
+  getUser: (): StoredUser | null => {
     const s = authStorage.getSession();
     return s.activeMobile ? authStorage.getUserByMobile(s.activeMobile) : null;
   },
-  saveUser: (user: DevUser) => {
+  saveUser: (user: StoredUser) => {
     const rawMob = user.mobileNumber || "";
     const cleanMobile = rawMob.replace(/\D/g, "").slice(-10);
     if (!cleanMobile) return;
@@ -89,14 +108,15 @@ export const authStorage = {
     };
     set(KEY_USERS, JSON.stringify(map));
   },
-  getSession: () => {
+  getSession: (): AuthSession => {
     try {
       return JSON.parse(get(KEY_SESSION) || '{"isLoggedIn":false,"activeMobile":null}');
-    } catch {
+    } catch (err) {
+      logger.warn("[AuthStorage] Failed to parse session from storage, defaulting to unauthenticated", { error: getErrorMessage(err) });
       return { isLoggedIn: false, activeMobile: null, lastLoginAt: null };
     }
   },
-  saveSession: (s: any) => set(KEY_SESSION, JSON.stringify(s)),
+  saveSession: (s: AuthSession) => set(KEY_SESSION, JSON.stringify(s)),
   clearSession: () =>
     set(KEY_SESSION, JSON.stringify({ isLoggedIn: false, activeMobile: null, lastLoginAt: null })),
   clearAllAuthData: () => {
@@ -107,3 +127,4 @@ export const authStorage = {
 };
 
 export default authStorage;
+

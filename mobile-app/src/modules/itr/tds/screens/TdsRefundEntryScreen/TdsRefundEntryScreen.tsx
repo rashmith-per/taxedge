@@ -40,14 +40,14 @@ export const TdsRefundEntryScreen: React.FC = () => {
 
   const handleStart = () => {
     if (draftStep === "DOCUMENTS") {
-      router.push("/service/tds-checklist" as any);
+      router.push("/service/tds-checklist");
     } else if (draftStep === "ESTIMATE") {
-      router.push("/service/tds-estimate" as any);
+      router.push("/service/tds-estimate");
     } else if (draftStep === "PAYMENT") {
-      router.push("/service/tds-payment" as any);
+      router.push("/service/tds-payment");
     } else {
       router.push({
-        pathname: "/service/tds-form" as any,
+        pathname: "/service/tds-form",
       });
     }
   };
@@ -56,7 +56,7 @@ export const TdsRefundEntryScreen: React.FC = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/service/itr" as any);
+      router.replace("/service/itr");
     }
   };
 

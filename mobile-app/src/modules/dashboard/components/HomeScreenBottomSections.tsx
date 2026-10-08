@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { styles } from "../../../styles/app/(main)/home.styles";
+import { styles } from "../styles/home.styles";
 import type { Deadline, StatTile } from "../types/dashboard.types";
 
 interface FinancialOverviewProps {

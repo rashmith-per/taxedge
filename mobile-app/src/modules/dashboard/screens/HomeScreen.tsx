@@ -26,7 +26,7 @@ import { SCREEN_BOTTOM_PADDING } from "../../../shared/components/ScreenLayout/S
 import { Maybe } from "../../../shared/utils/functional";
 import { useServiceAccessGuard } from "../../../shared/hooks";
 import { Spacing } from "../../../shared/constants/theme";
-import { styles } from "../../../styles/app/(main)/home.styles";
+import { styles } from "../styles/home.styles";
 import type {
   CatalogueItem,
   IconName,
@@ -39,11 +39,11 @@ const H_PADDING = Spacing.three;
 const CARD_WIDTH = width - H_PADDING * 2;
 
 const SERVICE_TILES: ServiceTile[] = [
-  { id: "gst", label: "GST", icon: "document-text", tint: "#2563EB", tintBg: "#EAF1FE", route: "/service/gst" as any },
-  { id: "itr", label: "ITR", icon: "reader", tint: "#0F766E", tintBg: "#E6F5F2", route: "/service/itr" as any },
-  { id: "tds", label: "TDS", icon: "calculator", tint: "#6D28D9", tintBg: "#F1ECFE", route: "/service/tds-refund" as any },
-  { id: "loans", label: "Loans", icon: "business", tint: "#EA580C", tintBg: "#FEF0E6", route: "/service/loans" as any },
-  { id: "insurance", label: "Insurance", icon: "shield-checkmark", tint: "#DC2626", tintBg: "#FDEBEB", route: "/service/health-insurance" as any },
+  { id: "gst", label: "GST", icon: "document-text", tint: "#2563EB", tintBg: "#EAF1FE", route: "/service/gst" },
+  { id: "itr", label: "ITR", icon: "reader", tint: "#0F766E", tintBg: "#E6F5F2", route: "/service/itr" },
+  { id: "tds", label: "TDS", icon: "calculator", tint: "#6D28D9", tintBg: "#F1ECFE", route: "/service/tds-refund" },
+  { id: "loans", label: "Loans", icon: "business", tint: "#EA580C", tintBg: "#FEF0E6", route: "/service/loans" },
+  { id: "insurance", label: "Insurance", icon: "shield-checkmark", tint: "#DC2626", tintBg: "#FDEBEB", route: "/service/health-insurance" },
 ];
 
 const MORE_TILE: ServiceTile = {
@@ -125,10 +125,10 @@ export function HomeScreen() {
   const recentApps = applications.slice(0, 3);
 
   const STATS: StatTile[] = [
-    { id: "active", label: "Active\nApplications", value: `${activeCount}`, tint: "#059669", tintBg: "#E6F5F0", icon: "folder", route: "/(main)/applications" as any },
-    { id: "docs", label: "Pending\nDocuments", value: `${pendingDocsCount}`, tint: "#EA580C", tintBg: "#FEF0E6", icon: "document-attach", route: "/(main)/applications" as any },
-    { id: "due", label: "Payment Due", value: `₹${paymentDue.toLocaleString("en-IN")}`, tint: "#DC2626", tintBg: "#FDEBEB", icon: "card", route: "/(main)/payments" as any },
-    { id: "done", label: "Completed\nServices", value: `${completedCount}`, tint: "#2563EB", tintBg: "#EAF1FE", icon: "checkbox", route: "/(main)/applications" as any },
+    { id: "active", label: "Active\nApplications", value: `${activeCount}`, tint: "#059669", tintBg: "#E6F5F0", icon: "folder", route: "/(main)/applications" },
+    { id: "docs", label: "Pending\nDocuments", value: `${pendingDocsCount}`, tint: "#EA580C", tintBg: "#FEF0E6", icon: "document-attach", route: "/(main)/applications" },
+    { id: "due", label: "Payment Due", value: `₹${paymentDue.toLocaleString("en-IN")}`, tint: "#DC2626", tintBg: "#FDEBEB", icon: "card", route: "/(main)/payments" },
+    { id: "done", label: "Completed\nServices", value: `${completedCount}`, tint: "#2563EB", tintBg: "#EAF1FE", icon: "checkbox", route: "/(main)/applications" },
   ];
 
   const UPCOMING_DEADLINES: Deadline[] = [];
@@ -146,7 +146,7 @@ export function HomeScreen() {
   const tileFg = (item: { tint: string }) => (isDark ? colors.text : item.tint);
 
   const handleExploreCategory = (categoryId: ServiceCategoryId) => {
-    router.push({ pathname: "/services" as any, params: { selectedCategory: categoryId } });
+    router.push({ pathname: "/services", params: { selectedCategory: categoryId } });
   };
 
   const openCatalogueItem = (
@@ -157,7 +157,7 @@ export function HomeScreen() {
     if (item.serviceId) {
       accessService(`/service/${item.serviceId}`);
     } else {
-      router.push({ pathname: "/services" as any, params: { selectedCategory: categoryId } });
+      router.push({ pathname: "/services", params: { selectedCategory: categoryId } });
     }
   };
 
@@ -175,7 +175,7 @@ export function HomeScreen() {
         tile.route === "/service/loans" ||
         tile.route === "/services"
       ) {
-        router.push(tile.route as any);
+        router.push(tile.route);
       } else {
         accessService(tile.route);
       }
@@ -595,7 +595,7 @@ export function HomeScreen() {
                   useApplicationStore
                     .getState()
                     .setSelectedApplicationId(app.id);
-                  router.push(`/application/${app.id}` as any);
+                  router.push(`/application/${app.id}`);
                 }}
                 style={[
                   styles.appCard,

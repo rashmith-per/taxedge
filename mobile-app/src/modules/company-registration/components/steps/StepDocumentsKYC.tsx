@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { DocumentUploadBottomSheet } from '@/modules/itr/tds/components/upload/DocumentUploadBottomSheet/DocumentUploadBottomSheet';
-import { TdsDocumentCard } from '@/modules/itr/tds/components/upload/TdsDocumentCard/TdsDocumentCard';
-import { TdsChecklistItem } from '@/modules/itr/tds/types/checklist.types';
-import { DocumentPreviewModal } from '@/modules/itr/itr-filing/components/DocumentPreviewModal/DocumentPreviewModal';
-import { ItrDocumentItem } from '@/modules/itr/itr-filing/types/itrFiling.types';
+import { DocumentUploadBottomSheet } from '@/shared/components/DocumentUploadBottomSheet';
+import { DocumentCard as TdsDocumentCard, type DocumentChecklistItem as TdsChecklistItem } from '@/shared/components/documents';
+import { DocumentPreviewModal, type PreviewDocumentItem } from '@/shared/components/documents/DocumentPreviewModal';
 import { useCompanyRegistrationStore } from '../../store/companyRegistrationSlice';
 import { styles } from './StepDocumentsKYC.styles';
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export interface KycChecklistItem {
   id: string;
@@ -97,7 +96,7 @@ export const StepDocumentsKYC: React.FC = () => {
   const updateDocumentStatus = useCompanyRegistrationStore((state) => state.updateDocumentStatus);
 
   const [activeItem, setActiveItem] = useState<KycChecklistItem | null>(null);
-  const [previewItem, setPreviewItem] = useState<ItrDocumentItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<PreviewDocumentItem | null>(null);
 
   const handleDocumentSelected = (fileName: string, fileUri?: string) => {
     if (!activeItem) return;
@@ -115,8 +114,8 @@ export const StepDocumentsKYC: React.FC = () => {
         const asset = res.assets[0];
         handleDocumentSelected(asset.name, asset.uri);
       }
-    } catch (e: any) {
-      Alert.alert('Upload Error', e?.message || 'Failed to select document.');
+    } catch (e) {
+      Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to select document.');
     }
   };
 
@@ -136,8 +135,8 @@ export const StepDocumentsKYC: React.FC = () => {
         const name = asset.fileName || `photo_${Date.now()}.jpg`;
         handleDocumentSelected(name, asset.uri);
       }
-    } catch (e: any) {
-      Alert.alert('Upload Error', e?.message || 'Failed to select image from gallery.');
+    } catch (e) {
+      Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to select image from gallery.');
     }
   };
 
@@ -156,8 +155,8 @@ export const StepDocumentsKYC: React.FC = () => {
         const name = asset.fileName || `camera_${Date.now()}.jpg`;
         handleDocumentSelected(name, asset.uri);
       }
-    } catch (e: any) {
-      Alert.alert('Upload Error', e?.message || 'Failed to take photo.');
+    } catch (e) {
+      Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to take photo.');
     }
   };
 

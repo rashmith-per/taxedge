@@ -17,6 +17,7 @@ import { TaxNoticeHeader } from "../../components/common";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { logger } from "@/core/logging/logger";
 import { styles } from "./NoticePreviewScreen.styles";
 
 export interface NoticeDocument {
@@ -60,7 +61,7 @@ const NoticePreviewScreen: React.FC = () => {
     try {
       router.push("/service/tax-notice-assistance");
     } catch (error) {
-      console.error("Navigation Error:", error);
+      logger.warn("[NoticePreviewScreen] Navigation Error to tax-notice-assistance:", { error });
     }
   };
 
@@ -68,7 +69,7 @@ const NoticePreviewScreen: React.FC = () => {
     try {
       router.push("/service/tax-notice-documents");
     } catch (error) {
-      console.error("Navigation Error:", error);
+      logger.warn("[NoticePreviewScreen] Navigation Error to tax-notice-documents:", { error });
     }
   };
 
@@ -87,7 +88,7 @@ const NoticePreviewScreen: React.FC = () => {
         },
       });
     } catch (error) {
-      console.error("Navigation Error:", error);
+      logger.warn("[NoticePreviewScreen] Navigation Error to tax-notice-review:", { error });
     }
   };
 

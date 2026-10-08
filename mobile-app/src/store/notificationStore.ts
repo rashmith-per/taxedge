@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { localStorage } from "@/core/storage/localStorage";
 import { authStorage } from "@/modules/authentication/services/authStorage";
 import type { AppNotification, NotificationType } from "@/types/domain";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const getNotificationsStorageKey = (): string => {
   const activeMobile = String(authStorage.getSession()?.activeMobile || "").replace(/\D/g, "");
@@ -40,7 +42,7 @@ const persistNotifications = async (notifications: AppNotification[]) => {
   try {
     await localStorage.setItem(getNotificationsStorageKey(), JSON.stringify(notifications));
   } catch (err) {
-    console.warn("Failed to persist notifications:", err);
+    logger.warn("[NotificationStore] Failed to persist notifications", { error: getErrorMessage(err) });
   }
 };
 
@@ -115,13 +117,15 @@ export const useNotificationStore = create<NotificationState>((set) => ({
         }
       }
     } catch (err) {
-      console.warn("Failed to load notifications from storage:", err);
+      logger.warn("[NotificationStore] Failed to load notifications from storage", { error: getErrorMessage(err) });
     }
     set({ notifications: [], unreadCount: 0 });
   },
 }));
 
 // Hydrate saved notifications on application start
-useNotificationStore.getState().loadPersisted().catch(() => {});
+useNotificationStore.getState().loadPersisted().catch((err) => {
+  logger.debug("[NotificationStore] Initial loadPersisted skipped/failed", { error: getErrorMessage(err) });
+});
 
 export default useNotificationStore;

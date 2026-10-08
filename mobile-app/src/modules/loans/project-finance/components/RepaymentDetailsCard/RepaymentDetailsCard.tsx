@@ -20,7 +20,7 @@ import { styles } from "./RepaymentDetailsCard.styles";
 
 export interface RepaymentDetailsCardProps {
   data: RepaymentDetailsForm;
-  onChange: (field: keyof RepaymentDetailsForm, value: any) => void;
+  onChange: (field: keyof RepaymentDetailsForm, value: RepaymentDetailsForm[keyof RepaymentDetailsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   calculatedEmi?: string;

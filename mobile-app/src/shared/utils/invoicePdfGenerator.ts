@@ -312,7 +312,7 @@ export const downloadAndOpenInvoicePdf = async (data: InvoiceData): Promise<void
         `Receipt #${data.invoiceNo} has been generated successfully.`
       );
     }
-  } catch (error) {
+  } catch (_error) {
     // Graceful fallback to React Native native share
     try {
       await Share.share({
@@ -348,7 +348,7 @@ export const shareInvoicePdfDocument = async (data: InvoiceData): Promise<void> 
         message: `TaxEdge Payment Receipt\nInvoice: ${data.invoiceNo}\nService: ${data.serviceName}\nAmount Paid: ${data.amount}\nTxn ID: ${data.txnId || "N/A"}`,
       });
     }
-  } catch (error) {
+  } catch (_error) {
     // Graceful fallback if native file sharing intent fails
     try {
       await Share.share({

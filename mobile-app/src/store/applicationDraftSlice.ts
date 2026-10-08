@@ -1,4 +1,3 @@
-import type { StateCreator } from "zustand";
 import type {
   GstRegistrationDraft,
   GstFilingDraft,
@@ -149,7 +148,7 @@ export const createDraftSlice = <T extends DraftSliceState>(
 
     saveTdsDraft: (draft) =>
       set((state) => {
-        const current = (state as unknown as DraftSliceState).tdsDraft;
+        const current = state.tdsDraft;
         const updatedTds: TdsDraft = current
           ? {
               ...current,
@@ -185,7 +184,7 @@ export const createDraftSlice = <T extends DraftSliceState>(
 
     saveTaxNoticeDraft: (draft) =>
       set((state) => {
-        const current = (state as unknown as DraftSliceState).taxNoticeDraft;
+        const current = state.taxNoticeDraft;
         const updatedNotice: TaxNoticeDraft = current
           ? {
               ...current,

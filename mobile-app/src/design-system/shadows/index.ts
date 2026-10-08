@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+// Explicit design-system variant: neutral (#000000) shadows with softer offsets. These intentionally
+// differ from the brand-tinted `@/shared/theme` Shadows and are kept as-is to preserve visuals.
 export const Shadows = {
   none: {},
   sm: Platform.select({

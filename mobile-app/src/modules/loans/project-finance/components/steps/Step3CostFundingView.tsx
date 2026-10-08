@@ -10,11 +10,11 @@ import {
 
 interface Step3CostFundingViewProps {
   projectCost: ProjectCostForm;
-  onCostChange: (field: keyof ProjectCostForm, value: any) => void;
+  onCostChange: (field: keyof ProjectCostForm, value: ProjectCostForm[keyof ProjectCostForm]) => void;
   meansOfFinance: MeansOfFinanceForm;
-  onMeansChange: (field: keyof MeansOfFinanceForm, value: any) => void;
+  onMeansChange: (field: keyof MeansOfFinanceForm, value: MeansOfFinanceForm[keyof MeansOfFinanceForm]) => void;
   disbursementSchedule: DisbursementScheduleForm;
-  onScheduleChange: (field: keyof DisbursementScheduleForm, value: any) => void;
+  onScheduleChange: (field: keyof DisbursementScheduleForm, value: DisbursementScheduleForm[keyof DisbursementScheduleForm]) => void;
 }
 
 export const Step3CostFundingView: React.FC<Step3CostFundingViewProps> = ({

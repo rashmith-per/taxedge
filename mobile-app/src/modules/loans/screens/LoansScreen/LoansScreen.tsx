@@ -7,6 +7,7 @@ import { useServiceAccessGuard } from "../../../../shared/hooks";
 import { loansService } from "../../services/LoansService";
 import { LoanServiceItem } from "../../types/loans.types";
 import { styles } from "./LoansScreen.styles";
+import { toHref } from "@/shared/utils/navigation";
 
 export const LoansScreen: React.FC = () => {
   const router = useRouter();
@@ -19,7 +20,7 @@ export const LoansScreen: React.FC = () => {
 
   const handleCardPress = (item: LoanServiceItem) => {
     if (item.route) {
-      accessService(item.route);
+      accessService(toHref(item.route));
     }
   };
 

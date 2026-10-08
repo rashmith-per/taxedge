@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { ScrollView, Alert, Linking } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export interface DocumentUploadResult {
   uri: string;
@@ -117,9 +118,9 @@ export function useDocumentUploadHelper({
       } else {
         onCancel?.(docKey);
       }
-    } catch (e: any) {
+    } catch (e) {
       onCancel?.(docKey);
-      reportError(e?.message || fallbackError, docKey);
+      reportError(getErrorMessage(e) || fallbackError, docKey);
     } finally {
       isPickingRef.current = false;
     }

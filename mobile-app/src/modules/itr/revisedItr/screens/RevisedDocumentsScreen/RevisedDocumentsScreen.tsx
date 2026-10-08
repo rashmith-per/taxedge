@@ -13,12 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { DocumentPreviewModal } from "../../../itr-filing/components/DocumentPreviewModal/DocumentPreviewModal";
+import { DocumentPreviewModal } from "@/shared/components/documents/DocumentPreviewModal";
 import { SharedItrDocumentCard } from "@/modules/itr/components/documents/SharedItrDocumentCard/SharedItrDocumentCard";
-import { DocumentUploadBottomSheet } from "@/modules/itr/tds/components/upload/DocumentUploadBottomSheet/DocumentUploadBottomSheet";
+import { DocumentUploadBottomSheet } from "@/shared/components/DocumentUploadBottomSheet";
 import { RevisedItrHeader } from "../../components/common";
 import { REVISED_SUPPORTING_DOCUMENTS } from "../../mock/revisedItrData";
 import { RevisedDocumentItem } from "../../types/revisedItr.types";
+import { logger } from "@/core/logging/logger";
 import {
   styles,
   getContainerInsetsStyle,
@@ -125,7 +126,8 @@ export const RevisedDocumentsScreen: React.FC = () => {
         const asset = result.assets[0];
         handleFileSelected(asset.uri, asset.name, asset.size);
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[RevisedDocumentsScreen] Document picker failed:", { error: err });
       Alert.alert("Upload Error", "Could not open file picker.");
     }
   };
@@ -147,9 +149,10 @@ export const RevisedDocumentsScreen: React.FC = () => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const fileName = asset.fileName || `revised_doc_${Date.now()}.jpg`;
-        handleFileSelected(asset.uri, fileName, (asset as any).fileSize);
+        handleFileSelected(asset.uri, fileName, asset.fileSize);
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[RevisedDocumentsScreen] Gallery picker failed:", { error: err });
       Alert.alert("Gallery Error", "Could not open photo gallery. Please try again.");
     }
   };
@@ -170,9 +173,10 @@ export const RevisedDocumentsScreen: React.FC = () => {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         const fileName = asset.fileName || `revised_doc_${Date.now()}.jpg`;
-        handleFileSelected(asset.uri, fileName, (asset as any).fileSize);
+        handleFileSelected(asset.uri, fileName, asset.fileSize);
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[RevisedDocumentsScreen] Camera picker failed:", { error: err });
       Alert.alert("Camera Error", "Could not open camera. Please try again.");
     }
   };
@@ -203,7 +207,7 @@ export const RevisedDocumentsScreen: React.FC = () => {
 
     // Navigate to Screen 5: Review Revised Computation
     router.push({
-      pathname: "/service/revised-itr-review" as any,
+      pathname: "/service/revised-itr-review",
       params: {
         acknowledgementNumber: params.acknowledgementNumber,
         assessmentYear,

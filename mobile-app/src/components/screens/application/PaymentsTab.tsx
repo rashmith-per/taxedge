@@ -2,11 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "@/styles/app/application/[id].styles";
-
-interface RowItem {
-  key: string;
-  val: string;
-}
+import type { RowItem } from "./types";
 
 interface PaymentsTabProps {
   paymentRows: RowItem[];

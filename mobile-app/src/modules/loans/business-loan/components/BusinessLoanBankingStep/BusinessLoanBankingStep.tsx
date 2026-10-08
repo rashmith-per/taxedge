@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TextInput, ActivityIndicator } from "react-native";
 import { LoanBankingFormData } from "../../../types/loans.types";
 import { useIfscLookup } from "../../../hooks/useIfscLookup";
-import { ifscService } from "../../../../gst/services/ifscService";
+import { ifscService } from "@/shared/services/lookup/ifscService";
 import { styles } from "./BusinessLoanBankingStep.styles";
 
 export interface BusinessLoanBankingStepProps {
@@ -24,7 +24,7 @@ export const BusinessLoanBankingStep: React.FC<BusinessLoanBankingStepProps> = (
     onResolved: (details) => {
       onChange("primaryBankName", details.bank);
       if (details.branch) {
-        onChange("branchName" as any, details.branch);
+        onChange("branchName", details.branch);
       }
     },
   });
@@ -35,7 +35,7 @@ export const BusinessLoanBankingStep: React.FC<BusinessLoanBankingStepProps> = (
 
     if (data.primaryBankName && !ifscService.isValidFormat(cleaned)) {
       onChange("primaryBankName", "");
-      onChange("branchName" as any, "");
+      onChange("branchName", "");
     }
   };
 

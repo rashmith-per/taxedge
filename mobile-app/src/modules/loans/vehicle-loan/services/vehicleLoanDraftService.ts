@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { VehicleLoanDraftData } from "../types/vehicleLoan.types";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export type { VehicleLoanDraftData };
 
@@ -12,8 +14,8 @@ export const vehicleLoanDraftService = {
         VEHICLE_LOAN_DRAFT_KEY,
         JSON.stringify({ ...draft, savedAt: new Date().toISOString() })
       );
-    } catch {
-      // Ignore storage errors
+    } catch (err) {
+      logger.warn("[VehicleLoanDraftService] Failed to save draft", { error: getErrorMessage(err) });
     }
   },
 
@@ -22,7 +24,8 @@ export const vehicleLoanDraftService = {
       const raw = await AsyncStorage.getItem(VEHICLE_LOAN_DRAFT_KEY);
       if (!raw) return null;
       return JSON.parse(raw) as VehicleLoanDraftData;
-    } catch {
+    } catch (err) {
+      logger.warn("[VehicleLoanDraftService] Failed to load draft", { error: getErrorMessage(err) });
       return null;
     }
   },
@@ -30,8 +33,8 @@ export const vehicleLoanDraftService = {
   clearDraft: async (): Promise<void> => {
     try {
       await AsyncStorage.removeItem(VEHICLE_LOAN_DRAFT_KEY);
-    } catch {
-      // Ignore storage errors
+    } catch (err) {
+      logger.warn("[VehicleLoanDraftService] Failed to clear draft", { error: getErrorMessage(err) });
     }
   },
 
@@ -39,8 +42,10 @@ export const vehicleLoanDraftService = {
     try {
       const raw = await AsyncStorage.getItem(VEHICLE_LOAN_DRAFT_KEY);
       return Boolean(raw);
-    } catch {
+    } catch (err) {
+      logger.warn("[VehicleLoanDraftService] Failed to check draft existence", { error: getErrorMessage(err) });
       return false;
     }
   },
 };
+

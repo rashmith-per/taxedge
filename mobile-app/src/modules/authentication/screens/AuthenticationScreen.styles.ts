@@ -38,35 +38,14 @@ export const styles = StyleSheet.create({
       default: {},
     }),
   },
-  header: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
   headerResetPasscode: {
     marginBottom: Spacing.lg,
     alignItems: "center",
-  },
-  logo: {
-    width: 76,
-    height: 76,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
   },
   logoResetPasscode: {
     width: 80,
     height: 80,
     marginBottom: 0,
-  },
-  brandTitle: {
-    fontSize: Typography.fontSize.hero,
-    fontWeight: Typography.fontWeight.extraBold,
-    letterSpacing: 2,
-  },
-  brandSub: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.bold,
-    letterSpacing: 3.5,
-    marginTop: 3,
   },
   welcome: {
     alignItems: "center",
@@ -85,21 +64,6 @@ export const styles = StyleSheet.create({
   },
   formBody: {
     width: "100%",
-  },
-  serverConfigBtn: {
-    alignSelf: "center",
-    marginBottom: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: "#EFF6FF",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-  },
-  serverConfigBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: BrandColors.PRIMARY_BLUE,
   },
 });
 
@@ -146,4 +110,27 @@ export const getDynamicScrollStyle = (
 ) => ({
   paddingTop: Math.max(insetsTop + headerOffset, minScrollPadding),
   paddingBottom: Math.max(insetsBottom + footerOffset, minScrollPadding),
+});
+
+// ─── Styles specific to the BIOMETRIC_REAUTH layout ──────────────────────────
+export const reauthStyles = StyleSheet.create({
+  animatedSection: {
+    width: "100%",
+  },
+  welcomeSection: {
+    alignItems: "center",
+    marginBottom: Spacing.xl,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  welcomeSub: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 20,
+    opacity: 0.8,
+  },
 });

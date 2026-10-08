@@ -113,7 +113,7 @@ export const NoticeStatusScreen: React.FC = () => {
   };
 
   const handleBackToServices = () => {
-    router.replace("/service/itr" as any);
+    router.replace("/service/itr");
   };
 
   return (

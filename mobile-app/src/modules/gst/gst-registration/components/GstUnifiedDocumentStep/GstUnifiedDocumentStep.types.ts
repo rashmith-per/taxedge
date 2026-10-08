@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 export type DocumentUploadStatus = "processing" | "uploading" | "error";
 
 export type DocumentDisplayStatus =
@@ -63,8 +64,8 @@ export const getDocumentStatus = (doc: DocumentItem): DocumentDisplayStatus => {
         throw new Error("error");
       })();
     throw new Error("ready");
-  } catch (err: any) {
-    return err.message as DocumentDisplayStatus;
+  } catch (err) {
+    return getErrorMessage(err) as DocumentDisplayStatus;
   }
 };
 

@@ -3,7 +3,9 @@ import { getActiveBaseUrl } from "../../../core/api/apiConfig";
 import { tokenManager } from "../../../core/authentication/tokenManager";
 import { tokenRefreshManager } from "../../../core/authentication/tokenRefreshManager";
 import { getResolvedCustomerId } from "@/modules/gst/gst-filing/hooks/gstFilingHelpers";
+import { logger } from "../../../core/logging/logger";
 import type { CancellationFormData } from "../gst-cancellation/types/gstCancellationTypes";
+import { appendFilePart } from "@/shared/utils/formDataFile";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -61,11 +63,11 @@ export const gstCancellationApi = {
     formData.append("data", JSON.stringify(dto));
 
     if (data.supportingDoc?.uri) {
-      formData.append("supportingProofDocument", {
+      appendFilePart(formData, "supportingProofDocument", {
         uri: data.supportingDoc.uri,
         name: data.supportingDoc.name || "supporting_proof.pdf",
         type: data.supportingDoc.mimeType || getMimeType(data.supportingDoc.name),
-      } as any);
+      });
     }
 
     const baseUrl = apiClient.getBaseUrl() || (await getActiveBaseUrl());
@@ -97,7 +99,8 @@ export const gstCancellationApi = {
           try {
             const parsed = JSON.parse(xhr.responseText);
             resolve(parsed);
-          } catch {
+          } catch (parseErr) {
+            logger.debug("[gstCancellationApi] Non-JSON success response", { error: parseErr });
             resolve(xhr.responseText);
           }
         } else {
@@ -105,7 +108,9 @@ export const gstCancellationApi = {
           try {
             const parsed = JSON.parse(xhr.responseText);
             errText = parsed.message || parsed.error || xhr.responseText;
-          } catch {}
+          } catch (parseErr) {
+            logger.debug("[gstCancellationApi] Non-JSON error response from server", { status: xhr.status, error: parseErr });
+          }
           reject(
             new GstCancellationError(
               errText || `Cancellation submission failed (${xhr.status})`,

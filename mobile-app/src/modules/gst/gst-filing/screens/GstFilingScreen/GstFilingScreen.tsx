@@ -15,6 +15,7 @@ import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLa
 import { useApplicationStore } from "@/store/applicationStore";
 import { applicationService } from "@/modules/applications/services/applicationService";
 import { gstApi } from "@/modules/gst/services/gstApi";
+import { logger } from "@/core/logging/logger";
 import { useGstFiling } from "@/modules/gst/gst-filing/hooks/useGstFiling";
 import { buildFilingPayload } from "@/modules/gst/gst-filing/hooks/gstFilingHelpers";
 import { GstStepHeader } from "@/modules/gst/components/GstStepHeader";
@@ -88,7 +89,7 @@ export const GstFilingScreen: React.FC = () => {
     if (filingId) {
       const payload = buildFilingPayload(updatedPeriod, undefined, true);
       gstApi.updateFiling(filingId, payload).catch((err) => {
-        console.warn("[GstFilingScreen] Failed to update computation:", err);
+        logger.warn("[GstFilingScreen] Failed to update computation:", { error: err, filingId });
       });
     }
     if (createdAppId) {
@@ -108,7 +109,9 @@ export const GstFilingScreen: React.FC = () => {
               calculationMethod: "manual_estimates",
             },
           })
-          .catch(() => {});
+          .catch((err) => {
+            logger.warn("[GstFilingScreen] Failed to sync application draft computation:", { error: err, createdAppId });
+          });
       }
     }
   };

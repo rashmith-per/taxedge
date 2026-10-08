@@ -105,7 +105,7 @@ export const GstAmendmentLanding: React.FC<GstAmendmentLandingProps> = ({
             >
               <View style={styles.cardLeft}>
                 <View style={[styles.cardIconBox, getCardIconBoxStyle(sec.iconColor)]}>
-                  <Ionicons name={sec.icon as any} size={22} color={sec.iconColor} />
+                  <Ionicons name={sec.icon} size={22} color={sec.iconColor} />
                 </View>
                 <View style={styles.cardTextWrap}>
                   <Text style={styles.cardTitle}>{sec.title}</Text>
@@ -137,7 +137,7 @@ export const GstAmendmentLanding: React.FC<GstAmendmentLandingProps> = ({
             >
               <View style={styles.cardLeft}>
                 <View style={[styles.cardIconBox, getCardIconBoxStyle(sec.iconColor)]}>
-                  <Ionicons name={sec.icon as any} size={22} color={sec.iconColor} />
+                  <Ionicons name={sec.icon} size={22} color={sec.iconColor} />
                 </View>
                 <View style={styles.cardTextWrap}>
                   <Text style={styles.cardTitle}>{sec.title}</Text>

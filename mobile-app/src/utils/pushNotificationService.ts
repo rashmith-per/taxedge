@@ -1,6 +1,7 @@
 import * as Device from 'expo-device';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
+import { logger } from '@/core/logging/logger';
 
 const isExpoGo =
   Constants.appOwnership === 'expo' ||
@@ -11,6 +12,7 @@ let Notifications: any = null;
 try {
   if (!isExpoGo) {
     // Only require expo-notifications in development builds or standalone apps
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     Notifications = require('expo-notifications');
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -30,16 +32,12 @@ try {
  */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (isExpoGo) {
-    if (__DEV__) {
-      console.log('ℹ️ Running in Expo Go: using dev token (remote push notifications require a development build in SDK 53+)');
-    }
+    logger.debug('[pushNotifications] Running in Expo Go: using dev token fallback');
     return `ExponentPushToken[dev-expo-go-token-${Date.now()}]`;
   }
 
   if (!Device.isDevice) {
-    if (__DEV__) {
-      console.log('Push notifications require a physical device or emulator with dev-client');
-    }
+    logger.debug('[pushNotifications] Push notifications require a physical device or emulator with dev-client');
     return `ExponentPushToken[dev-emulator-token-${Date.now()}]`;
   }
 
@@ -66,9 +64,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     if (finalStatus !== 'granted') {
-      if (__DEV__) {
-        console.log('Push notification permission denied by user');
-      }
+      logger.info('[pushNotifications] Push notification permission not granted by user');
       return null;
     }
 
@@ -78,14 +74,10 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       const deviceTokenData = await Notifications.getDevicePushTokenAsync();
       if (deviceTokenData?.data) {
         token = deviceTokenData.data;
-        if (__DEV__) {
-          console.log('✅ FCM NATIVE DEVICE TOKEN FETCHED:', token);
-        }
+        logger.info('[pushNotifications] FCM native device token successfully fetched');
       }
     } catch (fcmErr) {
-      if (__DEV__) {
-        console.log('ℹ️ getDevicePushTokenAsync failed or not standalone, falling back to Expo push token:', fcmErr);
-      }
+      logger.debug('[pushNotifications] getDevicePushTokenAsync failed or not standalone, falling back to Expo push token', { error: fcmErr });
     }
 
     // 2. Fallback to Expo push token if native token unavailable
@@ -95,16 +87,12 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         projectId ? { projectId } : undefined
       );
       token = tokenData.data;
-      if (__DEV__) {
-        console.log('✅ EXPO PUSH TOKEN FETCHED:', token);
-      }
+      logger.info('[pushNotifications] Expo push token successfully fetched');
     }
 
     return token;
   } catch (error) {
-    if (__DEV__) {
-      console.warn('Could not fetch real push token, using fallback:', error);
-    }
+    logger.warn('[pushNotifications] Could not fetch real push token, using fallback', { error });
     return `ExponentPushToken[dev-fallback-token-${Date.now()}]`;
   }
 }

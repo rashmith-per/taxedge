@@ -6,7 +6,7 @@ import { styles } from "./OtherComplianceCard.styles";
 
 interface OtherComplianceCardProps {
   data: OtherComplianceForm;
-  onChange: (field: keyof OtherComplianceForm, value: any) => void;
+  onChange: (field: keyof OtherComplianceForm, value: OtherComplianceForm[keyof OtherComplianceForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

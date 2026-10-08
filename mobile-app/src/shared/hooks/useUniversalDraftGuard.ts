@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useNavigation } from "expo-router";
+import { toHref } from "@/shared/utils/navigation";
 
 export interface UseUniversalDraftGuardOptions {
   /** Return true if the user has unsaved input/dirty state that should trigger draft confirmation */
@@ -12,6 +13,8 @@ export interface UseUniversalDraftGuardOptions {
   isSubmitted?: () => boolean;
   /** Optional explicit route to navigate to when discarding, overriding the original back action */
   discardDestination?: string;
+  /** Optional explicit route to navigate to when saving draft, overriding the original back action */
+  saveDestination?: string;
 }
 
 export const useUniversalDraftGuard = ({
@@ -20,6 +23,7 @@ export const useUniversalDraftGuard = ({
   onDiscardDraft,
   isSubmitted = () => false,
   discardDestination,
+  saveDestination,
 }: UseUniversalDraftGuardOptions) => {
   const router = useRouter();
   const navigation = useNavigation();
@@ -30,26 +34,27 @@ export const useUniversalDraftGuard = ({
 
   // Keep refs in sync with callbacks
   const isDirtyRef = useRef(isDirty);
-  isDirtyRef.current = isDirty;
-
   const isSubmittedRef = useRef(isSubmitted);
-  isSubmittedRef.current = isSubmitted;
-
   const onSaveDraftRef = useRef(onSaveDraft);
-  onSaveDraftRef.current = onSaveDraft;
-
   const onDiscardDraftRef = useRef(onDiscardDraft);
-  onDiscardDraftRef.current = onDiscardDraft;
-
   const discardDestinationRef = useRef(discardDestination);
-  discardDestinationRef.current = discardDestination;
+  const saveDestinationRef = useRef(saveDestination);
+
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+    isSubmittedRef.current = isSubmitted;
+    onSaveDraftRef.current = onSaveDraft;
+    onDiscardDraftRef.current = onDiscardDraft;
+    discardDestinationRef.current = discardDestination;
+    saveDestinationRef.current = saveDestination;
+  });
 
   const markSubmitted = useCallback(() => {
     hasSubmittedRef.current = true;
   }, []);
 
   useEffect(() => {
-    const unsubscribe = (navigation as any).addListener("beforeRemove", (e: any) => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
       // If already submitted or final step reached, allow free navigation
       if (hasSubmittedRef.current || isSubmittedRef.current()) {
         return;
@@ -74,7 +79,9 @@ export const useUniversalDraftGuard = ({
     setShowDraftModal(false);
     hasSubmittedRef.current = true;
 
-    if (pendingNavigationActionRef.current) {
+    if (saveDestinationRef.current) {
+      router.replace(toHref(saveDestinationRef.current));
+    } else if (pendingNavigationActionRef.current) {
       navigation.dispatch(pendingNavigationActionRef.current);
     } else {
       router.back();
@@ -87,7 +94,7 @@ export const useUniversalDraftGuard = ({
     hasSubmittedRef.current = true;
 
     if (discardDestinationRef.current) {
-      router.replace(discardDestinationRef.current as any);
+      router.replace(toHref(discardDestinationRef.current));
     } else if (pendingNavigationActionRef.current) {
       navigation.dispatch(pendingNavigationActionRef.current);
     } else {

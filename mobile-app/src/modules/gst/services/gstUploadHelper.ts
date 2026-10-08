@@ -1,5 +1,6 @@
 import { apiClient, SERVER_IP, SERVER_PORT } from "../../../core/api/apiClient";
 import { tokenManager } from "../../../core/authentication/tokenManager";
+import { logger } from "../../../core/logging/logger";
 
 export interface UploadDocumentItem {
   id?: string;
@@ -52,7 +53,9 @@ export async function executeXhrUpload(
           if (parsed.message) {
             errText = parsed.message;
           }
-        } catch {}
+        } catch (parseErr) {
+          logger.debug("[gstUploadHelper] Non-JSON error response during XHR upload", { status: xhr.status, error: parseErr });
+        }
         reject(
           new GstApiUploadError(
             `Upload failed with status ${xhr.status}: ${errText}`,

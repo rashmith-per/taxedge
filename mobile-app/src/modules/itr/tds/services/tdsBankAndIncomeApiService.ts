@@ -35,7 +35,7 @@ export const tdsBankAndIncomeApiService = {
       branchName: bankData.branchName || "",
       accountType: (bankData.accountType?.toUpperCase() === "CURRENT"
         ? "CURRENT"
-        : "SAVINGS") as any,
+        : "SAVINGS"),
     };
 
     const res = await apiClient.post<string>(

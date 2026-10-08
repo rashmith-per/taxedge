@@ -19,6 +19,9 @@ import { gstComplianceApi } from "@/modules/gst/services/gstComplianceApi";
 import { useAuthStore } from "@/store/authStore";
 import { addDraftToIndex, removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
+import { parseCreatedComplianceId } from "../utils/complianceResponse";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 const initialFormData: ComplianceFormData = {
   gstin: "",
@@ -85,8 +88,8 @@ export function useComplianceForm() {
               setFormData((prev) => ({ ...prev, ...saved }));
             }
           }
-        } catch {
-          // ignore draft read failure
+        } catch (err) {
+          logger.debug("[useComplianceForm] Draft read fallback", { error: err });
         }
         setHasCheckedDraft(true);
       };
@@ -211,22 +214,15 @@ export function useComplianceForm() {
 
         if (activeId) {
           // 1. PUT update to existing database record
-          console.log(`💾 [Compliance Review] Updating record in DB: ${formData.gstin} / ${activeId}`);
+          logger.debug("[Compliance Review] Updating record in DB", { gstin: formData.gstin, activeId });
           await gstComplianceApi.updateCompliance(formData.gstin, activeId, formData);
         } else {
           // 1. POST create new record in database
-          console.log("💾 [Compliance Review] Saving new compliance record in DB...");
+          logger.debug("[Compliance Review] Saving new compliance record in DB");
           const res: any = await gstComplianceApi.createCompliance(formData);
-          console.log("💾 [Compliance Review] Create response:", res);
+          logger.debug("[Compliance Review] Create response received", { success: !!res });
 
-          let parsedId = null;
-          try {
-            const parsed = typeof res === "string" ? JSON.parse(res) : res;
-            parsedId = parsed?.complianceId;
-          } catch {
-            const match = String(res).match(/Compliance ID:\s*([A-Za-z0-9_-]+)/i);
-            parsedId = match ? match[1] : null;
-          }
+          const parsedId = parseCreatedComplianceId(res);
 
           if (parsedId) {
             activeId = parsedId;
@@ -236,9 +232,9 @@ export function useComplianceForm() {
 
         // 2. GET retrieve record from DB by ID to populate Review section
         if (activeId) {
-          console.log(`📥 [Compliance Review] Fetching record from DB: ${formData.gstin} / ${activeId}`);
+          logger.debug("[Compliance Review] Fetching record from DB", { gstin: formData.gstin, activeId });
           const fetchedDto = await gstComplianceApi.getCompliance(formData.gstin, activeId);
-          console.log("📥 [Compliance Review] Retrieved from DB:", fetchedDto);
+          logger.debug("[Compliance Review] Retrieved from DB", { hasDto: !!fetchedDto });
           setDbReviewData(fetchedDto);
         }
 
@@ -247,11 +243,11 @@ export function useComplianceForm() {
         }
 
         setCurrentStep(1);
-      } catch (err: any) {
-        console.error("Error saving/fetching compliance record:", err);
+      } catch (err) {
+        logger.error("[useComplianceForm] Error saving/fetching compliance record", { error: err });
         Alert.alert(
           "Save Failed",
-          err?.message || "Failed to save details to database. Please check your inputs and try again."
+          getErrorMessage(err) || "Failed to save details to database. Please check your inputs and try again."
         );
       } finally {
         setIsSaving(false);
@@ -284,11 +280,13 @@ export function useComplianceForm() {
         const mobile = getCleanMobile();
         if (mobile) {
           removeDraftFromIndex(mobile, "gst-compliance");
-          AsyncStorage.removeItem(getDraftKey(mobile)).catch(() => {});
+          AsyncStorage.removeItem(getDraftKey(mobile)).catch((e) => {
+            logger.debug("[useComplianceForm] Failed to remove draft key", { error: e });
+          });
         }
 
         router.replace({
-          pathname: "/service/gst-compliance-success" as any,
+          pathname: "/service/gst-compliance-success",
           params: {
             referenceId: result.referenceId,
             requestType: formData.requestType,
@@ -307,7 +305,8 @@ export function useComplianceForm() {
           ]
         );
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[useComplianceForm] Network/submission failure", { error: err });
       Alert.alert(
         "Network Error",
         "Could not communicate with the server. Please verify your internet connection.",

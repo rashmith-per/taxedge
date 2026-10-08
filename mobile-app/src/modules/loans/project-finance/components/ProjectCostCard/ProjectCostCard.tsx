@@ -6,7 +6,7 @@ import { styles } from "./ProjectCostCard.styles";
 
 interface ProjectCostCardProps {
   data: ProjectCostForm;
-  onChange: (field: keyof ProjectCostForm, value: any) => void;
+  onChange: (field: keyof ProjectCostForm, value: ProjectCostForm[keyof ProjectCostForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

@@ -3,6 +3,9 @@ import { apiClient } from "../../../core/api/apiClient";
 import { tokenManager } from "../../../core/authentication/tokenManager";
 import { authStorage } from "./authStorage";
 import type { DevUser } from "../types/auth.types";
+import type { CustomerLoginResponse } from "./authApi";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const KEY_PREFIX = "passcode_";
 const KEY_FAILED_ATTEMPTS = "passcode_failed_attempts_";
@@ -112,6 +115,75 @@ class PasscodeService {
     }
   }
 
+  /** Stores the access and refresh tokens from a login response, when present. */
+  private async persistAuthTokens(response?: { accessToken?: string; refreshToken?: string } | null): Promise<void> {
+    if (response?.accessToken) {
+      await tokenManager.setAccessToken(response.accessToken);
+    }
+    if (response?.refreshToken) {
+      await tokenManager.setRefreshToken(response.refreshToken);
+    }
+  }
+
+  /** Fire-and-forget re-login after an offline unlock, so backend tokens stay fresh. */
+  private refreshSessionInBackground(cleanMobile: string, cleanPasscode: string): void {
+    apiClient
+      .post<CustomerLoginResponse>("/customer/login", {
+        mobileNumber: cleanMobile,
+        password: cleanPasscode,
+      })
+      .then(async (response) => {
+        await this.persistAuthTokens(response);
+      })
+      .catch((err) => {
+        logger.debug("[PasscodeService] Background session refresh failed", { error: getErrorMessage(err) });
+      });
+  }
+
+  /**
+   * Authenticates against `POST /customer/login`. On success stores tokens and the passcode
+   * for future offline unlocks; returns null when the backend rejects or is unreachable.
+   */
+  private async loginWithBackend(
+    cleanMobile: string,
+    cleanPasscode: string
+  ): Promise<PasscodeVerificationResult | null> {
+    try {
+      const response = await apiClient.post<CustomerLoginResponse>("/customer/login", {
+        mobileNumber: cleanMobile,
+        password: cleanPasscode,
+      });
+
+      if (response && (response.accessToken || response.custId)) {
+        // Backend authentication succeeded
+        await this.persistAuthTokens(response);
+
+        // Save passcode locally in SecureStore for subsequent quick unlocks
+        await this.setPasscode(cleanMobile, cleanPasscode);
+        await this.resetFailedAttempts(cleanMobile);
+
+        const devUser: DevUser = {
+          customerId: response.custId || "",
+          mobileNumber: response.mobileNumber || cleanMobile,
+          name: response.name || "",
+          email: `${cleanMobile}@taxedge.in`,
+          customerType: "Individual",
+          registrationCompleted: true,
+        };
+
+        return {
+          success: true,
+          token: response.accessToken,
+          user: devUser,
+        };
+      }
+    } catch (apiError) {
+      // If network error occurred and local passcode wasn't configured, fall through to failure
+    }
+
+    return null;
+  }
+
   /**
    * Verify passcode:
    * First checks lockout state.
@@ -147,20 +219,7 @@ class PasscodeService {
       const existingToken = await tokenManager.getAccessToken();
 
       // Refresh backend session in background if possible
-      apiClient
-        .post<any>("/customer/login", {
-          mobileNumber: cleanMobile,
-          password: cleanPasscode,
-        })
-        .then(async (response) => {
-          if (response?.accessToken) {
-            await tokenManager.setAccessToken(response.accessToken);
-          }
-          if (response?.refreshToken) {
-            await tokenManager.setRefreshToken(response.refreshToken);
-          }
-        })
-        .catch(() => {});
+      this.refreshSessionInBackground(cleanMobile, cleanPasscode);
 
       return {
         success: true,
@@ -170,42 +229,9 @@ class PasscodeService {
     }
 
     // 3. If not matched locally or first time on device, authenticate with backend POST /customer/login
-    try {
-      const response = await apiClient.post<any>("/customer/login", {
-        mobileNumber: cleanMobile,
-        password: cleanPasscode,
-      });
-
-      if (response && (response.accessToken || response.custId)) {
-        // Backend authentication succeeded
-        if (response.accessToken) {
-          await tokenManager.setAccessToken(response.accessToken);
-        }
-        if (response.refreshToken) {
-          await tokenManager.setRefreshToken(response.refreshToken);
-        }
-
-        // Save passcode locally in SecureStore for subsequent quick unlocks
-        await this.setPasscode(cleanMobile, cleanPasscode);
-        await this.resetFailedAttempts(cleanMobile);
-
-        const devUser: DevUser = {
-          customerId: response.custId || "",
-          mobileNumber: response.mobileNumber || cleanMobile,
-          name: response.name || "",
-          email: `${cleanMobile}@taxedge.in`,
-          customerType: "Individual",
-          registrationCompleted: true,
-        };
-
-        return {
-          success: true,
-          token: response.accessToken,
-          user: devUser,
-        };
-      }
-    } catch (apiError: any) {
-      // If network error occurred and local passcode wasn't configured, fall through to failure
+    const backendResult = await this.loginWithBackend(cleanMobile, cleanPasscode);
+    if (backendResult) {
+      return backendResult;
     }
 
     // Passcode incorrect

@@ -17,7 +17,7 @@ import { VehicleLoanSelectionModal, OptionRow } from "./components/VehicleLoanSe
 
 export interface VehicleLoanFinancialsStepProps {
   data: VehicleLoanDetailsFormData;
-  onChange: (field: keyof VehicleLoanDetailsFormData, value: any) => void;
+  onChange: (field: keyof VehicleLoanDetailsFormData, value: VehicleLoanDetailsFormData[keyof VehicleLoanDetailsFormData]) => void;
   errors?: Record<string, string>;
 }
 

@@ -36,7 +36,9 @@ export class AppBootstrap {
       logger.warn(
         "Session expired — refresh token is no longer valid. Clearing auth state."
       );
-      sessionManager.logout().catch(() => {});
+      sessionManager.logout().catch((err) => {
+        logger.warn("[AppBootstrap] Error during automatic session expiration logout:", { error: err });
+      });
     });
 
     // Initialize all domain modules

@@ -12,6 +12,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { BrandColors } from "../../../../shared/theme";
 import { styles } from "./DocumentUploadView.styles";
+import { logger } from "@/core/logging/logger";
 import type { DocumentItem, DocumentWorkflowStatus } from "../../types/documentTypes";
 
 export interface DocumentUploadViewProps {
@@ -68,11 +69,11 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         copyToCacheDirectory: true,
       });
 
-      const isCanceled = (result as any).canceled === true || (result as any).type === "cancel";
+      const isCanceled = result.canceled === true || (result as any).type === "cancel";
       if (!isCanceled) {
         const file =
-          (result as any).assets && (result as any).assets.length > 0
-            ? (result as any).assets[0]
+          result.assets && result.assets.length > 0
+            ? result.assets[0]
             : (result as any);
 
         const fileName = file.name || "Document.pdf";
@@ -83,7 +84,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         onUploadFile(target, { name: fileName, size: fileSize, uri: fileUri });
       }
     } catch (err) {
-      console.warn("Browse files error:", err);
+      logger.warn("[DocumentUploadView] Browse files error:", { error: err });
     }
   };
 
@@ -110,7 +111,7 @@ export const DocumentUploadView: React.FC<DocumentUploadViewProps> = ({
         onUploadFile(target, { name: fileName, size: file.fileSize, uri: file.uri });
       }
     } catch (err) {
-      console.warn("Camera error:", err);
+      logger.warn("[DocumentUploadView] Camera error:", { error: err });
     }
   };
 

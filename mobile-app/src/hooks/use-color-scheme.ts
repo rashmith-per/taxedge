@@ -1,7 +1,2 @@
-import { useThemeStore } from "@/design-system/theme/themeStore";
-
-export function useColorScheme(): "light" | "dark" {
-  return useThemeStore((state) => state.theme);
-}
-
-export default useColorScheme;
+// Compatibility facade: the canonical implementation lives in `@/shared/hooks/useColorScheme`.
+export { useColorScheme, default } from "@/shared/hooks/useColorScheme";

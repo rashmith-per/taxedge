@@ -6,7 +6,7 @@ import { styles } from "./MeansOfFinanceCard.styles";
 
 interface MeansOfFinanceCardProps {
   data: MeansOfFinanceForm;
-  onChange: (field: keyof MeansOfFinanceForm, value: any) => void;
+  onChange: (field: keyof MeansOfFinanceForm, value: MeansOfFinanceForm[keyof MeansOfFinanceForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

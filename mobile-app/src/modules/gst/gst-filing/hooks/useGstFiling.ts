@@ -11,6 +11,7 @@ import { GstValidators } from "@/modules/gst/utils/gstValidators";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { useApplicationStore } from "@/store/applicationStore";
 import { gstApi } from "@/modules/gst/services/gstApi";
+import { logger } from "@/core/logging/logger";
 import { useGstFilingForm } from "@/modules/gst/gst-filing/hooks/useGstFilingForm";
 import { useGstFilingRestore } from "@/modules/gst/gst-filing/hooks/useGstFilingRestore";
 import {
@@ -25,6 +26,7 @@ import {
   promptPayLaterSubmission,
 } from "@/modules/gst/gst-filing/hooks/gstFilingStepHandlers";
 import { GstFilingPeriodData } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstFilingPeriodStep";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export function useGstFiling() {
   const router = useRouter();
@@ -137,7 +139,7 @@ export function useGstFiling() {
   useEffect(() => {
     const clean = periodData.gstin ? periodData.gstin.trim().toUpperCase() : "";
     if (clean && filingGstinRef.current && clean !== filingGstinRef.current) {
-      console.log(`[Filing] GSTIN changed from ${filingGstinRef.current} to ${clean}. Resetting session.`);
+      logger.debug(`[Filing] GSTIN changed. Resetting filing session.`, { previousGstin: filingGstinRef.current, newGstin: clean });
       setFilingId(null);
       filingGstinRef.current = null;
     }
@@ -182,8 +184,8 @@ export function useGstFiling() {
           });
           setFilingId(targetId);
         }
-      } catch (err: any) {
-        console.warn("Could not retrieve GST filing details from DB:", err?.message || err);
+      } catch (err) {
+        logger.warn("[useGstFiling] Could not retrieve GST filing details from DB:", { error: getErrorMessage(err) || err });
       }
 
       try {
@@ -191,8 +193,8 @@ export function useGstFiling() {
         if (dbDocs) {
           setDocuments((prev) => mapDtoToFilingDocuments(dbDocs, prev));
         }
-      } catch (docErr: any) {
-        console.log(`[DB-FETCH] No documents found in DB for filing ID: ${targetId}`);
+      } catch (docErr) {
+        logger.debug("[useGstFiling] No documents found in DB for filing ID", { targetId, error: docErr });
       } finally {
         setIsFetchingReview(false);
       }

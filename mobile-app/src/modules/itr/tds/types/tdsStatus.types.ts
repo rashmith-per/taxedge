@@ -30,11 +30,11 @@ export interface TdsApplicationSummary {
   progressPercent: number;
 }
 
-export interface TdsRefundStatusScreenParams {
+export type TdsRefundStatusScreenParams = {
   applicationId?: string;
   serviceName?: string;
   assessmentYear?: string;
   appliedDate?: string;
   refundAmount?: string;
   uploadedCount?: string;
-}
+};

@@ -8,7 +8,7 @@ import { styles } from "./PersonalLoanFinancialsStep.styles";
 
 export interface PersonalLoanFinancialsStepProps {
   data: LoanDetailsFormData;
-  onChange: (field: keyof LoanDetailsFormData, value: any) => void;
+  onChange: (field: keyof LoanDetailsFormData, value: LoanDetailsFormData[keyof LoanDetailsFormData]) => void;
   errors?: Record<string, string>;
   onInputFocus?: (field: string) => void;
 }

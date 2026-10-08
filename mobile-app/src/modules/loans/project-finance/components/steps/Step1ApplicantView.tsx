@@ -12,14 +12,14 @@ import {
 
 interface Step1ApplicantViewProps {
   applicantDetails: ApplicantDetailsForm;
-  onApplicantChange: (field: keyof ApplicantDetailsForm, value: any) => void;
+  onApplicantChange: (field: keyof ApplicantDetailsForm, value: ApplicantDetailsForm[keyof ApplicantDetailsForm]) => void;
   registeredAddress: RegisteredAddressForm;
-  onAddressChange: (field: keyof RegisteredAddressForm, value: any) => void;
+  onAddressChange: (field: keyof RegisteredAddressForm, value: RegisteredAddressForm[keyof RegisteredAddressForm]) => void;
   promoters: PromoterSponsorItem[];
   onAddPromoter: (item: PromoterSponsorItem) => void;
   onUpdatePromoter: (item: PromoterSponsorItem) => void;
   projectClassification: ProjectClassificationForm;
-  onClassificationChange: (field: keyof ProjectClassificationForm, value: any) => void;
+  onClassificationChange: (field: keyof ProjectClassificationForm, value: ProjectClassificationForm[keyof ProjectClassificationForm]) => void;
 }
 
 export const Step1ApplicantView: React.FC<Step1ApplicantViewProps> = ({

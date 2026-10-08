@@ -46,19 +46,19 @@ export const ReviewNoticeResponseScreen: React.FC = () => {
   const customerName =
     customer?.name || authUser?.name || "Assessee";
   const pan = String(
-    params.pan || (taxNoticeDraft?.formData as any)?.pan || customer?.pan || "AXTPD4419K"
+    params.pan || taxNoticeDraft?.formData?.pan || customer?.pan || "AXTPD4419K"
   );
   const noticeNumber = String(
     params.noticeNumber ||
-    (taxNoticeDraft?.formData as any)?.noticeNumber ||
+    taxNoticeDraft?.formData?.noticeNumber ||
     "CPC/2526/A3/284419260"
   );
   const noticeDate = String(
-    params.noticeDate || (taxNoticeDraft?.formData as any)?.noticeDate || "18 August 2026"
+    params.noticeDate || taxNoticeDraft?.formData?.noticeDate || "18 August 2026"
   );
   const assessmentYear = String(
     params.assessmentYear ||
-    (taxNoticeDraft?.formData as any)?.assessmentYear ||
+    taxNoticeDraft?.formData?.assessmentYear ||
     "AY 2025–26"
   );
 
@@ -129,7 +129,7 @@ Meera Iyer, Tax Executive`;
 
     // Navigate to Screen 6: Response Submission & Notice Status
     router.push({
-      pathname: "/service/tax-notice-status" as any,
+      pathname: "/service/tax-notice-status",
       params: {
         applicationId: createdAppId,
         noticeNumber,

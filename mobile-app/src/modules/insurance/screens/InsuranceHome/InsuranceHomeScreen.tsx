@@ -25,21 +25,21 @@ export const InsuranceHomeScreen: React.FC = () => {
           title="Health Insurance"
           subtitle="Cashless hospitalization, ₹10L - ₹1Cr cover, 80D tax savings"
           icon="fitness"
-          onPress={() => router.push('/(main)/applications' as any)}
+          onPress={() => router.push('/(main)/applications')}
         />
         <InsuranceTypeCard
           category="TERM"
           title="Term Life Insurance"
           subtitle="High life cover at affordable rates with critical illness cover"
           icon="heart"
-          onPress={() => router.push('/(main)/applications' as any)}
+          onPress={() => router.push('/(main)/applications')}
         />
         <InsuranceTypeCard
           category="MOTOR"
           title="Car & Two Wheeler"
           subtitle="Instant policy issuance, zero depreciation & roadside support"
           icon="car"
-          onPress={() => router.push('/(main)/applications' as any)}
+          onPress={() => router.push('/(main)/applications')}
         />
       </View>
     </ScrollView>

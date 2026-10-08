@@ -4,18 +4,14 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/authStore";
 import authApi from "@/modules/authentication/services/authApi";
+import { logger } from "@/core/logging/logger";
 import {
-  validateDateOfBirth,
-  validateEmail,
-  validateFullName,
-} from "@/shared/validators/indianTaxValidators";
+  validatePersonalForm,
+  buildPersonalUpdatePayload,
+  type PersonalFormState,
+} from "./profileManager.helpers";
 
-export interface PersonalFormState {
-  name: string;
-  email: string;
-  dob: string;
-  address: string;
-}
+export type { PersonalFormState };
 
 export function useProfileManager() {
   const router = useRouter();
@@ -40,10 +36,10 @@ export function useProfileManager() {
     const custId = customer?.customerId;
     const canFetch = Boolean(custId);
     canFetch && setFetchingPersonal(true);
-    canFetch &&
+    custId &&
       (async () => {
         try {
-          const res = await authApi.getCustomerDetails(custId!);
+          const res = await authApi.getCustomerDetails(custId);
           res.success && res.data
             ? (setPersonalDetails(res.data),
               setPersonalForm({
@@ -52,12 +48,11 @@ export function useProfileManager() {
                 dob: res.data.dob || customer?.dob || "",
                 address: res.data.address || customer?.address || "",
               }))
-            : console.warn(
-                "⚠️ [Profile] Failed to fetch personal details:",
-                res.message
-              );
+            : logger.warn("[useProfileManager] Failed to fetch personal details", {
+                message: "message" in res ? res.message : undefined,
+              });
         } catch (err) {
-          console.error("❌ [Profile] Error fetching personal details:", err);
+          logger.error("[useProfileManager] Error fetching personal details:", { error: err });
         } finally {
           setFetchingPersonal(false);
         }
@@ -71,28 +66,7 @@ export function useProfileManager() {
   };
 
   const handleSavePersonal = async () => {
-    const validationCheckers = [
-      {
-        key: "name",
-        valid: validateFullName(personalForm.name),
-        msg: "Enter a valid full name",
-      },
-      {
-        key: "email",
-        valid: validateEmail(personalForm.email),
-        msg: "Enter a valid email address",
-      },
-      {
-        key: "dob",
-        valid: validateDateOfBirth(personalForm.dob),
-        msg: "Please enter a valid date of birth.",
-      },
-    ];
-
-    const errors = validationCheckers.reduce<Record<string, string>>(
-      (acc, { key, valid, msg }) => (valid ? acc : { ...acc, [key]: msg }),
-      {}
-    );
+    const errors = validatePersonalForm(personalForm);
 
     const hasErrors = Object.keys(errors).length > 0;
     hasErrors
@@ -101,16 +75,7 @@ export function useProfileManager() {
           setSavingPersonal(true);
           setPersonalErrors({});
           try {
-            const payload = {
-              ...(personalDetails || {}),
-              customerId: personalDetails?.customerId || customer?.customerId,
-              custId: personalDetails?.custId || customer?.customerId,
-              mobileNumber: personalDetails?.mobileNumber || customer?.mobile,
-              name: personalForm.name.trim().replace(/\s+/g, " "),
-              email: personalForm.email.trim(),
-              dob: personalForm.dob.trim(),
-              address: personalForm.address.trim(),
-            };
+            const payload = buildPersonalUpdatePayload(personalDetails, customer, personalForm);
             const result = await authApi.updateCustomerProfile(payload);
             result.success
               ? (await fetchAndSyncProfile(customer?.mobile),
@@ -123,7 +88,8 @@ export function useProfileManager() {
               : setPersonalErrors({
                   form: "Unable to update personal information. Please try again.",
                 });
-          } catch {
+          } catch (err) {
+            logger.warn("[useProfileManager] Failed to update personal profile:", { error: err });
             setPersonalErrors({
               form: "Unable to update personal information. Please try again.",
             });

@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system";
 import { TdsDocumentItem } from "../types/tdsDocuments.types";
 import { INITIAL_TDS_DOCUMENTS } from "../constants/tdsDocuments.constants";
 import { TdsDocumentsDto } from "./tdsApiTypes";
+import { logger } from "../../../../core/logging/logger";
 
 // Helper: Read file URI as Base64 string for REST JSON transport
 export const readFileAsBase64 = async (uri?: string): Promise<string | null> => {
@@ -29,7 +30,7 @@ export const readFileAsBase64 = async (uri?: string): Promise<string | null> => 
         reader.readAsDataURL(blob);
       });
     } catch (err) {
-      console.warn("⚠️ [TDS API] Error fetching web URL as Base64:", cleanUri, err);
+      logger.warn("[tdsDocumentsApiService] Error fetching web URL as Base64", { error: err });
       return null;
     }
   }
@@ -45,7 +46,8 @@ export const readFileAsBase64 = async (uri?: string): Promise<string | null> => 
     if (base64 && base64.trim().length > 0) {
       return base64.trim();
     }
-  } catch {
+  } catch (fsErr) {
+    logger.debug("[tdsDocumentsApiService] Direct FileSystem read failed, attempting cache copy fallback", { error: fsErr });
     try {
       const ext = cleanUri.split(".").pop()?.split("?")[0] || "bin";
       const cacheDir = (FileSystem as any).cacheDirectory || (FileSystem as any).documentDirectory || "";
@@ -58,7 +60,7 @@ export const readFileAsBase64 = async (uri?: string): Promise<string | null> => 
         return base64.trim();
       }
     } catch (copyErr) {
-      console.warn("⚠️ [TDS API] Error reading file as Base64 fallback:", cleanUri, copyErr);
+      logger.warn("[tdsDocumentsApiService] Error reading file as Base64 fallback", { error: copyErr });
     }
   }
 
@@ -74,7 +76,7 @@ export const tdsDocumentsApiService = {
         if (!hasUri) return false;
 
         const id = (d.id || "").toLowerCase();
-        const icon = ((d as any).iconType || "").toLowerCase();
+        const icon = (d.iconType || "").toLowerCase();
         const type = ((d as any).type || "").toLowerCase();
         const title = (d.title || "").toLowerCase();
 
@@ -112,7 +114,8 @@ export const tdsDocumentsApiService = {
   getDocuments: async (tdsRefundId: string): Promise<TdsDocumentsDto | null> => {
     try {
       return await apiClient.get<TdsDocumentsDto>(`/itr/tds-documents/${tdsRefundId}`);
-    } catch {
+    } catch (err) {
+      logger.debug("[tdsDocumentsApiService] Documents fetch fallback to null", { tdsRefundId, error: err });
       return null;
     }
   },

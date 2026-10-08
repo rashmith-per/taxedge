@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { BrandColors, Typography, Spacing, BorderRadius, Shadows } from "@/shared/theme";
+import { BrandColors, Spacing, BorderRadius, Shadows } from "@/shared/theme";
 
 interface ServiceHeaderProps {
   title: string;

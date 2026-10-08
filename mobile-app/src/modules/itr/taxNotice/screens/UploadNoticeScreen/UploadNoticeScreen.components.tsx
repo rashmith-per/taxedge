@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "./UploadNoticeScreen.styles";
 import { NOTICE_TYPE_OPTIONS } from "../../mock/taxNoticeData";
+import type { TaxNoticeFormData } from "../../types/taxNotice.types";
 
 export const ayOptions = [
   "AY 2027-28",
@@ -15,9 +16,9 @@ export const ayOptions = [
 ];
 
 interface AyDropdownProps {
-  formData: any;
-  errors: any;
-  handleFieldChange: (field: any, value: string) => void;
+  formData: TaxNoticeFormData;
+  errors: Record<string, string>;
+  handleFieldChange: (field: keyof TaxNoticeFormData, value: string) => void;
   showOtherAyInput: boolean;
   setShowOtherAyInput: (val: boolean) => void;
   showAyDropdown: boolean;
@@ -110,9 +111,9 @@ export const AssessmentYearDropdown: React.FC<AyDropdownProps> = ({
 };
 
 interface NoticeTypeDropdownProps {
-  formData: any;
-  errors: any;
-  handleFieldChange: (field: any, value: string) => void;
+  formData: TaxNoticeFormData;
+  errors: Record<string, string>;
+  handleFieldChange: (field: keyof TaxNoticeFormData, value: string) => void;
   showTypeDropdown: boolean;
   setShowTypeDropdown: (val: boolean) => void;
 }

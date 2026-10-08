@@ -17,6 +17,10 @@ import {
   checkFormValidity,
 } from "./createProfileValidation";
 import type { SignupForm, SignupErrors } from "./types";
+import { formatSignupAddress, buildRegistrationProfile } from "./createProfile.helpers";
+import { toHref } from "@/shared/utils/navigation";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -79,9 +83,10 @@ export function useCreateProfile(
     const showSub = Keyboard.addListener(showEvent, (e) => {
       const h = e?.endCoordinates?.height || 280;
       setKeyboardHeight(h);
-      activeFieldKey.current &&
+      const focusedKey = activeFieldKey.current;
+      focusedKey &&
         (() => {
-          const y = fieldYOffsets.current[activeFieldKey.current!];
+          const y = fieldYOffsets.current[focusedKey];
           y !== undefined &&
             scrollRef.current?.scrollTo({ y: Math.max(0, y - 70), animated: true });
         })();
@@ -138,9 +143,10 @@ export function useCreateProfile(
   });
 
   useEffect(() => {
-    params?.customerType &&
-      params.customerType !== form.customerType &&
-      setForm((p) => ({ ...p, customerType: params.customerType! }));
+    const requestedType = params?.customerType;
+    requestedType &&
+      requestedType !== form.customerType &&
+      setForm((p) => ({ ...p, customerType: requestedType }));
   }, [params?.customerType]);
 
   useEffect(() => {
@@ -239,36 +245,11 @@ export function useCreateProfile(
   const executeRegistrationRequest = async () => {
     setProfileLoading(true);
 
-    const fullAddress = [
-      form.addressLine1.trim(),
-      form.addressLine2.trim(),
-      form.city.trim(),
-      form.state.trim()
-        ? `${form.state.trim()} - ${form.pincode.trim()}`
-        : form.pincode.trim(),
-    ]
-      .filter(Boolean)
-      .join(", ");
+    const fullAddress = formatSignupAddress(form);
 
     try {
       const res = await register(
-        {
-          name: form.name.trim(),
-          email: form.email.trim(),
-          customerType: form.customerType,
-          dob: form.dob.trim(),
-          gender: form.gender,
-          fatherSpouseName: form.fatherSpouseName.trim(),
-          pan: form.pan.trim().toUpperCase(),
-          aadhaar: form.aadhaar.replace(/\D/g, ""),
-          address: fullAddress,
-          addressLine1: form.addressLine1.trim(),
-          addressLine2: form.addressLine2.trim(),
-          city: form.city.trim(),
-          pincode: form.pincode.trim(),
-          state: form.state.trim(),
-          mobileNumber: form.mobileNumber || storeMobileNumber,
-        } as any,
+        buildRegistrationProfile(form, fullAddress, storeMobileNumber),
         form.password.trim(),
         true
       );
@@ -290,17 +271,17 @@ export function useCreateProfile(
                     setPendingPostRegistrationRoute(destination);
                     setShowBiometricModal(true);
                   })()
-                : router.replace(destination as any);
+                : router.replace(toHref(destination));
               return;
             } catch (bioCheckErr) {
-              if (__DEV__) console.warn("Biometric check error during registration:", bioCheckErr);
+              logger.warn("Biometric check error during registration", { error: getErrorMessage(bioCheckErr) });
             }
-            router.replace(destination as any);
+            router.replace(toHref(destination));
           })()
         : Alert.alert("Registration Error", res.error || "Failed to create account. Please try again.");
-    } catch (err: any) {
+    } catch (err) {
       setProfileLoading(false);
-      Alert.alert("Registration Error", err?.message || "An unexpected error occurred during registration.");
+      Alert.alert("Registration Error", getErrorMessage(err) || "An unexpected error occurred during registration.");
     }
   };
 
@@ -370,14 +351,14 @@ export function useCreateProfile(
       const authRes = await biometricService.authenticate();
       authRes.success && (await useAuthStore.getState().setBiometricEnabled(true));
     } catch (bioAuthErr) {
-      if (__DEV__) console.warn("Biometric authentication error:", bioAuthErr);
+      logger.warn("Biometric authentication error", { error: getErrorMessage(bioAuthErr) });
     }
-    router.replace((pendingPostRegistrationRoute || "/(main)/home") as any);
+    router.replace(toHref(pendingPostRegistrationRoute || "/(main)/home"));
   };
 
   const handleNotNowBiometric = () => {
     setShowBiometricModal(false);
-    router.replace((pendingPostRegistrationRoute || "/(main)/home") as any);
+    router.replace(toHref(pendingPostRegistrationRoute || "/(main)/home"));
   };
 
   // ─── Field Offset Setter (kept inside hook to satisfy React compiler) ─────────

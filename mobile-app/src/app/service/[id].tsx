@@ -5,7 +5,9 @@ import { useTheme } from "@/hooks/use-theme";
 import { getServiceById } from "@/data/services";
 import { useApplicationStore } from "@/store/applicationStore";
 import { useNotificationStore } from "@/store/notificationStore";
-import { AppHeader, DynamicForm, PrimaryButton } from "@/components";
+import { AppHeader } from "@/shared/components/AppHeader";
+import { DynamicForm } from "@/shared/components/DynamicForm";
+import { PrimaryButton } from "@/shared/components/Button/PrimaryButton";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {

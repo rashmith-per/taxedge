@@ -21,7 +21,7 @@ import { styles } from "./LandDetailsCard.styles";
 
 interface LandDetailsCardProps {
   data: LandDetailsForm;
-  onChange: (field: keyof LandDetailsForm, value: any) => void;
+  onChange: (field: keyof LandDetailsForm, value: LandDetailsForm[keyof LandDetailsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

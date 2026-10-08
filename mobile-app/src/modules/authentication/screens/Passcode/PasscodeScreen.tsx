@@ -60,7 +60,7 @@ export function PasscodeScreen() {
       setLoading(false);
 
       if (res.success) {
-        router.replace("/(main)/home" as any);
+        router.replace("/(main)/home");
       } else {
         setError(res.error || "Incorrect passcode. Please try again.");
         setPasscode("");
@@ -149,7 +149,7 @@ export function PasscodeScreen() {
                 setTimeout(() => {
                   loginWithPasscode(clean).then((res) => {
                     if (res.success) {
-                      router.replace("/(main)/home" as any);
+                      router.replace("/(main)/home");
                     } else {
                       setError(res.error || "Incorrect passcode. Please try again.");
                       setPasscode("");

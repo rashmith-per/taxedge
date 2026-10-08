@@ -17,16 +17,16 @@ export const getInitialFormData = (): ItrFilingFormData => {
   const gstBusiness = gstDraft?.businessData || {};
 
   const personalInfo: ItrPersonalInfo = {
-    pan: customer?.pan || (user as any)?.pan || "",
-    aadhaar: customer?.aadhaar || (user as any)?.aadhaar || "",
+    pan: customer?.pan || user?.pan || "",
+    aadhaar: customer?.aadhaar || user?.aadhaar || "",
     name: customer?.name || user?.name || "",
-    dob: customer?.dob || (user as any)?.dob || "",
-    gender: customer?.gender || (user as any)?.gender || "Male",
+    dob: customer?.dob || user?.dob || "",
+    gender: customer?.gender || user?.gender || "Male",
     fatherSpouseName: customer?.fatherSpouseName || "",
-    address: customer?.address || customer?.addressLine1 || (user as any)?.address || "",
-    city: customer?.city || (user as any)?.city || "",
-    state: customer?.state || (user as any)?.state || "",
-    pincode: customer?.pincode || (user as any)?.pincode || "",
+    address: customer?.address || customer?.addressLine1 || user?.address || "",
+    city: customer?.city || user?.city || "",
+    state: customer?.state || user?.state || "",
+    pincode: customer?.pincode || user?.pincode || "",
     mobile: customer?.mobile || user?.mobileNumber || "",
     email: customer?.email || user?.email || "",
     residentialStatus: "Resident",
@@ -34,7 +34,7 @@ export const getInitialFormData = (): ItrFilingFormData => {
     assessmentYear: getCurrentAssessmentYear(),
     filingType: "139_1_original",
     filingTypeSuggested: "139_1_original",
-    isAutoVerified: Boolean(customer?.pan || (user as any)?.pan),
+    isAutoVerified: Boolean(customer?.pan || user?.pan),
   };
 
   const initialBankAccounts: ItrSelectableBank[] = [];

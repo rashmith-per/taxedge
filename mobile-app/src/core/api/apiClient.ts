@@ -9,6 +9,8 @@ import {
   SERVER_PORT,
   STORAGE_KEY_SERVER_URL,
 } from "./apiConfig";
+import { getErrorMessage } from "../error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export { getDefaultBaseUrl, SERVER_IP, SERVER_PORT, STORAGE_KEY_SERVER_URL } from "./apiConfig";
 
@@ -36,6 +38,29 @@ export interface RequestOptions {
  * Server Network Configuration
  * Change IP and Port here to point the mobile app to your backend.
  */
+/** JSON error body the backend sends with non-2xx responses (all fields optional). */
+interface ApiErrorBody {
+  message?: string;
+  error?: string;
+  code?: string;
+  errors?: Record<string, string[]>;
+}
+
+/** User-facing message for a request that failed before any HTTP response (timeout, offline, …). */
+const describeTransportError = (error: unknown): string => {
+  let errMessage = getErrorMessage(error) || "Request failed";
+  if (
+    errMessage.includes("canceled") ||
+    errMessage.includes("aborted") ||
+    errMessage.includes("Network request failed") ||
+    errMessage.includes("fetch failed")
+  ) {
+    errMessage =
+      "Unable to connect to server. Please check your internet connection.";
+  }
+  return errMessage;
+};
+
 export class ApiClient {
   private baseUrl: string;
   private baseUrlLoaded = false;
@@ -45,7 +70,7 @@ export class ApiClient {
     this.baseUrl = baseUrl || getDefaultBaseUrl();
     this.interceptors = new InterceptorManager();
     this.loadCustomBaseUrl().catch((err) => {
-      if (__DEV__) console.warn("Failed to load custom baseUrl from storage:", err);
+      logger.warn("Failed to load custom baseUrl from storage", { error: getErrorMessage(err) });
     });
   }
 
@@ -103,7 +128,7 @@ export class ApiClient {
         this.setBaseUrl(clean);
       }
     } catch (loadErr) {
-      if (__DEV__) console.warn("Failed to load custom baseUrl from storage:", loadErr);
+      logger.warn("Failed to load custom baseUrl from storage", { error: getErrorMessage(loadErr) });
     }
     this.baseUrlLoaded = true;
     return this.baseUrl;
@@ -213,26 +238,7 @@ export class ApiClient {
     try {
       await this.ensureBaseUrlLoaded();
       const initialUrl = this.buildUrl(path, options?.params);
-      const initialHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...(options?.headers || {}),
-      };
-
-      if (body instanceof FormData) {
-        delete initialHeaders["Content-Type"];
-      }
-
-      if (!initialHeaders["Authorization"]) {
-        try {
-          const token = await tokenManager.getAccessToken();
-          if (token) {
-            initialHeaders["Authorization"] = `Bearer ${token}`;
-          }
-        } catch (tokenErr) {
-          if (__DEV__) console.warn("Failed to retrieve access token:", tokenErr);
-        }
-      }
+      const initialHeaders = await this.buildRequestHeaders(body, options);
 
       const interceptedConfig = await this.interceptors.runRequestInterceptors({
         url: initialUrl,
@@ -240,11 +246,9 @@ export class ApiClient {
         method,
       });
 
-      if (__DEV__) {
-        console.log(
-          `🌐 [API] ${interceptedConfig.method} ${interceptedConfig.url}`,
-        );
-      }
+      logger.debug(
+        `🌐 [API] ${interceptedConfig.method} ${interceptedConfig.url}`,
+      );
 
       const controller = new AbortController();
       const timeoutMs = options?.timeoutMs || 30000;
@@ -252,7 +256,7 @@ export class ApiClient {
 
       let response: Response;
       try {
-        let fetchBody: any = undefined;
+        let fetchBody: FormData | string | undefined = undefined;
         if (body) {
           fetchBody = body instanceof FormData ? body : JSON.stringify(body);
         }
@@ -267,36 +271,12 @@ export class ApiClient {
         clearTimeout(timeoutId);
       }
 
-      if (__DEV__) {
-        console.log(
-          `🌐 [API] Response status: ${response.status} for ${interceptedConfig.url}`,
-        );
-      }
+      logger.debug(
+        `🌐 [API] Response status: ${response.status} for ${interceptedConfig.url}`,
+      );
 
       if (!response.ok) {
-        let errorData: any = {};
-        try {
-          const errText = await response.text();
-          try {
-            errorData = JSON.parse(errText);
-          } catch {
-            errorData = { message: errText || response.statusText };
-          }
-        } catch (err) {
-          if (__DEV__) console.warn("Failed to read response error text:", err);
-          errorData = { message: response.statusText };
-        }
-        const message =
-          errorData.message ||
-          errorData.error ||
-          response.statusText ||
-          "Request failed";
-        const apiError = new ApiError(
-          message,
-          response.status,
-          errorData.code || "API_ERROR",
-          errorData.errors,
-        );
+        const apiError = await this.toApiError(response);
 
         // ── Silent 401 refresh logic ────────────────────────────────────────
         if (
@@ -304,55 +284,105 @@ export class ApiClient {
           !_isRetry &&
           !this.isAuthEndpoint(path)
         ) {
-          console.log(
-            `🔄 [API] 401 received for ${path} — attempting silent token refresh...`
+          logger.info(
+            `🔄 [API] 401 received for ${path} — attempting silent token refresh...`,
           );
 
           const refreshed = await tokenRefreshManager.attemptRefresh();
 
           if (refreshed) {
-            console.log(
-              `🔄 [API] Token refreshed — retrying original request: ${method} ${path}`
+            logger.info(
+              `🔄 [API] Token refreshed — retrying original request: ${method} ${path}`,
             );
             // Retry ONCE with the new token. The request interceptor in
             // AppBootstrap will pick up the fresh token from tokenManager.
             return this.request<T>(method, path, body, options, true);
           }
 
-          console.warn(
-            `🔄 [API] Token refresh failed — propagating 401 for ${path}`
+          logger.warn(
+            `🔄 [API] Token refresh failed — propagating 401 for ${path}`,
           );
         }
 
         throw apiError;
       }
 
-      const rawText = await response.text();
-      let responseData: any;
-      try {
-        responseData = JSON.parse(rawText);
-      } catch {
-        // Plain text response from backend (e.g. "OTP sent successfully")
-        responseData = rawText;
-      }
+      // Trust boundary: the caller's T describes the server's JSON; it is not validated here.
+      const responseData = (await this.parseResponseBody(response)) as T;
       return await this.interceptors.runResponseInterceptors<T>(responseData);
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      let errMessage = (error as any)?.message || "Request failed";
-      if (
-        errMessage.includes("canceled") ||
-        errMessage.includes("aborted") ||
-        errMessage.includes("Network request failed") ||
-        errMessage.includes("fetch failed")
-      ) {
-        errMessage =
-          "Unable to connect to server. Please check your internet connection.";
-      }
       return this.interceptors.runErrorInterceptors(
-        new ApiError(errMessage, 500, "NETWORK_ERROR"),
+        new ApiError(describeTransportError(error), 500, "NETWORK_ERROR"),
       );
+    }
+  }
+
+  /** JSON headers plus the caller's headers and, unless supplied, the stored bearer token. */
+  private async buildRequestHeaders(
+    body: unknown,
+    options?: RequestOptions,
+  ): Promise<Record<string, string>> {
+    const initialHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(options?.headers || {}),
+    };
+
+    if (body instanceof FormData) {
+      delete initialHeaders["Content-Type"];
+    }
+
+    if (!initialHeaders["Authorization"]) {
+      try {
+        const token = await tokenManager.getAccessToken();
+        if (token) {
+          initialHeaders["Authorization"] = `Bearer ${token}`;
+        }
+      } catch (tokenErr) {
+        logger.warn("Failed to retrieve access token", { error: getErrorMessage(tokenErr) });
+      }
+    }
+
+    return initialHeaders;
+  }
+
+  /** ApiError for a non-2xx response, using the server's message/code when it sent JSON. */
+  private async toApiError(response: Response): Promise<ApiError> {
+    let errorData: ApiErrorBody = {};
+    try {
+      const errText = await response.text();
+      try {
+        errorData = JSON.parse(errText);
+      } catch {
+        errorData = { message: errText || response.statusText };
+      }
+    } catch (err) {
+      logger.debug("Failed to read response error text", { error: getErrorMessage(err) });
+      errorData = { message: response.statusText };
+    }
+    const message =
+      errorData.message ||
+      errorData.error ||
+      response.statusText ||
+      "Request failed";
+    return new ApiError(
+      message,
+      response.status,
+      errorData.code || "API_ERROR",
+      errorData.errors,
+    );
+  }
+
+  /** JSON body, or the raw text for plain-text responses (e.g. "OTP sent successfully"). */
+  private async parseResponseBody(response: Response): Promise<unknown> {
+    const rawText = await response.text();
+    try {
+      return JSON.parse(rawText);
+    } catch {
+      return rawText;
     }
   }
 

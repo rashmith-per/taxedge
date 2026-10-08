@@ -1,8 +1,9 @@
-import { isFutureDate, parseDDMMYYYY } from "@/shared/formatters/dateFormatter";
+import { isFutureDate } from "@/shared/formatters/dateFormatter";
 import {
   validateEmail,
   validateFullName,
 } from "@/shared/validators/indianTaxValidators";
+import { isNotEmpty, PaymentValidators } from "@/shared/validators/paymentValidators";
 
 /**
  * GST & Tax Validation Utilities
@@ -114,67 +115,14 @@ export const GstValidators = {
     return /^\d{9,18}$/.test(cleanAcc);
   },
 
-  /**
-   * Validates UPI ID format (e.g. username@bank / pavan@ybl)
-   */
-  isValidUpi: (upi: string): boolean => {
-    const cleanUpi = upi.trim();
-    const upiRegex = /^[\w.\-_]{2,}@[\w\-]{2,}$/;
-    return upiRegex.test(cleanUpi);
-  },
-
-  /**
-   * Validates standard string length (minimum non-empty length)
-   */
-  isNotEmpty: (str: string, minLength: number = 2): boolean => {
-    return str.trim().length >= minLength;
-  },
-
-  /**
-   * Validates Debit / Credit Card number (16 digits)
-   */
-  isValidCardNumber: (cardNumber: string): boolean => {
-    const cleanNum = cardNumber.replace(/[\s-]/g, "");
-    return /^\d{16}$/.test(cleanNum);
-  },
-
-  /**
-   * Validates Card Expiry Date (MM/YY)
-   */
-  isValidExpiry: (expiry: string): boolean => {
-    const cleanExp = expiry.trim();
-    return /^(0[1-9]|1[0-2])\/?([0-9]{2})$/.test(cleanExp);
-  },
-
-  /**
-   * Validates Card CVV (3 or 4 digits)
-   */
-  isValidCvv: (cvv: string): boolean => {
-    const cleanCvv = cvv.trim();
-    return /^\d{3,4}$/.test(cleanCvv);
-  },
-
-  /**
-   * Validates full card form
-   */
-  validateCard: (data: { cardNumber: string; cardHolder: string; expiry: string; cvv: string }): Record<string, string> => {
-    const errs: Record<string, string> = {};
-    if (!GstValidators.isValidCardNumber(data.cardNumber)) errs.cardNumber = "Enter a valid 16-digit card number";
-    if (!GstValidators.isNotEmpty(data.cardHolder, 2)) errs.cardHolder = "Cardholder name is required";
-    if (!GstValidators.isValidExpiry(data.expiry)) errs.expiry = "Enter a valid expiry (MM/YY)";
-    if (!GstValidators.isValidCvv(data.cvv)) errs.cvv = "Enter a valid CVV";
-    return errs;
-  },
-
-  /**
-   * Validates net banking form
-   */
-  validateNetBanking: (data: { selectedBank: string; customerId: string }): Record<string, string> => {
-    const errs: Record<string, string> = {};
-    if (!GstValidators.isNotEmpty(data.selectedBank, 2)) errs.selectedBank = "Please select your bank";
-    if (!GstValidators.isNotEmpty(data.customerId, 4)) errs.customerId = "Customer / User ID is required";
-    return errs;
-  },
+  // Payment instrument and generic length checks live in the shared layer.
+  isValidUpi: PaymentValidators.isValidUpi,
+  isNotEmpty,
+  isValidCardNumber: PaymentValidators.isValidCardNumber,
+  isValidExpiry: PaymentValidators.isValidExpiry,
+  isValidCvv: PaymentValidators.isValidCvv,
+  validateCard: PaymentValidators.validateCard,
+  validateNetBanking: PaymentValidators.validateNetBanking,
 
   /**
    * Functional field-level validator for GST Business Step

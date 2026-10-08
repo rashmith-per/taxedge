@@ -1,4 +1,5 @@
 import { GstBusinessFormData } from "@/modules/gst/gst-registration/components/GstBusinessStep/GstBusinessStep";
+import { logger } from "@/core/logging/logger";
 
 /**
  * Normalizes input string to UPPER_SNAKE_CASE for exact matching.
@@ -102,7 +103,7 @@ const formatBackendDate = (dateStr: string): string => {
     }
     return dateStr; // Return as-is if already in YYYY-MM-DD
   } catch (error) {
-    console.warn("Date formatting failed, defaulting to today", error);
+    logger.warn("[gstRegistrationMapper] Date formatting failed, defaulting to today", { error });
     return new Date().toISOString().split("T")[0]; // Safe Fallback
   }
 };
@@ -174,7 +175,7 @@ export const mapGstRegistrationPayload = (
       signatoryEmail: businessData.signatoryEmail,
     };
   } catch (error) {
-    console.error("Payload Mapping Exception:", error);
+    logger.error("[gstRegistrationMapper] Payload Mapping Exception:", { error });
     // In production, throw a standardized AppError so the UI layer's try-catch can show a toast
     throw new Error("Failed to process registration data for submission.");
   }

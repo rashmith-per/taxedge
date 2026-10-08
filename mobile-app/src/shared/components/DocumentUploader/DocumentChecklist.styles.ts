@@ -1,5 +1,20 @@
 import { StyleSheet } from "react-native";
 
+export const KYC_KEYWORDS = ["pan", "aadhaar", "photo"] as const;
+export const GST_KEYWORDS = [
+  "gst",
+  "sales",
+  "purchase",
+  "certificate",
+  "register",
+] as const;
+
+export const CATEGORIES = [
+  "KYC Documents",
+  "GST Documents",
+  "Financial Documents",
+] as const;
+
 export const styles = StyleSheet.create({
   container: {
     marginVertical: 4,

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Modal } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { SecondaryButton } from "@/components/SecondaryButton";
+import { SecondaryButton } from "@/shared/components/Button/SecondaryButton";
 import { styles } from "@/styles/app/(main)/profile.styles";
 
 interface KycDetailsModalProps {

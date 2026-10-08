@@ -5,6 +5,7 @@
  */
 
 import { StyleSheet, Platform } from "react-native";
+import type { ThemeTokens } from "@/shared/constants/theme";
 import {
   BrandColors,
   BorderRadius,
@@ -187,7 +188,7 @@ export const getScrollContentStyle = (bottomPadding: number) => ({
 });
 
 /** Dynamic styles for cards */
-export type ThemeTokens = Record<string, any>;
+export type { ThemeTokens };
 
 export const getThemedCardStyle = (colors: ThemeTokens) => ({
   backgroundColor: String(colors.backgroundElement),

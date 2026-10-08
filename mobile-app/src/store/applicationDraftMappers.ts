@@ -4,6 +4,8 @@ import type {
   ApplicationTimelineStep,
   ServiceCategoryId,
 } from "@/types/domain";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 /**
  * Normalizes various representations of a draft step into a zero-based number.
@@ -71,7 +73,7 @@ export function normalizeDraftDocuments(draft: Record<string, unknown>): Applica
       };
     });
   } catch (error) {
-    console.warn("Failed to normalize draft documents:", error);
+    logger.warn("Failed to normalize draft documents", { error: getErrorMessage(error) });
     return [];
   }
 }

@@ -1,3 +1,5 @@
+import { logger } from "@/core/logging/logger";
+
 export interface AppModule {
   name: string;
   version: string;
@@ -9,7 +11,7 @@ class ModuleRegistry {
 
   register(module: AppModule): void {
     if (this.modules.has(module.name)) {
-      console.warn(`Module "${module.name}" is already registered.`);
+      logger.warn(`Module "${module.name}" is already registered.`);
       return;
     }
     this.modules.set(module.name, module);
@@ -29,7 +31,7 @@ class ModuleRegistry {
         try {
           await module.init();
         } catch (error) {
-          console.error(`Failed to initialize module "${module.name}":`, error);
+          logger.error(`Failed to initialize module "${module.name}":`, { moduleName: module.name, error });
         }
       })
     );

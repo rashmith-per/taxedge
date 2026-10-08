@@ -13,7 +13,7 @@ import {
   getServiceCardThemedStyle,
   getServiceLabelThemedStyle,
 } from "@/styles/app/(main)/home.styles";
-import type { DashboardServiceTile } from "@/app/(main)/home";
+import type { DashboardServiceTile } from "@/modules/dashboard/types/dashboard.types";
 
 interface ServicesGridProps {
   services: DashboardServiceTile[];

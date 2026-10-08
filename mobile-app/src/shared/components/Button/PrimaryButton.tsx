@@ -8,7 +8,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 
 export type ButtonColorType = "primary" | "orange";
 
@@ -31,13 +31,15 @@ export function PrimaryButton({
   style,
   textStyle,
 }: PrimaryButtonProps) {
-  const backgroundColor = disabled
-    ? "#E2E8F0"
-    : colorType === "orange"
-    ? Colors.orange
-    : Colors.primary;
+  const colors = useTheme();
 
-  const textColor = disabled ? "#64748B" : "#FFFFFF";
+  const backgroundColor = disabled
+    ? colors.backgroundSelected
+    : colorType === "orange"
+      ? colors.orange
+      : colors.primary;
+
+  const textColor = disabled ? colors.textSecondary : "#FFFFFF";
 
   return (
     <TouchableOpacity

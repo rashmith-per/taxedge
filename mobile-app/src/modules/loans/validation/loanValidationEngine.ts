@@ -8,7 +8,7 @@ import {
   validatePincode,
   validateFullName,
 } from "../../../shared/validators/indianTaxValidators";
-import { ifscService } from "../../gst/services/ifscService";
+import { ifscService } from "@/shared/services/lookup/ifscService";
 
 export type FieldValidator<T = any> = (
   value: any,

@@ -45,7 +45,7 @@ export const LoanStatusScreen: React.FC = () => {
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      router.replace("/(main)/home" as any);
+      router.replace("/(main)/home");
       return true;
     });
     return () => sub.remove();
@@ -80,7 +80,7 @@ export const LoanStatusScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.replace("/(main)/home" as any)}>
+          <TouchableOpacity onPress={() => router.replace("/(main)/home")}>
             <Ionicons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Loan Application Status</Text>
@@ -167,7 +167,7 @@ export const LoanStatusScreen: React.FC = () => {
           <View style={styles.bottomActions}>
             <TouchableOpacity
               style={styles.primaryBtn}
-              onPress={() => router.replace("/(main)/applications" as any)}
+              onPress={() => router.replace("/(main)/applications")}
               activeOpacity={0.85}
             >
               <Ionicons name="list-outline" size={20} color="#FFFFFF" />
@@ -176,7 +176,7 @@ export const LoanStatusScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.secondaryBtn}
-              onPress={() => router.replace("/(main)/home" as any)}
+              onPress={() => router.replace("/(main)/home")}
               activeOpacity={0.85}
             >
               <Ionicons name="home-outline" size={20} color="#0F172A" />

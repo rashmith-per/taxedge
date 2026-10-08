@@ -22,19 +22,13 @@ interface Step6SecurityComplianceViewProps {
   ) => void;
   onDeleteSecurity: (id: string) => void;
   legalApprovals: LegalApprovalsForm;
-  onLegalApprovalsChange: (field: keyof LegalApprovalsForm, value: any) => void;
+  onLegalApprovalsChange: (field: keyof LegalApprovalsForm, value: LegalApprovalsForm[keyof LegalApprovalsForm]) => void;
   regulatoryCompliance: RegulatoryComplianceForm;
-  onRegulatoryChange: (
-    field: keyof RegulatoryComplianceForm,
-    value: any
-  ) => void;
+  onRegulatoryChange: (field: keyof RegulatoryComplianceForm, value: RegulatoryComplianceForm[keyof RegulatoryComplianceForm]) => void;
   insuranceDetails: InsuranceDetailsForm;
   onInsuranceChange: (field: keyof InsuranceDetailsForm, value: string) => void;
   otherCompliance: OtherComplianceForm;
-  onOtherComplianceChange: (
-    field: keyof OtherComplianceForm,
-    value: any
-  ) => void;
+  onOtherComplianceChange: (field: keyof OtherComplianceForm, value: OtherComplianceForm[keyof OtherComplianceForm]) => void;
 }
 
 export const Step6SecurityComplianceView: React.FC<

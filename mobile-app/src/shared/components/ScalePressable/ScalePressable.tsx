@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useState } from "react";
 import {
   Animated,
   TouchableWithoutFeedback,
@@ -21,7 +21,7 @@ export const ScalePressable: React.FC<ScalePressableProps> = ({
   style,
   disabled = false,
 }) => {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const handlePressIn = () => {
     if (disabled) return;

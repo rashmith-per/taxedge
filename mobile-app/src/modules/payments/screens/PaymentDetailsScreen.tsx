@@ -1,8 +1,8 @@
-﻿import React from "react";
-import PaymentsHomeScreen from "./PaymentsHomeScreen";
+import React from "react";
+import { PaymentsHomeScreen, type PaymentsHomeScreenProps } from "./PaymentsHomeScreen";
 
-export function PaymentDetailsScreen() {
-  return <PaymentsHomeScreen />;
+export function PaymentDetailsScreen(props: PaymentsHomeScreenProps = {}) {
+  return <PaymentsHomeScreen {...props} />;
 }
 
 export default PaymentDetailsScreen;

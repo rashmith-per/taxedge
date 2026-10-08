@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 class LocalStorageService {
   private memoryFallback: Map<string, string> = new Map();
@@ -12,7 +14,8 @@ class LocalStorageService {
       const val = await AsyncStorage.getItem(key);
       if (val !== null) return val;
       return this.memoryFallback.get(key) ?? null;
-    } catch {
+    } catch (err) {
+      logger.debug("[LocalStorage] Failed to read from storage, using memory fallback", { key, error: getErrorMessage(err) });
       return this.memoryFallback.get(key) ?? null;
     }
   }
@@ -25,8 +28,9 @@ class LocalStorageService {
       } else {
         await AsyncStorage.setItem(key, value);
       }
-    } catch {
-      // Memory fallback is already updated
+    } catch (err) {
+      // Memory fallback is already updated; log warning without exposing value
+      logger.warn("[LocalStorage] Failed to write to storage, preserved in memory fallback", { key, error: getErrorMessage(err) });
     }
   }
 
@@ -38,8 +42,9 @@ class LocalStorageService {
       } else {
         await AsyncStorage.removeItem(key);
       }
-    } catch {
+    } catch (err) {
       // Memory fallback is already updated
+      logger.warn("[LocalStorage] Failed to remove key from storage", { key, error: getErrorMessage(err) });
     }
   }
 
@@ -51,11 +56,13 @@ class LocalStorageService {
       } else {
         await AsyncStorage.clear();
       }
-    } catch {
+    } catch (err) {
       // Memory fallback is already updated
+      logger.warn("[LocalStorage] Failed to clear storage", { error: getErrorMessage(err) });
     }
   }
 }
 
 export const localStorage = new LocalStorageService();
 export default localStorage;
+

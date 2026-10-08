@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
+import { useNotificationStore } from "@/store/notificationStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 
@@ -26,11 +27,14 @@ export function AppHeader({
   title,
   showBack = false,
   showNotification = true,
-  unreadCount = 0,
+  unreadCount,
   onBack,
   onNotificationPress,
 }: AppHeaderProps) {
+  const colors = useTheme();
   const router = useRouter();
+  const storeUnreadCount = useNotificationStore((state) => state.unreadCount);
+  const effectiveUnreadCount = unreadCount !== undefined ? unreadCount : storeUnreadCount;
   const insets = useSafeAreaInsets();
 
   const handleNotification = () => {
@@ -42,12 +46,12 @@ export function AppHeader({
   };
 
   return (
-    <View style={{ backgroundColor: Colors.primaryDark, paddingTop: insets.top }}>
+    <View style={{ backgroundColor: colors.primaryDark, paddingTop: insets.top }}>
       <FocusAwareStatusBar barStyle="light-content" />
       <View
         style={[
           styles.headerContainer,
-          { backgroundColor: Colors.primaryDark },
+          { backgroundColor: colors.primaryDark },
         ]}
       >
         <View style={styles.leftContainer}>
@@ -80,12 +84,12 @@ export function AppHeader({
                 size={24}
                 color="#FFFFFF"
               />
-              {unreadCount > 0 && (
+              {effectiveUnreadCount > 0 && (
                 <View
-                  style={[styles.badge, { backgroundColor: Colors.orange }]}
+                  style={[styles.badge, { backgroundColor: colors.orange }]}
                 >
                   <Text style={styles.badgeText}>
-                    {unreadCount > 9 ? "9+" : unreadCount}
+                    {effectiveUnreadCount > 9 ? "9+" : effectiveUnreadCount}
                   </Text>
                 </View>
               )}

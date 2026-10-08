@@ -13,6 +13,7 @@ import { useServiceAccessGuard } from "@/shared/hooks/useServiceAccessGuard";
 import { gstService } from "@/modules/gst/services/GstService";
 import { GstServiceItem } from "@/modules/gst/types/gst.types";
 import { styles } from "./GstScreen.styles";
+import { toHref } from "@/shared/utils/navigation";
 
 export const GstScreen: React.FC = () => {
   const router = useRouter();
@@ -25,7 +26,7 @@ export const GstScreen: React.FC = () => {
 
   const handleCardPress = (item: GstServiceItem) => {
     if (item.route) {
-      accessService(item.route);
+      accessService(toHref(item.route));
     }
   };
 

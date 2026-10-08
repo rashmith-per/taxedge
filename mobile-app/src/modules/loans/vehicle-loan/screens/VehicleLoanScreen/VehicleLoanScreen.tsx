@@ -32,6 +32,7 @@ import {
   validateForm,
 } from "../../../validation/loanValidationEngine";
 import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { useLoanDocuments } from "../../../hooks/useLoanDocuments";
 import { useLoanDraft } from "../../../hooks/useLoanDraft";
 import { LOAN_DRAFT_STORAGE_KEYS } from "../../../constants/loanDraftKeys";
@@ -40,11 +41,18 @@ import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLa
 import { getBottomBarPadding, getSafeAreaTopPadding } from "../../../styles/loanScreenLayout.styles";
 import {
   VehicleLoanFinancialsStep,
-  VehicleLoanEmploymentStep,
-  VehicleLoanBankingStep,
-  VehicleLoanDocumentsStep,
   VehicleLoanReviewStep,
 } from "../../components";
+import {
+  LoanBankingStep,
+  LoanEmploymentStep,
+  LoanCategorizedDocumentsStep,
+} from "../../../components/steps";
+import {
+  VEHICLE_LOAN_BANKING_STEP,
+  VEHICLE_LOAN_EMPLOYMENT_STEP,
+  VEHICLE_LOAN_DOCUMENT_CATEGORIES,
+} from "../../config/vehicleLoanSteps.config";
 import { styles } from "./VehicleLoanScreen.styles";
 
 const STEPS = [
@@ -92,7 +100,7 @@ export const VehicleLoanScreen: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   // Form State initialized to empty & unselected
   const [loanDetails, setLoanDetails] =
@@ -200,19 +208,7 @@ export const VehicleLoanScreen: React.FC = () => {
     },
   });
 
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  const handleDetailsChange = (
-    field: keyof VehicleLoanDetailsFormData,
-    value: any
-  ) => {
+  const handleDetailsChange = (field: keyof VehicleLoanDetailsFormData, value: VehicleLoanDetailsFormData[keyof VehicleLoanDetailsFormData]) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));
     clearFieldError(field);
   };
@@ -324,11 +320,11 @@ export const VehicleLoanScreen: React.FC = () => {
       case 0:
         return <VehicleLoanFinancialsStep data={loanDetails} onChange={handleDetailsChange} errors={errors} />;
       case 1:
-        return <VehicleLoanEmploymentStep data={loanDetails} onChangeDetails={handleDetailsChange} businessData={businessDetails} onChangeBusiness={handleBusinessChange} errors={errors} />;
+        return <LoanEmploymentStep config={VEHICLE_LOAN_EMPLOYMENT_STEP} data={loanDetails} onChangeDetails={handleDetailsChange} businessData={businessDetails} onChangeBusiness={handleBusinessChange} errors={errors} />;
       case 2:
-        return <VehicleLoanBankingStep data={bankingDetails} onChange={handleBankingChange} errors={errors} hasExistingLoans={loanDetails.hasExistingLoans} />;
+        return <LoanBankingStep config={VEHICLE_LOAN_BANKING_STEP} data={bankingDetails} onChange={handleBankingChange} errors={errors} hasExistingLoans={loanDetails.hasExistingLoans} />;
       case 3:
-        return <VehicleLoanDocumentsStep loanDocuments={loanDocuments} />;
+        return <LoanCategorizedDocumentsStep categories={VEHICLE_LOAN_DOCUMENT_CATEGORIES} loanDocuments={loanDocuments} />;
       case 4:
       default:
         return (

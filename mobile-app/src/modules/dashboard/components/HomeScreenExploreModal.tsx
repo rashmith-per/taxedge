@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import type { EdgeInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { styles } from "../../../styles/app/(main)/home.styles";
+import { styles } from "../styles/home.styles";
 import type { CatalogueItem, ServiceCategoryId } from "../../../shared/types/domain";
 
 interface HomeScreenExploreModalProps {

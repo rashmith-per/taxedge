@@ -20,6 +20,8 @@ import { UniversalDraftModal } from "../../../../../shared/components/UniversalD
 import { useServiceDraft } from "../../../../../shared/hooks/useServiceDraft";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { LoanStepIndicator } from "../../../components/LoanStepIndicator";
+import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { getBottomBarPadding, getSafeAreaTopPadding } from "../../../styles/loanScreenLayout.styles";
 import {
   LoanDetailsFormData,
@@ -69,10 +71,9 @@ export const PersonalLoanScreen: React.FC = () => {
 
   const customer = useAuthStore((s) => s.customer);
 
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   // Form State
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>(INITIAL_LOAN_DETAILS);
@@ -81,6 +82,18 @@ export const PersonalLoanScreen: React.FC = () => {
   const [documents, setDocuments] = useState<LoanDocumentItem[]>(() =>
     JSON.parse(JSON.stringify(PERSONAL_LOAN_DOCUMENTS_TEMPLATE))
   );
+
+  const scrollToTop = useCallback(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
+  const wizard = useLoanWizard({
+    totalSteps: STEPS.length,
+    validateStep: (stepIndex) => validateStep(stepIndex),
+    onExitFromFirstStep: () => exitFromFirstStep(),
+    onStepChange: scrollToTop,
+  });
+  const { currentStepIndex } = wizard;
 
   const isFormDirty = useCallback(() => {
     return Boolean(
@@ -115,30 +128,18 @@ export const PersonalLoanScreen: React.FC = () => {
       if (saved.bankingDetails) setBankingDetails(saved.bankingDetails);
       if (saved.documents) setDocuments(saved.documents);
       if (typeof saved.currentStepIndex === "number") {
-        setCurrentStepIndex(saved.currentStepIndex);
+        wizard.goToStep(saved.currentStepIndex);
       }
     },
     isSubmitted: isSubmitting,
   });
 
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  const handleDetailsChange = (field: keyof LoanDetailsFormData, value: any) => {
+  const handleDetailsChange = (field: keyof LoanDetailsFormData, value: LoanDetailsFormData[keyof LoanDetailsFormData]) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));
     clearFieldError(field);
   };
 
-  const handleBankingChange = (
-    field: keyof LoanBankingFormData,
-    value: any
-  ) => {
+  const handleBankingChange = (field: keyof LoanBankingFormData, value: LoanBankingFormData[keyof LoanBankingFormData]) => {
     setBankingDetails((prev) => ({ ...prev, [field]: value }));
     clearFieldError(field);
   };
@@ -180,20 +181,20 @@ export const PersonalLoanScreen: React.FC = () => {
     );
   };
 
-  const validateCurrentStep = (): boolean => {
-    if (currentStepIndex === 0) {
+  function validateStep(stepIndex: number): boolean {
+    if (stepIndex === 0) {
       const errs = validateForm(loanDetails, personalLoanSchemas.financials);
       setErrors(errs);
       return Object.keys(errs).length === 0;
     }
 
-    if (currentStepIndex === 1) {
+    if (stepIndex === 1) {
       const errs = validateForm(bankingDetails, personalLoanSchemas.banking);
       setErrors(errs);
       return Object.keys(errs).length === 0;
     }
 
-    if (currentStepIndex === 2) {
+    if (stepIndex === 2) {
       const { isValid, missingDocs } = validateLoanDocuments(documents);
       if (!isValid) {
         Alert.alert(
@@ -206,29 +207,23 @@ export const PersonalLoanScreen: React.FC = () => {
     }
 
     return true;
-  };
+  }
 
-  const handleNext = () => {
-    if (!validateCurrentStep()) {
-      return;
-    }
-
-    if (currentStepIndex < STEPS.length - 1) {
-      setCurrentStepIndex((prev) => prev + 1);
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } else {
-      handleSubmitApplication();
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } else if (isFormDirty()) {
+  function exitFromFirstStep() {
+    if (isFormDirty()) {
       openDraftModal();
     } else {
       router.back();
+    }
+  }
+
+  const handleNext = () => {
+    if (!wizard.isLastStep) {
+      wizard.goToNextStep();
+      return;
+    }
+    if (validateStep(currentStepIndex)) {
+      handleSubmitApplication();
     }
   };
 
@@ -263,7 +258,7 @@ export const PersonalLoanScreen: React.FC = () => {
             text: "Track Status",
             onPress: () => {
               router.replace(
-                `/service/loan-status?id=${response.applicationId}&loanType=Personal+Loan&amount=${response.amount}` as any
+                `/service/loan-status?id=${response.applicationId}&loanType=Personal+Loan&amount=${response.amount}`
               );
             },
           },
@@ -313,16 +308,13 @@ export const PersonalLoanScreen: React.FC = () => {
             profile={customer || undefined}
             isConsentChecked={isConsentChecked}
             onConsentToggle={setIsConsentChecked}
-            onGoToStep={(stepIdx) => {
-              setCurrentStepIndex(stepIdx);
-              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-            }}
+            onGoToStep={wizard.goToStep}
           />
         );
     }
   };
 
-  const isFinalStep = currentStepIndex === STEPS.length - 1;
+  const isFinalStep = wizard.isLastStep;
 
   return (
     <View style={[styles.safeArea, getSafeAreaTopPadding(insets.top)]}>
@@ -333,7 +325,7 @@ export const PersonalLoanScreen: React.FC = () => {
         subtitle={STEPS[currentStepIndex]}
         currentStepIndex={currentStepIndex}
         totalSteps={STEPS.length}
-        onBack={handleBack}
+        onBack={wizard.handleBack}
       />
 
       <KeyboardAvoidingView

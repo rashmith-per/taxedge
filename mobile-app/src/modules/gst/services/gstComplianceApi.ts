@@ -8,6 +8,12 @@ import { getActiveBaseUrl } from "@/core/api/apiConfig";
 import { tokenManager } from "@/core/authentication/tokenManager";
 import { tokenRefreshManager } from "@/core/authentication/tokenRefreshManager";
 import { getResolvedCustomerId } from "@/modules/gst/gst-filing/hooks/gstFilingHelpers";
+import { appendFilePart } from "@/shared/utils/formDataFile";
+import { logger } from "@/core/logging/logger";
+import type { ComplianceFormData } from "@/modules/gst/validation/complianceSchema";
+
+/** Compliance form values; callers may attach the resolved customer id. */
+type ComplianceSubmission = ComplianceFormData & { customerId?: string };
 
 const MONTHS = [
   "Jan",
@@ -54,7 +60,7 @@ const getMimeType = (filename?: string, fallback = "image/jpeg"): string => {
 };
 
 export const gstComplianceApi = {
-  createCompliance: async (data: any) => {
+  createCompliance: async (data: ComplianceSubmission) => {
     const formData = new FormData();
     const custId = await getResolvedCustomerId();
 
@@ -79,27 +85,27 @@ export const gstComplianceApi = {
     formData.append("data", JSON.stringify(dto));
 
     if (data.purchaseDoc?.uri) {
-      formData.append("reconciliationFile1", {
+      appendFilePart(formData, "reconciliationFile1", {
         uri: data.purchaseDoc.uri,
         name: data.purchaseDoc.name || "recon1.jpg",
         type: data.purchaseDoc.mimeType || getMimeType(data.purchaseDoc.name),
-      } as any);
+      });
     }
 
     if (data.salesDoc?.uri) {
-      formData.append("reconciliationFile2", {
+      appendFilePart(formData, "reconciliationFile2", {
         uri: data.salesDoc.uri,
         name: data.salesDoc.name || "recon2.jpg",
         type: data.salesDoc.mimeType || getMimeType(data.salesDoc.name),
-      } as any);
+      });
     }
 
     if (data.noticeDoc?.uri) {
-      formData.append("noticeFile", {
+      appendFilePart(formData, "noticeFile", {
         uri: data.noticeDoc.uri,
         name: data.noticeDoc.name || "notice.jpg",
         type: data.noticeDoc.mimeType || getMimeType(data.noticeDoc.name),
-      } as any);
+      });
     }
 
     const baseUrl = apiClient.getBaseUrl() || (await getActiveBaseUrl());
@@ -131,15 +137,18 @@ export const gstComplianceApi = {
           try {
             const parsed = JSON.parse(xhr.responseText);
             resolve(parsed);
-          } catch {
-            resolve(xhr.responseText as any);
+          } catch (parseErr) {
+            logger.debug("[gstComplianceApi] Non-JSON create response", { error: parseErr });
+            resolve(xhr.responseText);
           }
         } else {
           let errText = xhr.responseText;
           try {
             const parsed = JSON.parse(xhr.responseText);
             if (parsed.message) errText = parsed.message;
-          } catch {}
+          } catch (parseErr) {
+            logger.debug("[gstComplianceApi] Non-JSON error response from createCompliance", { status: xhr.status, error: parseErr });
+          }
           reject(new Error(errText || `Server responded with ${xhr.status}`));
         }
       };
@@ -152,7 +161,7 @@ export const gstComplianceApi = {
     });
   },
 
-  updateCompliance: async (gstin: string, id: string, data: any) => {
+  updateCompliance: async (gstin: string, id: string, data: ComplianceSubmission) => {
     const formData = new FormData();
     const custId = await getResolvedCustomerId();
 
@@ -177,27 +186,27 @@ export const gstComplianceApi = {
     formData.append("data", JSON.stringify(dto));
 
     if (data.purchaseDoc?.uri) {
-      formData.append("reconciliationFile1", {
+      appendFilePart(formData, "reconciliationFile1", {
         uri: data.purchaseDoc.uri,
         name: data.purchaseDoc.name || "recon1.jpg",
         type: data.purchaseDoc.mimeType || getMimeType(data.purchaseDoc.name),
-      } as any);
+      });
     }
 
     if (data.salesDoc?.uri) {
-      formData.append("reconciliationFile2", {
+      appendFilePart(formData, "reconciliationFile2", {
         uri: data.salesDoc.uri,
         name: data.salesDoc.name || "recon2.jpg",
         type: data.salesDoc.mimeType || getMimeType(data.salesDoc.name),
-      } as any);
+      });
     }
 
     if (data.noticeDoc?.uri) {
-      formData.append("noticeFile", {
+      appendFilePart(formData, "noticeFile", {
         uri: data.noticeDoc.uri,
         name: data.noticeDoc.name || "notice.jpg",
         type: data.noticeDoc.mimeType || getMimeType(data.noticeDoc.name),
-      } as any);
+      });
     }
 
     const baseUrl = apiClient.getBaseUrl() || (await getActiveBaseUrl());
@@ -214,15 +223,18 @@ export const gstComplianceApi = {
           try {
             const parsed = JSON.parse(xhr.responseText);
             resolve(parsed);
-          } catch {
-            resolve(xhr.responseText as any);
+          } catch (parseErr) {
+            logger.debug("[gstComplianceApi] Non-JSON update response", { error: parseErr });
+            resolve(xhr.responseText);
           }
         } else {
           let errText = xhr.responseText;
           try {
             const parsed = JSON.parse(xhr.responseText);
             if (parsed.message) errText = parsed.message;
-          } catch {}
+          } catch (parseErr) {
+            logger.debug("[gstComplianceApi] Non-JSON error response from updateCompliance", { status: xhr.status, error: parseErr });
+          }
           reject(new Error(errText || `Server responded with ${xhr.status}`));
         }
       };

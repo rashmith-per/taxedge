@@ -3,13 +3,13 @@ import { View, Text, TextInput, ActivityIndicator } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { LoanBankingFormData } from "../../../types/loans.types";
 import { useIfscLookup } from "../../../hooks/useIfscLookup";
-import { ifscService } from "../../../../gst/services/ifscService";
+import { ifscService } from "@/shared/services/lookup/ifscService";
 import { BrandColors } from "../../../../../shared/theme";
 import { styles } from "./PersonalLoanBankingStep.styles";
 
 export interface PersonalLoanBankingStepProps {
   data: LoanBankingFormData;
-  onChange: (field: keyof LoanBankingFormData, value: any) => void;
+  onChange: (field: keyof LoanBankingFormData, value: LoanBankingFormData[keyof LoanBankingFormData]) => void;
   errors?: Record<string, string>;
 }
 

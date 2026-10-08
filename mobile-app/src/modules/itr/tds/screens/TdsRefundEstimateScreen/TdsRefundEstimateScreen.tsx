@@ -23,8 +23,11 @@ import { tdsDraftService, INITIAL_TDS_FORM_DATA } from "../../services/tdsDraftS
 import { tdsCalculationService } from "../../services/tdsCalculationService";
 import { tdsApiService } from "../../services/tdsApiService";
 import { TaxCalculationBreakdownCard } from "../../components/estimate/TaxCalculationBreakdownCard";
+import { ReviewSectionCard } from "../../components/estimate/ReviewSectionCard";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
 import { styles } from "./TdsRefundEstimateScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export const TdsRefundEstimateScreen: React.FC = () => {
   const router = useRouter();
@@ -76,14 +79,15 @@ export const TdsRefundEstimateScreen: React.FC = () => {
           if (backendApp.bank) finalForm.bank = { ...finalForm.bank, ...backendApp.bank };
           if (backendApp.income) finalForm.income = { ...finalForm.income, ...backendApp.income };
           if (backendApp.documents && backendApp.documents.length > 0) {
-            const hasBackendUploaded = backendApp.documents.some((d: any) => d.status === 'uploaded' || d.status === 'verified');
+            // TdsDocStatus has no 'verified'; kept as a defensive check for backend-reported status.
+            const hasBackendUploaded = backendApp.documents.some((d) => d.status === 'uploaded' || (d.status as string) === 'verified');
             if (hasBackendUploaded) {
               finalDocs = backendApp.documents as any;
             }
           }
         }
       } catch (err) {
-        console.warn("[TDS Estimate Screen] Backend fetch warning:", err);
+        logger.warn("[TdsRefundEstimateScreen] Backend fetch warning:", { error: err });
       }
 
       if (isMounted) {
@@ -101,11 +105,11 @@ export const TdsRefundEstimateScreen: React.FC = () => {
   }, []);
 
   const handleEditPersonalOrIncome = () => {
-    router.push("/service/tds-form" as any);
+    router.push("/service/tds-form");
   };
 
   const handleEditDocuments = () => {
-    router.push("/service/tds-checklist" as any);
+    router.push("/service/tds-checklist");
   };
 
   const handleProceedToPayment = async () => {
@@ -130,7 +134,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
       useApplicationStore.getState().saveTdsDraft({ step: "PAYMENT" });
 
       router.push({
-        pathname: "/service/tds-payment" as any,
+        pathname: "/service/tds-payment",
         params: {
           applicationId: targetAppId,
           refundAmount: calculation.estimatedRefund.toString(),
@@ -141,10 +145,10 @@ export const TdsRefundEstimateScreen: React.FC = () => {
           totalPayable: calculation.totalPayableFee.toString(),
         },
       });
-    } catch (err: any) {
+    } catch (err) {
       Alert.alert(
         "Application Submission Failed",
-        err?.message || "Failed to submit application to the server. Please check your network and try again."
+        getErrorMessage(err) || "Failed to submit application to the server. Please check your network and try again."
       );
     } finally {
       setIsSubmitting(false);
@@ -206,22 +210,11 @@ export const TdsRefundEstimateScreen: React.FC = () => {
         {/* ========================================================
             SECTION 1: PERSONAL DETAILS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="person-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>Personal Details</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPersonalOrIncome}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="person-outline"
+          title="Personal Details"
+          onEdit={handleEditPersonalOrIncome}
+        >
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Full Name</Text>
@@ -246,27 +239,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               </Text>
             </View>
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 2: INCOME DETAILS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="trending-up-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>Income Details</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPersonalOrIncome}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="trending-up-outline"
+          title="Income Details"
+          onEdit={handleEditPersonalOrIncome}
+        >
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Tax Regime</Text>
@@ -306,27 +288,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 3: TDS DETAILS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="receipt-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>TDS Details</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPersonalOrIncome}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="receipt-outline"
+          title="TDS Details"
+          onEdit={handleEditPersonalOrIncome}
+        >
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Total TDS Deducted</Text>
@@ -359,27 +330,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 4: DEDUCTIONS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="wallet-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>Deductions</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPersonalOrIncome}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="wallet-outline"
+          title="Deductions"
+          onEdit={handleEditPersonalOrIncome}
+        >
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Section 80C</Text>
@@ -410,27 +370,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 5: BANK DETAILS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="business-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>Bank Details</Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPersonalOrIncome}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="business-outline"
+          title="Bank Details"
+          onEdit={handleEditPersonalOrIncome}
+        >
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Bank Name</Text>
@@ -451,29 +400,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               <Text style={styles.infoValue}>{formData.bank.ifscCode || "—"}</Text>
             </View>
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 6: DOCUMENTS
         ======================================================== */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.cardTitleGroup}>
-              <Ionicons name="document-attach-outline" size={18} color={BrandColors.PRIMARY_BLUE} />
-              <Text style={styles.cardTitle}>
-                Documents ({uploadedDocs.length})
-              </Text>
-            </View>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditDocuments}
-              style={styles.editButton}
-            >
-              <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE_DARK} />
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
+        <ReviewSectionCard
+          icon="document-attach-outline"
+          title={`Documents (${uploadedDocs.length})`}
+          onEdit={handleEditDocuments}
+        >
           <View style={styles.docPillList}>
             {uploadedDocs.length > 0 ? (
               uploadedDocs.map((doc) => (
@@ -486,7 +422,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
               <Text style={styles.infoLabel}>No documents uploaded yet</Text>
             )}
           </View>
-        </View>
+        </ReviewSectionCard>
 
         {/* ========================================================
             SECTION 7: TAX CALCULATION

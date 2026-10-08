@@ -6,9 +6,11 @@ import {
   resolveApiBaseUrl,
   mapFilingDocField,
 } from "./gstUploadHelper";
+import { appendFilePart } from "@/shared/utils/formDataFile";
+import type { GstFilingPayload } from "@/modules/gst/gst-filing/types/gstFilingPayload.types";
 
 export const gstFilingApi = {
-  createFiling: async (payload: any, resolveCustomerId: () => Promise<string>) => {
+  createFiling: async (payload: GstFilingPayload, resolveCustomerId: () => Promise<string>) => {
     const token = await tokenManager.getAccessToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -35,7 +37,7 @@ export const gstFilingApi = {
     return apiClient.post<string>("/api/v1/gst/filing/create", finalPayload, { headers });
   },
 
-  updateFiling: async (filingId: string, payload: any, resolveCustomerId: () => Promise<string>) => {
+  updateFiling: async (filingId: string, payload: GstFilingPayload, resolveCustomerId: () => Promise<string>) => {
     const token = await tokenManager.getAccessToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -95,11 +97,11 @@ export const gstFilingApi = {
         hasFiles = true;
         const name = doc.fileName || `${fieldName}.pdf`;
         const isPdf = name.toLowerCase().endsWith(".pdf");
-        formData.append(fieldName, {
+        appendFilePart(formData, fieldName, {
           uri: doc.fileUri,
           name: name,
           type: isPdf ? "application/pdf" : "image/jpeg",
-        } as any);
+        });
       }
     }
 
@@ -128,11 +130,11 @@ export const gstFilingApi = {
         hasFiles = true;
         const name = doc.fileName || `${fieldName}.pdf`;
         const isPdf = name.toLowerCase().endsWith(".pdf");
-        formData.append(fieldName, {
+        appendFilePart(formData, fieldName, {
           uri: doc.fileUri,
           name: name,
           type: isPdf ? "application/pdf" : "image/jpeg",
-        } as any);
+        });
       }
     }
 
@@ -155,11 +157,11 @@ export const gstFilingApi = {
     const formData = new FormData();
     const fieldName = mapFilingDocField(documentType || "");
 
-    formData.append(fieldName, {
+    appendFilePart(formData, fieldName, {
       uri: fileUri,
       name: fileName || `${fieldName}.pdf`,
       type: fileName?.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg",
-    } as any);
+    });
 
     const url = `${resolveApiBaseUrl()}/api/v1/gst/filing/documents/${filingId}/upload`;
     return executeXhrUpload(url, "POST", formData);

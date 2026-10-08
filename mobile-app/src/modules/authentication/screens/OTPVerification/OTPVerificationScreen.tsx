@@ -20,6 +20,7 @@ import {
   getOtpBoxDynamicStyle,
   getBackBtnPosition,
 } from "./OTPVerificationScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export function OTPVerificationScreen() {
   const router = useRouter();
@@ -55,16 +56,16 @@ export function OTPVerificationScreen() {
       setLoading(false);
       if (res.success) {
         if (res.requiresPasscode) {
-          router.replace("/(auth)/passcode" as any);
+          router.replace("/(auth)/passcode");
         } else {
-          router.replace("/(main)/home" as any);
+          router.replace("/(main)/home");
         }
       } else {
         setError(res.message || res.error || "Invalid OTP. Please check the code and try again.");
       }
-    } catch (err: any) {
+    } catch (err) {
       setLoading(false);
-      setError(err?.message || "Failed to verify OTP.");
+      setError(getErrorMessage(err) || "Failed to verify OTP.");
     }
   };
 

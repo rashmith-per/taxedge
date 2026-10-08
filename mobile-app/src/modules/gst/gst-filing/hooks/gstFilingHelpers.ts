@@ -6,8 +6,12 @@
 import { tokenManager, JwtUtils } from "@/core/authentication/tokenManager";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { authStorage } from "@/modules/authentication/services/authStorage";
+import { logger } from "@/core/logging/logger";
 import { FilingDocItem } from "@/modules/gst/gst-filing/config/gstFilingDocumentsConfig";
 import { GstFilingPeriodData } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstFilingPeriodStep";
+import type { GstFilingPayload } from "@/modules/gst/gst-filing/types/gstFilingPayload.types";
+
+export type { GstFilingPayload };
 
 export interface GstFilingBackendDto {
   gstfilingId?: string;
@@ -39,19 +43,6 @@ export interface GstFilingBackendDto {
   [key: string]: unknown;
 }
 
-export interface GstFilingPayload {
-  gstin: string;
-  customerId: string;
-  financialYear: string;
-  filingPeriod: string;
-  filingFrequency: "MONTHLY" | "QUARTERLY" | "ANNUAL_FINANCIAL_YEAR";
-  returnType: "GSTR_1" | "GSTR_3B";
-  filingType: "NIL_RETURN" | "REGULAR";
-  taxCalculationMethod: "ESTIMATION_FIGURES" | "TAXEDGE_CA_CALCULATION";
-  estimatedTaxableSales: number | null;
-  estimatedTaxablePurchases: number | null;
-  estimatedEligibleItc: number | null;
-}
 
 /**
  * Safely resolves customer ID from JWT token or cached auth sessions.
@@ -63,14 +54,14 @@ export async function getResolvedCustomerId(): Promise<string> {
     const custId =
       authState.customer?.customerId ||
       authState.authenticatedUser?.customerId ||
-      (authState.authenticatedUser as unknown as Record<string, unknown>)?.custId ||
-      (authState.customer as unknown as Record<string, unknown>)?.custId ||
+      authState.authenticatedUser?.custId ||
+      (authState.customer && "custId" in authState.customer ? authState.customer.custId : undefined) ||
       "";
     if (custId && String(custId).trim() && String(custId).trim() !== "undefined") {
       return String(custId).trim();
     }
   } catch (err) {
-    console.debug("[Auth] Failed to resolve customerId from store:", err);
+    logger.debug("[Auth] Failed to resolve customerId from store:", { error: err });
   }
 
   // 2. Try auth storage
@@ -79,14 +70,14 @@ export async function getResolvedCustomerId(): Promise<string> {
     const s = authStorage.getSession();
     const custId =
       u?.customerId ||
-      (u as unknown as Record<string, unknown>)?.custId ||
-      (s as unknown as Record<string, unknown>)?.activeCustId ||
+      u?.custId ||
+      s?.activeCustId ||
       "";
     if (custId && String(custId).trim() && String(custId).trim() !== "undefined") {
       return String(custId).trim();
     }
   } catch (err) {
-    console.debug("[Auth] Failed to resolve customerId from storage:", err);
+    logger.debug("[Auth] Failed to resolve customerId from storage:", { error: err });
   }
 
   // 3. Try JWT token
@@ -99,7 +90,7 @@ export async function getResolvedCustomerId(): Promise<string> {
       }
     }
   } catch (err) {
-    console.debug("[Auth] Failed to resolve sub from token:", err);
+    logger.debug("[Auth] Failed to resolve sub from token:", { error: err });
   }
 
   return "";
@@ -290,7 +281,7 @@ export function mapDtoToFilingDocuments(
   };
 
   return existingDocs.map((doc) => {
-    if (doc.fileUri && (doc as unknown as Record<string, unknown>).uploadedToBackend) {
+    if (doc.fileUri && "uploadedToBackend" in doc && doc.uploadedToBackend) {
       return doc;
     }
     const val = fieldMap[doc.id] || fieldMap[doc.name];

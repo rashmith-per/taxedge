@@ -78,11 +78,11 @@ export function GstComplianceSuccessScreen() {
   }, [scaleAnim, opacityAnim, cardSlideAnim]);
 
   const handleGoDashboard = () => {
-    router.replace("/(main)/home" as any);
+    router.replace("/(main)/home");
   };
 
   const handleTrackRequest = () => {
-    router.replace("/(main)/applications" as any);
+    router.replace("/(main)/applications");
   };
 
   useEffect(() => {

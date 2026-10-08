@@ -8,6 +8,7 @@ import {
 } from "@/modules/gst/gst-filing/config/gstFilingDocumentsConfig";
 import { useApplicationStore } from "@/store/applicationStore";
 import { applicationService } from "@/modules/applications/services/applicationService";
+import { logger } from "@/core/logging/logger";
 
 export function useGstFilingForm(createdAppId: string) {
   const [periodData, setPeriodData] = useState<GstFilingPeriodData>({
@@ -109,7 +110,9 @@ export function useGstFilingForm(createdAppId: string) {
               ...existing,
               documents: appDocs,
             })
-            .catch(() => {});
+            .catch((err) => {
+              logger.warn("[useGstFilingForm] Failed to sync document changes to application:", { error: err, createdAppId });
+            });
         }
       }
     },

@@ -15,7 +15,7 @@ import { styles } from "./RegulatoryComplianceCard.styles";
 
 interface RegulatoryComplianceCardProps {
   data: RegulatoryComplianceForm;
-  onChange: (field: keyof RegulatoryComplianceForm, value: any) => void;
+  onChange: (field: keyof RegulatoryComplianceForm, value: RegulatoryComplianceForm[keyof RegulatoryComplianceForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

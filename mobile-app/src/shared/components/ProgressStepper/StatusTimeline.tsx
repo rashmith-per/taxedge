@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 import type { IconName, TimelineStep } from "@/shared/types/domain";
 
 export interface StatusTimelineProps {
@@ -9,6 +9,8 @@ export interface StatusTimelineProps {
 }
 
 export function StatusTimeline({ steps }: StatusTimelineProps) {
+  const colors = useTheme();
+
   return (
     <View style={styles.container}>
       {steps.map((step, index) => {
@@ -17,13 +19,13 @@ export function StatusTimeline({ steps }: StatusTimelineProps) {
         const isLast = index === steps.length - 1;
 
         let iconName: IconName = "ellipse-outline";
-        let iconColor: string = Colors.textSecondary;
+        let iconColor: string = colors.textSecondary;
         if (isCompleted) {
           iconName = "checkmark-circle";
-          iconColor = Colors.success;
+          iconColor = colors.success;
         } else if (isCurrent) {
           iconName = "play-circle";
-          iconColor = Colors.orange;
+          iconColor = colors.orange;
         }
 
         return (
@@ -41,8 +43,8 @@ export function StatusTimeline({ steps }: StatusTimelineProps) {
                     styles.line,
                     {
                       backgroundColor: isCompleted
-                        ? Colors.success
-                        : Colors.border,
+                        ? colors.success
+                        : colors.border,
                     },
                   ]}
                 />
@@ -54,7 +56,7 @@ export function StatusTimeline({ steps }: StatusTimelineProps) {
                   style={[
                     styles.title,
                     {
-                      color: isCurrent ? Colors.orange : Colors.text,
+                      color: isCurrent ? colors.orange : colors.text,
                       fontWeight: isCurrent || isCompleted ? "600" : "500",
                     },
                   ]}
@@ -63,13 +65,13 @@ export function StatusTimeline({ steps }: StatusTimelineProps) {
                 </Text>
                 {step.date && (
                   <Text
-                    style={[styles.dateText, { color: Colors.textSecondary }]}
+                    style={[styles.dateText, { color: colors.textSecondary }]}
                   >
                     {step.date}
                   </Text>
                 )}
               </View>
-              <Text style={[styles.desc, { color: Colors.textSecondary }]}>
+              <Text style={[styles.desc, { color: colors.textSecondary }]}>
                 {step.description}
               </Text>
             </View>

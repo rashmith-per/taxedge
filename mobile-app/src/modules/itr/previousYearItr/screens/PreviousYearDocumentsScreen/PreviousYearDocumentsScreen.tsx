@@ -83,7 +83,7 @@ export const PreviousYearDocumentsScreen: React.FC = () => {
     }
 
     router.push({
-      pathname: "/service/previous-year-charges" as any,
+      pathname: "/service/previous-year-charges",
       params: {
         assessmentYear,
       },

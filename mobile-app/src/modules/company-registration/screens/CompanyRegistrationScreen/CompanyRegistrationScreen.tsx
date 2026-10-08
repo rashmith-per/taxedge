@@ -6,8 +6,7 @@ import { AppHeader } from '../../../../shared/components/AppHeader';
 import { UniversalDraftModal } from '@/shared/components/UniversalDraftModal';
 import { useUniversalDraftGuard } from '@/shared/hooks/useUniversalDraftGuard';
 import { useCompanyRegistrationStore } from '../../store/companyRegistrationSlice';
-import { companySchema } from '../../validation/companySchema';
-import { directorSchema } from '../../validation/directorSchema';
+import { validateRegistrationStep } from '../../validation/companyStepValidation';
 
 import { StepCompanyType } from '../../components/steps/StepCompanyType';
 import { StepCombinedDetails } from '../../components/steps/StepCombinedDetails';
@@ -80,103 +79,14 @@ export const CompanyRegistrationScreen: React.FC = () => {
   const setFieldErrors = useCompanyRegistrationStore((state) => state.setFieldErrors);
 
   const handleNext = () => {
-    // Step 0: Company Type Selection
-    if (currentStep === 0) {
-      if (!draft.company.companyType) {
-        setFieldErrors({ companyType: 'Please select a Company Type to proceed.' });
-        return;
-      }
+    const { valid, fieldErrors } = validateRegistrationStep(currentStep, draft);
+    if (!valid) {
+      setFieldErrors(fieldErrors);
+      return;
     }
 
-    // Step 1: Combined Details (Classification, Activity, Names)
-    if (currentStep === 1) {
-      const { valid, fieldErrors } = companySchema.validateStep(1, draft.company);
-      if (!valid) {
-        setFieldErrors(fieldErrors);
-        return;
-      }
-    }
-
-    // Step 2: Registered Office Details
-    if (currentStep === 2) {
-      const { valid, fieldErrors } = companySchema.validateStep(2, draft.company);
-      if (!valid) {
-        setFieldErrors(fieldErrors);
-        return;
-      }
-    }
-
-    // Step 3: Promoter / Director Details
-    if (currentStep === 3) {
-      const isOpc = draft.company.companyType === 'One Person Company (OPC)';
-      const minRequired = isOpc ? 1 : 2;
-      if (draft.directors.length < minRequired) {
-        setFieldErrors({
-          directorsCount: `At least ${minRequired} promoter/director(s) required for ${draft.company.companyType || 'incorporation'}.`,
-        });
-        return;
-      }
-
-      const combinedErrors: Record<string, string> = {};
-      let hasError = false;
-      draft.directors.forEach((dir, idx) => {
-        const { valid, fieldErrors } = directorSchema.validateDirector(dir, idx);
-        if (!valid) {
-          hasError = true;
-          Object.assign(combinedErrors, fieldErrors);
-        }
-      });
-      if (hasError) {
-        setFieldErrors(combinedErrors);
-        return;
-      }
-    }
-
-    // Step 4: Shareholding & Capital
-    if (currentStep === 4) {
-      const { valid, fieldErrors } = companySchema.validateStep(4, draft.company);
-      const combinedErrors: Record<string, string> = { ...fieldErrors };
-      const totalSubscribed = draft.directors.reduce((sum, d) => sum + (Number(d.numberOfShares) || 0), 0);
-      const isOpc = draft.company.companyType === 'One Person Company (OPC)';
-      if (!isOpc && draft.company.numberOfShares > 0 && totalSubscribed !== draft.company.numberOfShares) {
-        combinedErrors.shareholdingTotal = 'Total subscribed shares by directors must equal the total number of shares of the company.';
-      }
-      if (!valid || Object.keys(combinedErrors).length > 0) {
-        setFieldErrors(combinedErrors);
-        return;
-      }
-    }
-
-    // Step 5: Documents & KYC Checklist
-    if (currentStep === 5) {
-      const docErrors: Record<string, string> = {};
-      const requiredIds = ['doc-pan', 'doc-aadhaar', 'doc-address', 'doc-utility'];
-      requiredIds.forEach((id) => {
-        const doc = draft.documents.find((d) => d.id === id);
-        if (!doc || doc.status !== 'Uploaded') {
-          docErrors[id] = 'Mandatory document upload required.';
-        }
-      });
-      const isNocRequired = draft.company.premisesOwnership === 'Rented' || draft.company.premisesOwnership === 'Leased';
-      if (isNocRequired) {
-        const nocDoc = draft.documents.find((d) => d.id === 'doc-noc');
-        if (!nocDoc || nocDoc.status !== 'Uploaded') {
-          docErrors['doc-noc'] = 'Owner NOC is required for Rented/Leased premises.';
-        }
-      }
-      if (Object.keys(docErrors).length > 0) {
-        setFieldErrors(docErrors);
-        return;
-      }
-    }
-
-    // Step 6: Linked Registrations
+    // Step 6: Linked Registrations — NOC fields don't apply to owned premises
     if (currentStep === 6) {
-      const { valid, fieldErrors } = companySchema.validateStep(6, draft.company, draft.linkedRegistrations);
-      if (!valid) {
-        setFieldErrors(fieldErrors);
-        return;
-      }
       if (draft.company.premisesOwnership === 'Owned') {
         draft.company.ownerNocName = '';
         draft.company.ownerNocUri = '';

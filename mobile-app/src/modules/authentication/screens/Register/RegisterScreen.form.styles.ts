@@ -1,0 +1,388 @@
+/** Create Profile / Register: form layout and field styles. */
+
+import { Platform } from "react-native";
+import {
+  BrandColors,
+  BorderRadius,
+  Spacing,
+  Typography,
+} from "@/shared/theme";
+
+export const formStyles = {
+  container: {
+    flex: 1,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    marginTop: 4,
+    fontWeight: Typography.fontWeight.medium,
+    color: "#DC2626",
+  },
+  profileScroll: {
+    flexGrow: 1,
+  },
+  waveHeaderWrapper: {
+    height: 150,
+    width: "100%" as const,
+    position: "relative" as const,
+  },
+  waveHeaderContent: {
+    paddingHorizontal: Spacing.lg,
+  },
+  headerRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    position: "relative" as const,
+    minHeight: 44,
+  },
+  backBtnWhite: {
+    position: "absolute" as const,
+    left: 0,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    justifyContent: "center" as const,
+  },
+  headerTitleWhite: {
+    fontSize: Typography.fontSize.hero,
+    fontWeight: Typography.fontWeight.extraBold,
+    color: BrandColors.WHITE,
+    letterSpacing: -0.3,
+    textAlign: "center" as const,
+  },
+  formSection: {
+    gap: 2,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.base,
+  },
+  fieldContainer: {
+    marginBottom: Spacing.base - 2,
+  },
+  label: {
+    fontSize: Typography.fontSize.sm + 1,
+    fontWeight: Typography.fontWeight.semiBold,
+    marginBottom: 6,
+    color: BrandColors.PRIMARY_BLUE_DARK,
+  },
+  inputBox: {
+    height: 52,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.base - 2,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: BrandColors.WHITE,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+      default: {},
+    }),
+  },
+  leftIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: Typography.fontSize.md,
+    height: "100%" as const,
+    color: BrandColors.TEXT_PRIMARY,
+  },
+  rightIcon: {
+    marginLeft: Spacing.sm,
+  },
+  rightIconTouch: {
+    marginLeft: Spacing.sm,
+    padding: 4,
+  },
+  submitBtnOrange: {
+    backgroundColor: BrandColors.PRIMARY_ORANGE,
+    height: 54,
+    borderRadius: BorderRadius.base - 2,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    marginTop: 18,
+    ...Platform.select({
+      ios: {
+        shadowColor: BrandColors.PRIMARY_ORANGE,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+      default: {},
+    }),
+  },
+  submitBtnText: {
+    color: BrandColors.WHITE,
+    fontSize: Typography.fontSize.lg + 1,
+    fontWeight: Typography.fontWeight.bold,
+    letterSpacing: 0.3,
+  },
+  loginRow: {
+    flexDirection: "row" as const,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    marginTop: Spacing.lg,
+    paddingBottom: Spacing.lg,
+  },
+  alreadyText: {
+    fontSize: Typography.fontSize.base,
+    color: BrandColors.PRIMARY_BLUE_DARK,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  loginLinkText: {
+    fontSize: Typography.fontSize.base,
+    color: BrandColors.PRIMARY_ORANGE,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  dropdownText: {
+    flex: 1,
+    fontSize: Typography.fontSize.md,
+    color: BrandColors.TEXT_PRIMARY,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: BrandColors.PRIMARY_BLUE_DARK,
+    marginTop: Spacing.sm,
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
+    fontSize: Typography.fontSize.xs + 1,
+    color: BrandColors.TEXT_SECONDARY,
+    marginTop: 2,
+  },
+  termsRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    marginTop: 14,
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderWidth: 1.8,
+    borderColor: BrandColors.BORDER,
+    borderRadius: 5,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginRight: 10,
+    marginTop: 2,
+    backgroundColor: BrandColors.WHITE,
+  },
+  checkboxChecked: {
+    backgroundColor: BrandColors.PRIMARY_ORANGE,
+    borderColor: BrandColors.PRIMARY_ORANGE,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: Typography.fontSize.xs + 1,
+    color: BrandColors.TEXT_SECONDARY,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: BrandColors.PRIMARY_ORANGE,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  submitBtnDisabled: {
+    backgroundColor: "#CBD5E1",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  submitBtnTextDisabled: {
+    color: "#64748B",
+  },
+  customerTypeContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.base,
+    marginTop: Spacing.base,
+  },
+  customerTypeCard: {
+    backgroundColor: BrandColors.WHITE,
+    borderWidth: 1.5,
+    borderColor: BrandColors.BORDER,
+    borderRadius: BorderRadius.base,
+    padding: 14,
+    marginBottom: 12,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+      default: {},
+    }),
+  },
+  customerTypeCardSelected: {
+    borderColor: BrandColors.PRIMARY_ORANGE,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 2,
+  },
+  cardIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F0F4FA",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginRight: 12,
+  },
+  cardIconContainerSelected: {
+    backgroundColor: "#FFEDD5",
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: BrandColors.TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  cardTitleSelected: {
+    color: BrandColors.PRIMARY_ORANGE_DARK,
+  },
+  cardSubtitle: {
+    fontSize: Typography.fontSize.xs + 1,
+    color: BrandColors.TEXT_SECONDARY,
+    lineHeight: 16,
+  },
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#CBD5E1",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginLeft: 8,
+  },
+  radioCircleSelected: {
+    borderColor: BrandColors.PRIMARY_ORANGE,
+    backgroundColor: BrandColors.PRIMARY_ORANGE,
+  },
+  fixedBottomBar: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: BrandColors.WHITE,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 10,
+      },
+      default: {},
+    }),
+  },
+  cityPinRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12,
+  },
+  cityCol: {
+    flex: 6,
+  },
+  pinCol: {
+    flex: 4,
+  },
+  labelWithActionRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 6,
+  },
+  addAddressLineBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+  },
+  addAddressLineBtnText: {
+    fontSize: 12,
+    fontWeight: Typography.fontWeight.semiBold,
+    color: BrandColors.PRIMARY_ORANGE,
+  },
+  accountTypeBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  accountTypeBadgeLeft: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+  },
+  accountTypeBadgeLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600" as const,
+    textTransform: "uppercase" as const,
+  },
+  accountTypeBadgeValue: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: BrandColors.PRIMARY_BLUE_DARK,
+  },
+  accountTypeBadgeRight: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+  },
+  accountTypeBadgeChangeText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: BrandColors.PRIMARY_ORANGE,
+  },
+  termsErrorText: {
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  inputBoxError: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1.5,
+  },
+  inputBoxDefault: {
+    borderColor: BrandColors.BORDER,
+    borderWidth: 1,
+  },
+};

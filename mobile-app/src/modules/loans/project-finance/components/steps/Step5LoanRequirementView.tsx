@@ -18,12 +18,12 @@ import {
 
 export interface Step5LoanRequirementViewProps {
   loanRequirement: LoanRequirementForm;
-  onRequirementChange: (field: keyof LoanRequirementForm, value: any) => void;
+  onRequirementChange: (field: keyof LoanRequirementForm, value: LoanRequirementForm[keyof LoanRequirementForm]) => void;
   repaymentDetails: RepaymentDetailsForm;
-  onRepaymentChange: (field: keyof RepaymentDetailsForm, value: any) => void;
+  onRepaymentChange: (field: keyof RepaymentDetailsForm, value: RepaymentDetailsForm[keyof RepaymentDetailsForm]) => void;
   repaymentSchedule: RepaymentScheduleRow[];
   repaymentSources: RepaymentSourcesForm;
-  onSourcesChange: (field: keyof RepaymentSourcesForm, value: any) => void;
+  onSourcesChange: (field: keyof RepaymentSourcesForm, value: RepaymentSourcesForm[keyof RepaymentSourcesForm]) => void;
   sensitivityRisk: SensitivityRiskForm;
   onRiskChange: (field: keyof SensitivityRiskForm, value: string) => void;
   totalProjectCostFromScreen3?: string;

@@ -30,6 +30,7 @@ import {
   validateForm,
 } from "../../../validation/loanValidationEngine";
 import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { useLoanDocuments } from "../../../hooks/useLoanDocuments";
 import { useLoanDraft } from "../../../hooks/useLoanDraft";
 import { LOAN_DRAFT_STORAGE_KEYS } from "../../../constants/loanDraftKeys";
@@ -38,11 +39,18 @@ import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLa
 import { getBottomBarPadding, getSafeAreaTopPadding } from "../../../styles/loanScreenLayout.styles";
 import {
   HomeLoanFinancialsStep,
-  HomeLoanEmploymentStep,
-  HomeLoanBankingStep,
-  HomeLoanDocumentsStep,
   HomeLoanReviewStep,
 } from "../../components";
+import {
+  LoanBankingStep,
+  LoanEmploymentStep,
+  LoanCategorizedDocumentsStep,
+} from "../../../components/steps";
+import {
+  HOME_LOAN_BANKING_STEP,
+  HOME_LOAN_EMPLOYMENT_STEP,
+  HOME_LOAN_DOCUMENT_CATEGORIES,
+} from "../../config/homeLoanSteps.config";
 import { styles } from "./HomeLoanScreen.styles";
 
 const STEPS = [
@@ -98,7 +106,7 @@ export const HomeLoanScreen: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   // Form State initialized to empty & unselected
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>(INITIAL_LOAN_DETAILS);
@@ -199,16 +207,7 @@ export const HomeLoanScreen: React.FC = () => {
     },
   });
 
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  const handleDetailsChange = (field: keyof LoanDetailsFormData, value: any) => {
+  const handleDetailsChange = (field: keyof LoanDetailsFormData, value: LoanDetailsFormData[keyof LoanDetailsFormData]) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));
     clearFieldError(field);
   };
@@ -341,7 +340,8 @@ export const HomeLoanScreen: React.FC = () => {
         );
       case 1:
         return (
-          <HomeLoanEmploymentStep
+          <LoanEmploymentStep
+            config={HOME_LOAN_EMPLOYMENT_STEP}
             data={loanDetails}
             onChangeDetails={handleDetailsChange}
             businessData={businessDetails}
@@ -351,7 +351,8 @@ export const HomeLoanScreen: React.FC = () => {
         );
       case 2:
         return (
-          <HomeLoanBankingStep
+          <LoanBankingStep
+            config={HOME_LOAN_BANKING_STEP}
             data={bankingDetails}
             onChange={handleBankingChange}
             errors={errors}
@@ -359,7 +360,12 @@ export const HomeLoanScreen: React.FC = () => {
           />
         );
       case 3:
-        return <HomeLoanDocumentsStep loanDocuments={loanDocuments} />;
+        return (
+          <LoanCategorizedDocumentsStep
+            categories={HOME_LOAN_DOCUMENT_CATEGORIES}
+            loanDocuments={loanDocuments}
+          />
+        );
       case 4:
       default:
         return (

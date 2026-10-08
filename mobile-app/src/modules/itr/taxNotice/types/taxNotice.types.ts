@@ -40,13 +40,7 @@ export interface TaxNoticeSupportingDoc {
   errorMessage?: string;
 }
 
-export interface DocumentUploadPayload {
-  uri: string;
-  name: string;
-  size: string;
-  mimeType?: string;
-  fileTypeLabel?: string;
-}
+export type { DocumentUploadPayload } from "../../types/documentUpload.types";
 
 export interface NoticeTrackingStep {
   id: string;

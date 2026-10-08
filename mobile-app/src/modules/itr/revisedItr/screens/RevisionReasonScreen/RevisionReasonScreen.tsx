@@ -49,7 +49,7 @@ export const RevisionReasonScreen: React.FC = () => {
 
     // Navigate to Screen 3: Update Changed Details
     router.push({
-      pathname: "/service/revised-itr-update" as any,
+      pathname: "/service/revised-itr-update",
       params: {
         acknowledgementNumber: params.acknowledgementNumber,
         assessmentYear: params.assessmentYear || "AY 2025–26",

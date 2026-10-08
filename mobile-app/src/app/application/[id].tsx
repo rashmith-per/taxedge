@@ -15,6 +15,7 @@ import { useApplicationStore } from "@/store/applicationStore";
 import { useAuthStore } from "@/store/authStore";
 import { applicationService } from "@/modules/applications/services/applicationService";
 import type { Application, TimelineStep } from "@/types/domain";
+import { logger } from "@/core/logging/logger";
 import { styles } from "@/styles/app/application/[id].styles";
 
 import {
@@ -185,7 +186,7 @@ export default function ApplicationDetailScreen() {
       : "Auto-Approved / 24 Hours"
     : calculateExpectedDate(app.createdAt);
   const uploadedDocs = app.documents.filter(
-    (d: any) => d.status === "Uploaded"
+    (d) => d.status === "Uploaded"
   ).length;
 
   const isPaid = isGstAmendment || app.paymentStatus === "Paid";
@@ -210,7 +211,7 @@ export default function ApplicationDetailScreen() {
         uploadDocument(app.id, docName, res.assets[0].uri);
       }
     } catch (err) {
-      console.warn("Document picker cancelled or failed:", err);
+      logger.warn("[ApplicationDetail] Document picker cancelled or failed:", { appId: app.id, docName, error: err });
     }
   };
 
@@ -380,7 +381,7 @@ export default function ApplicationDetailScreen() {
   };
 
   const handleReviewEdit = () => {
-    router.push(`/service/gst-filing?appId=${app.id}&step=2` as any);
+    router.push(`/service/gst-filing?appId=${app.id}&step=2`);
   };
 
   return (
@@ -423,7 +424,7 @@ export default function ApplicationDetailScreen() {
             registrationRows={registrationRows}
             appId={app.id}
             onReviewEdit={handleReviewEdit}
-            onSupportTicket={() => router.push("/chat/support" as any)}
+            onSupportTicket={() => router.push("/chat/support")}
           />
         )}
 

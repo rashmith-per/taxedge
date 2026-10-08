@@ -64,15 +64,16 @@ export const FindOriginalReturnScreen: React.FC = () => {
   useEffect(() => {
     const draft = useApplicationStore.getState().revisedItrDraft;
     if (draft) {
-      const step = draft.step ?? draft.currentStep ?? 0;
+      const step = Number(draft.step ?? draft.currentStep ?? 0);
+      const params = (draft.formData as Record<string, string>) || {};
       if (step >= 4) {
-        router.push({ pathname: "/service/revised-itr-review" as any, params: draft.formData || {} });
+        router.push({ pathname: "/service/revised-itr-review", params });
       } else if (step === 3) {
-        router.push({ pathname: "/service/revised-itr-documents" as any, params: draft.formData || {} });
+        router.push({ pathname: "/service/revised-itr-documents", params });
       } else if (step === 2) {
-        router.push({ pathname: "/service/revised-itr-update" as any, params: draft.formData || {} });
+        router.push({ pathname: "/service/revised-itr-update", params });
       } else if (step === 1) {
-        router.push({ pathname: "/service/revised-itr-reason" as any, params: draft.formData || {} });
+        router.push({ pathname: "/service/revised-itr-reason", params });
       }
     }
   }, []);
@@ -128,7 +129,7 @@ export const FindOriginalReturnScreen: React.FC = () => {
 
     // Navigate to Screen 2: Reason for Revision
     router.push({
-      pathname: "/service/revised-itr-reason" as any,
+      pathname: "/service/revised-itr-reason",
       params: {
         acknowledgementNumber: foundReturn.acknowledgementNumber,
         assessmentYear: foundReturn.assessmentYear,

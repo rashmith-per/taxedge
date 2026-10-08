@@ -11,10 +11,10 @@ export const customerApi = {
       return null;
     }
 
-    const custId = user.customerId || (user as any).custId || (session as any)?.activeCustId || "";
-    const mobile = user.mobileNumber || (user as any).mobile || session.activeMobile || cleanMobile || "";
-    const name = user.name || (user as any).fullName || "";
-    const pin = user.pincode || (user as any).pinCode || "";
+    const custId = user.customerId || user.custId || session?.activeCustId || "";
+    const mobile = user.mobileNumber || user.mobile || session.activeMobile || cleanMobile || "";
+    const name = user.name || user.fullName || "";
+    const pin = user.pincode || user.pinCode || "";
 
     return {
       ...user,
@@ -24,12 +24,12 @@ export const customerApi = {
       mobileNumber: mobile,
       name: name,
       fullName: name,
-      aadhaar: user.aadhaar || (user as any).adhar || "",
+      aadhaar: user.aadhaar || user.adhar || "",
       pan: user.pan || "",
-      dob: user.dob || (user as any).dateOfBirth || "",
+      dob: user.dob || user.dateOfBirth || "",
       pincode: pin,
       pinCode: pin,
-      customerType: user.customerType || (user as any).custType || "Individual",
+      customerType: user.customerType || user.custType || "Individual",
     };
   },
 
@@ -39,15 +39,15 @@ export const customerApi = {
     const resolvedMobile =
       profile.mobileNumber ||
       user?.mobileNumber ||
-      (user as any)?.mobile ||
+      user?.mobile ||
       session.activeMobile ||
       "";
 
     const resolvedCustId =
       profile.custId ||
       user?.customerId ||
-      (user as any)?.custId ||
-      (session as any)?.activeCustId ||
+      user?.custId ||
+      session?.activeCustId ||
       "";
 
     const updatedUser = {

@@ -35,7 +35,7 @@ export const PreviousYearReuseExplanationScreen: React.FC = () => {
 
   const handleContinue = () => {
     router.push({
-      pathname: "/service/itr-filing" as any,
+      pathname: "/service/itr-filing",
       params: {
         serviceType: "previous-year",
         serviceTitle: "Previous Year ITR",

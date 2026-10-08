@@ -1,6 +1,8 @@
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 const KEY_BIOMETRIC_ENABLED = "taxedge_biometric_enabled";
 const KEY_BIOMETRIC_MOBILE = "taxedge_biometric_mobile";
@@ -21,7 +23,7 @@ const getSecureItem = async (key: string): Promise<string | null> => {
     const result = await Promise.race([securePromise, timeoutPromise]);
     return result ?? memoryStorage[key] ?? null;
   } catch (e) {
-    console.warn("SecureStore.getItemAsync error:", e);
+    logger.warn("[BiometricService] SecureStore.getItemAsync error, falling back to memory", { key, error: getErrorMessage(e) });
     return memoryStorage[key] || null;
   }
 };
@@ -40,7 +42,7 @@ const setSecureItem = async (key: string, value: string): Promise<void> => {
       new Promise<void>((resolve) => setTimeout(resolve, 800)),
     ]);
   } catch (e) {
-    console.warn("SecureStore.setItemAsync error:", e);
+    logger.warn("[BiometricService] SecureStore.setItemAsync error, falling back to memory", { key, error: getErrorMessage(e) });
     memoryStorage[key] = value;
   }
 };
@@ -59,7 +61,7 @@ const deleteSecureItem = async (key: string): Promise<void> => {
       new Promise<void>((resolve) => setTimeout(resolve, 800)),
     ]);
   } catch (e) {
-    console.warn("SecureStore.deleteItemAsync error:", e);
+    logger.warn("[BiometricService] SecureStore.deleteItemAsync error", { key, error: getErrorMessage(e) });
     delete memoryStorage[key];
   }
 };
@@ -243,10 +245,10 @@ export const biometricService = {
         success: false,
         error: "Authentication failed. Please try again.",
       };
-    } catch (err: any) {
+    } catch (err) {
       return {
         success: false,
-        error: err?.message || "Authentication error occurred. Please try again.",
+        error: getErrorMessage(err) || "Authentication error occurred. Please try again.",
       };
     } finally {
       isAuthenticating = false;

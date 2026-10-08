@@ -28,10 +28,4 @@ export interface TdsDocumentItem {
   errorMessage?: string;
 }
 
-export interface DocumentUploadPayload {
-  uri: string;
-  name: string;
-  size: string;
-  mimeType?: string;
-  fileTypeLabel?: string;
-}
+export type { DocumentUploadPayload } from "../../types/documentUpload.types";

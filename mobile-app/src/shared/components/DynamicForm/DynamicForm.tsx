@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 import { FormInput } from "@/shared/components/Input/FormInput";
 import { PrimaryButton } from "@/shared/components/Button/PrimaryButton";
 import { Result } from "@/shared/utils/functional";
@@ -30,6 +30,7 @@ export function DynamicForm({
   submitButtonText = "Submit",
   initialValues = {},
 }: DynamicFormProps) {
+  const colors = useTheme();
   const [formValues, setFormValues] = useState<ApplicationFormData>(initialValues);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -95,10 +96,10 @@ export function DynamicForm({
         if (field.type === "dropdown") {
           return (
             <View key={field.name} style={styles.fieldContainer}>
-              <Text style={[styles.label, { color: Colors.text }]}>
+              <Text style={[styles.label, { color: colors.text }]}>
                 {field.label}{" "}
                 {field.required && (
-                  <Text style={{ color: Colors.error }}>*</Text>
+                  <Text style={{ color: colors.error }}>*</Text>
                 )}
               </Text>
               <TouchableOpacity
@@ -107,24 +108,24 @@ export function DynamicForm({
                 style={[
                   styles.dropdownBox,
                   {
-                    backgroundColor: Colors.background,
-                    borderColor: error ? Colors.error : Colors.border,
+                    backgroundColor: colors.background,
+                    borderColor: error ? colors.error : colors.border,
                   },
                 ]}
               >
                 <Text
-                  style={{ color: value ? Colors.text : Colors.textSecondary }}
+                  style={{ color: value ? colors.text : colors.textSecondary }}
                 >
                   {value || field.placeholder || "Select option"}
                 </Text>
                 <Ionicons
                   name="chevron-down"
                   size={18}
-                  color={Colors.textSecondary}
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
               {error && (
-                <Text style={[styles.errorText, { color: Colors.error }]}>
+                <Text style={[styles.errorText, { color: colors.error }]}>
                   {error}
                 </Text>
               )}
@@ -177,10 +178,10 @@ export function DynamicForm({
           <View
             style={[
               styles.modalContainer,
-              { backgroundColor: Colors.card },
+              { backgroundColor: colors.backgroundElement },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: Colors.text }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               Select {activeDropdownField?.label}
             </Text>
 
@@ -202,9 +203,9 @@ export function DynamicForm({
                       styles.optionItem,
                       {
                         backgroundColor: isSelected
-                          ? Colors.orangeLight
+                          ? colors.orangeLight
                           : "transparent",
-                        borderBottomColor: Colors.border,
+                        borderBottomColor: colors.border,
                       },
                     ]}
                   >
@@ -212,7 +213,7 @@ export function DynamicForm({
                       style={[
                         styles.optionText,
                         {
-                          color: isSelected ? Colors.orange : Colors.text,
+                          color: isSelected ? colors.orange : colors.text,
                           fontWeight: isSelected ? "700" : "500",
                         },
                       ]}
@@ -223,7 +224,7 @@ export function DynamicForm({
                       <Ionicons
                         name="checkmark"
                         size={18}
-                        color={Colors.orange}
+                        color={colors.orange}
                       />
                     )}
                   </TouchableOpacity>
@@ -237,10 +238,10 @@ export function DynamicForm({
                 setShowDropdownModal(false);
                 setActiveDropdownField(null);
               }}
-              style={[styles.closeBtn, { borderTopColor: Colors.border }]}
+              style={[styles.closeBtn, { borderTopColor: colors.border }]}
             >
               <Text
-                style={[styles.closeBtnText, { color: Colors.textSecondary }]}
+                style={[styles.closeBtnText, { color: colors.textSecondary }]}
               >
                 Close
               </Text>

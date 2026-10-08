@@ -17,7 +17,7 @@ export const TdsDocumentHeader: React.FC<TdsDocumentHeaderProps> = ({ onBack }) 
     } else if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/service/itr" as any);
+      router.replace("/service/itr");
     }
   };
 

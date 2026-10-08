@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { DocumentUploadBottomSheet } from "@/modules/itr/tds/components/upload/DocumentUploadBottomSheet/DocumentUploadBottomSheet";
+import { DocumentUploadBottomSheet } from "@/shared/components/DocumentUploadBottomSheet";
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -38,8 +38,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     if (!sizeInBytes) {
       try {
         const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (fileInfo.exists && (fileInfo as any).size) {
-          sizeInBytes = (fileInfo as any).size;
+        if (fileInfo.exists && fileInfo.size) {
+          sizeInBytes = fileInfo.size;
         }
       } catch {
         // Fallback if FileSystem check is unavailable
@@ -112,7 +112,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         await checkSizeAndProceed(
           asset.uri,
           fileName,
-          (asset as any).fileSize,
+          asset.fileSize,
           asset.mimeType || "image/jpeg"
         );
       }
@@ -141,7 +141,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
         await checkSizeAndProceed(
           asset.uri,
           fileName,
-          (asset as any).fileSize,
+          asset.fileSize,
           asset.mimeType || "image/jpeg"
         );
       }

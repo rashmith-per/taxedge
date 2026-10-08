@@ -76,16 +76,8 @@ export const validateStep3 = (state: Step3ValidationState): string | null => {
   return null;
 };
 
-export const validateStep4 = (state: Step4ValidationState): string | null => {
-  const {
-    products,
-    marketDetails,
-    customers,
-    projectionSetup,
-    workingCapital,
-  } = state;
-
-  // 1. Products / Services
+/** Products / Services */
+const checkProductsServices = ({ products }: Pick<Step4ValidationState, "products">): string | null => {
   if (!products || products.length === 0) {
     return "Please add at least one Product / Service.";
   }
@@ -121,7 +113,11 @@ export const validateStep4 = (state: Step4ValidationState): string | null => {
     }
   }
 
-  // 2. Market Details
+  return null;
+};
+
+/** Market Details */
+const checkMarketDetails = ({ marketDetails }: Pick<Step4ValidationState, "marketDetails">): string | null => {
   if (!marketDetails.targetMarket?.trim()) {
     return "Please select Target Market.";
   }
@@ -135,7 +131,11 @@ export const validateStep4 = (state: Step4ValidationState): string | null => {
     return "Please select Customer Segment.";
   }
 
-  // 3. Customers / Offtakers
+  return null;
+};
+
+/** Customers / Offtakers */
+const checkCustomersOfftakers = ({ customers }: Pick<Step4ValidationState, "customers">): string | null => {
   if (!customers || customers.length === 0) {
     return "Please add at least one Customer / Offtaker.";
   }
@@ -159,7 +159,11 @@ export const validateStep4 = (state: Step4ValidationState): string | null => {
     }
   }
 
-  // 4. Projection Setup
+  return null;
+};
+
+/** Projection Setup */
+const checkProjectionSetup = ({ projectionSetup }: Pick<Step4ValidationState, "projectionSetup">): string | null => {
   if (!projectionSetup.projectionPeriodYears?.trim()) {
     return "Please select Projection Period (Years).";
   }
@@ -173,7 +177,11 @@ export const validateStep4 = (state: Step4ValidationState): string | null => {
     return "Please select Commercial Operation Date.";
   }
 
-  // 5. Working Capital
+  return null;
+};
+
+/** Working Capital */
+const checkWorkingCapital = ({ workingCapital }: Pick<Step4ValidationState, "workingCapital">): string | null => {
   if (!workingCapital.inventoryDays?.trim()) {
     return "Please enter Inventory Days.";
   }
@@ -185,4 +193,16 @@ export const validateStep4 = (state: Step4ValidationState): string | null => {
   }
 
   return null;
+};
+
+export const validateStep4 = (state: Step4ValidationState): string | null => {
+  // Sections are checked in order; the first failure wins.
+  return (
+    checkProductsServices(state) ??
+    checkMarketDetails(state) ??
+    checkCustomersOfftakers(state) ??
+    checkProjectionSetup(state) ??
+    checkWorkingCapital(state) ??
+    null
+  );
 };

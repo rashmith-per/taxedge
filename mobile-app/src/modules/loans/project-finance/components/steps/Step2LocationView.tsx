@@ -28,19 +28,19 @@ import {
 
 interface Step2LocationViewProps {
   projectLocation: ProjectLocationForm;
-  onLocationChange: (field: keyof ProjectLocationForm, value: any) => void;
+  onLocationChange: (field: keyof ProjectLocationForm, value: ProjectLocationForm[keyof ProjectLocationForm]) => void;
   landDetails: LandDetailsForm;
-  onLandChange: (field: keyof LandDetailsForm, value: any) => void;
+  onLandChange: (field: keyof LandDetailsForm, value: LandDetailsForm[keyof LandDetailsForm]) => void;
   parcels: LandParcelItem[];
   onAddParcel: () => void;
   onUpdateParcel: (id: string, field: keyof LandParcelItem, value: any) => void;
   onDeleteParcel: (id: string) => void;
   rightOfWay: RightOfWayForm;
-  onRowChange: (field: keyof RightOfWayForm, value: any) => void;
+  onRowChange: (field: keyof RightOfWayForm, value: RightOfWayForm[keyof RightOfWayForm]) => void;
   utilities: UtilitiesForm;
-  onUtilitiesChange: (field: keyof UtilitiesForm, value: any) => void;
+  onUtilitiesChange: (field: keyof UtilitiesForm, value: UtilitiesForm[keyof UtilitiesForm]) => void;
   technicalDetails: TechnicalDetailsForm;
-  onTechnicalChange: (field: keyof TechnicalDetailsForm, value: any) => void;
+  onTechnicalChange: (field: keyof TechnicalDetailsForm, value: TechnicalDetailsForm[keyof TechnicalDetailsForm]) => void;
   capacityProduction: CapacityProductionForm;
   onCapacityChange: (field: keyof CapacityProductionForm, value: string) => void;
   machineries: PlantMachineryItem[];

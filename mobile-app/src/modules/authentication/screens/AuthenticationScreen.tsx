@@ -5,52 +5,46 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
   Animated,
   Keyboard,
   TouchableOpacity,
   useColorScheme,
-  StyleSheet,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import Reanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-  runOnJS,
-} from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 import { useTheme } from "../../../hooks/use-theme";
 import { Spacing, BrandColors } from "../../../shared/theme";
 import { useAuthStore } from "../store/authStore";
+import { logger } from "@/core/logging/logger";
 import {
   MobileNumberSection,
-  OTPSection,
   PasscodeLoginSection,
-  ResetPasscodeSection,
-  GoogleLoginSection,
   ErrorBanner,
+  BiometricReauthCard,
+  AuthFlowSections,
+  AuthBrandHeader,
+  ServerConfigHint,
 } from "../components";
+import { useReauthSlideAnimation } from "../hooks/useReauthSlideAnimation";
+import { useAuthFlowTransition } from "../hooks/useAuthFlowTransition";
 import { authStorage } from "../services/authStorage";
 import { biometricService } from "../services/biometricService";
 import { BiometricPromptModal } from "../../../shared/components/BiometricPromptModal";
 import { ServerConfigModal } from "../../../shared/components/ServerConfigModal";
 import {
   styles,
+  reauthStyles,
   getThemedStyles,
   getDynamicScrollStyle,
 } from "./AuthenticationScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const HEADER_OFFSET = Spacing.md;
 const FOOTER_OFFSET = Spacing.base;
 const MIN_SCROLL_PADDING = Spacing.xl + Spacing.xs;
-
-// Duration for the biometric → passcode slide transition (ms)
-const SLIDE_DURATION = 380;
 
 export function AuthenticationScreen() {
   const colors = useTheme();
@@ -63,17 +57,12 @@ export function AuthenticationScreen() {
     isLoggedIn,
     authFlowState,
     mobileNumber,
-    otp,
     passcode,
-    confirmPasscode,
     isLoading,
     error,
     otpTimer,
-    canResendOTP,
     setMobileNumber,
-    setOtp,
     setPasscode,
-    setConfirmPasscode,
     setError,
     decrementTimer,
     sendOtp,
@@ -82,7 +71,6 @@ export function AuthenticationScreen() {
     startForgotPasscode,
     verifyForgotPasscodeOtp,
     resetPasscodeAndProceed,
-    resendOtp,
     changeNumber,
     setAuthFlowState,
     isBiometricEnabled,
@@ -94,26 +82,17 @@ export function AuthenticationScreen() {
   const [showServerModal, setShowServerModal] = useState(false);
 
   // ─── BIOMETRIC REAUTH animation state ─────────────────────────────────────
-  // Whether the passcode section is currently shown (after biometric dismissal)
-  const [passcodeVisible, setPasscodeVisible] = useState(false);
-  const [biometricDismissed, setBiometricDismissed] = useState(false);
-  // Whether passcode auto-focus is allowed (only after the slide animation finishes)
-  const [passcodeAutoFocus, setPasscodeAutoFocus] = useState(false);
-
-  // Reanimated shared values for biometric ↔ passcode slide
-  const biometricAreaY = useSharedValue(0);  // starts at natural position
-  const passcodeAreaY = useSharedValue(320); // starts below the viewport
+  const {
+    passcodeVisible,
+    biometricDismissed,
+    passcodeAutoFocus,
+    setPasscodeAutoFocus,
+    biometricAnimStyle,
+    passcodeAnimStyle,
+    resetToBiometric,
+    slideToPasscode: slideToBiometricDismissed,
+  } = useReauthSlideAnimation();
   const reauthScrollRef = useRef<ScrollView>(null);
-
-  const biometricAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: biometricAreaY.value }],
-    opacity: withTiming(biometricAreaY.value === 0 ? 1 : 0, { duration: SLIDE_DURATION }),
-  }));
-
-  const passcodeAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: passcodeAreaY.value }],
-    opacity: withTiming(passcodeAreaY.value < 100 ? 1 : 0, { duration: SLIDE_DURATION }),
-  }));
 
   // ─── Guards ────────────────────────────────────────────────────────────────
   // Prevent duplicate biometric calls across re-renders
@@ -121,9 +100,33 @@ export function AuthenticationScreen() {
   // Prevent duplicate navigation calls
   const hasNavigated = useRef(false);
 
-  // ─── Standard Animated.Value for flow transitions ─────────────────────────
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  /** Navigates to the dashboard at most once per screen session. */
+  const navigateHomeOnce = () => {
+    if (!hasNavigated.current) {
+      hasNavigated.current = true;
+      router.replace("/(main)/home");
+    }
+  };
+
+  /** After a passcode login: offer biometric enrollment if possible, otherwise go home. */
+  const offerBiometricEnrollmentOrGoHome = async () => {
+    try {
+      const hasHardware = await biometricService.checkHardwareSupport();
+      const isEnrolled = await biometricService.checkEnrollment();
+      const isAlreadyEnabled = await biometricService.isBiometricEnabled();
+
+      if (hasHardware && isEnrolled && !isAlreadyEnabled) {
+        const typeLabel = await biometricService.getBiometricTypeLabel();
+        setBiometricType(typeLabel);
+        setShowBiometricModal(true);
+        return;
+      }
+    } catch (err) {
+      logger.debug("[AuthenticationScreen] Biometric enrollment check fallback:", { error: err });
+    }
+
+    navigateHomeOnce();
+  };
 
   // ─── Reset guards whenever the flow state changes ─────────────────────────
   useEffect(() => {
@@ -131,11 +134,7 @@ export function AuthenticationScreen() {
       // Reset slide state so biometric area is at top, passcode hidden
       hasBioTriggered.current = false;
       hasNavigated.current = false;
-      setPasscodeVisible(false);
-      setBiometricDismissed(false);
-      setPasscodeAutoFocus(false);
-      biometricAreaY.value = 0;
-      passcodeAreaY.value = 320;
+      resetToBiometric();
     }
   }, [authFlowState]);
 
@@ -174,44 +173,16 @@ export function AuthenticationScreen() {
       authFlowState !== "RESET_PASSCODE" &&
       authFlowState !== "FORGOT_PASSCODE_OTP"
     ) {
-      if (!hasNavigated.current) {
-        hasNavigated.current = true;
-        router.replace("/(main)/home" as any);
-      }
+      navigateHomeOnce();
     }
   }, [isLoggedIn, showBiometricModal, authFlowState]);
 
-  // ─── Timer interval ───────────────────────────────────────────────────────
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const isOtpActive =
-      authFlowState === "OTP_VERIFICATION" || authFlowState === "FORGOT_PASSCODE_OTP";
-    if (isOtpActive && otpTimer > 0) {
-      interval = setInterval(() => {
-        decrementTimer();
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [authFlowState, otpTimer]);
-
-  // ─── Animate on non-biometric state transitions ───────────────────────────
-  useEffect(() => {
-    if (authFlowState === "BIOMETRIC_REAUTH") return; // handled separately
-    fadeAnim.setValue(0.3);
-    slideAnim.setValue(10);
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [authFlowState]);
+  // ─── OTP countdown + form-state transition animation ──────────────────────
+  const { fadeAnim, slideAnim } = useAuthFlowTransition({
+    authFlowState,
+    otpTimer,
+    decrementTimer,
+  });
 
   // ─── BIOMETRIC REAUTH: auto-trigger after mount ────────────────────────────
   const handleBiometricReauth = useCallback(async () => {
@@ -234,48 +205,17 @@ export function AuthenticationScreen() {
           await useAuthStore.getState().fetchAndSyncProfile(activeMobile).catch(() => {});
           syncFromDevAuth();
         }
-        if (!hasNavigated.current) {
-          hasNavigated.current = true;
-          router.replace("/(main)/home" as any);
-        }
+        navigateHomeOnce();
         return;
       }
 
       // Biometric dismissed/failed → slide to passcode with smooth animation
       slideToBiometricDismissed();
-    } catch (e: any) {
+    } catch (e) {
       // On unexpected error, slide to passcode as graceful fallback
       slideToBiometricDismissed();
     }
   }, [mobileNumber]);
-
-  // ─── Slide transition: biometric → passcode ───────────────────────────────
-  const slideToBiometricDismissed = useCallback(() => {
-    // Animate biometric area sliding down
-    biometricAreaY.value = withTiming(320, {
-      duration: SLIDE_DURATION,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-    });
-
-    // Animate passcode area sliding up (with slight delay for staggered feel)
-    passcodeAreaY.value = withDelay(
-      80,
-      withTiming(0, {
-        duration: SLIDE_DURATION,
-        easing: Easing.bezier(0.16, 1, 0.3, 1),
-      }, (finished) => {
-        if (finished) {
-          // After animation: show passcode and enable auto-focus
-          runOnJS(setBiometricDismissed)(true);
-          runOnJS(setPasscodeVisible)(true);
-          runOnJS(setPasscodeAutoFocus)(true);
-        }
-      })
-    );
-
-    // Mount the passcode section immediately so it animates in
-    setPasscodeVisible(true);
-  }, []);
 
   // ─── Passcode login (from BIOMETRIC_REAUTH passcode fallback) ─────────────
   const handlePasscodeFromReauth = useCallback(async () => {
@@ -285,23 +225,7 @@ export function AuthenticationScreen() {
       setPasscodeAutoFocus(false);
       setPasscode("");
       Keyboard.dismiss();
-      try {
-        const hasHardware = await biometricService.checkHardwareSupport();
-        const isEnrolled = await biometricService.checkEnrollment();
-        const isAlreadyEnabled = await biometricService.isBiometricEnabled();
-
-        if (hasHardware && isEnrolled && !isAlreadyEnabled) {
-          const typeLabel = await biometricService.getBiometricTypeLabel();
-          setBiometricType(typeLabel);
-          setShowBiometricModal(true);
-          return;
-        }
-      } catch { }
-
-      if (!hasNavigated.current) {
-        hasNavigated.current = true;
-        router.replace("/(main)/home" as any);
-      }
+      await offerBiometricEnrollmentOrGoHome();
     }
   }, [loginWithPasscode]);
 
@@ -316,7 +240,7 @@ export function AuthenticationScreen() {
       if (res.requiresPasscode) {
         setAuthFlowState("PASSCODE_LOGIN");
       } else {
-        router.replace("/(main)/home" as any);
+        router.replace("/(main)/home");
       }
     }
   };
@@ -326,23 +250,7 @@ export function AuthenticationScreen() {
     if (res.success) {
       setPasscode("");
       Keyboard.dismiss();
-      try {
-        const hasHardware = await biometricService.checkHardwareSupport();
-        const isEnrolled = await biometricService.checkEnrollment();
-        const isAlreadyEnabled = await biometricService.isBiometricEnabled();
-
-        if (hasHardware && isEnrolled && !isAlreadyEnabled) {
-          const typeLabel = await biometricService.getBiometricTypeLabel();
-          setBiometricType(typeLabel);
-          setShowBiometricModal(true);
-          return;
-        }
-      } catch { }
-
-      if (!hasNavigated.current) {
-        hasNavigated.current = true;
-        router.replace("/(main)/home" as any);
-      }
+      await offerBiometricEnrollmentOrGoHome();
     }
   };
 
@@ -353,19 +261,15 @@ export function AuthenticationScreen() {
       if (authRes.success) {
         await useAuthStore.getState().setBiometricEnabled(true);
       }
-    } catch { }
-    if (!hasNavigated.current) {
-      hasNavigated.current = true;
-      router.replace("/(main)/home" as any);
+    } catch (err) {
+      logger.warn("[AuthenticationScreen] Biometric activation failed:", { error: err });
     }
+    navigateHomeOnce();
   };
 
   const handleNotNowBiometric = () => {
     setShowBiometricModal(false);
-    if (!hasNavigated.current) {
-      hasNavigated.current = true;
-      router.replace("/(main)/home" as any);
-    }
+    navigateHomeOnce();
   };
 
   const handleBiometricLogin = async () => {
@@ -381,13 +285,13 @@ export function AuthenticationScreen() {
             lastLoginAt: new Date().toISOString(),
           });
           syncFromDevAuth();
-          router.replace("/(main)/home" as any);
+          router.replace("/(main)/home");
         }
       } else if (!authRes?.cancelled && authRes?.error && authRes.error !== "Authentication cancelled") {
         setError(authRes.error);
       }
-    } catch (e: any) {
-      setError(e?.message || "Biometric authentication failed");
+    } catch (e) {
+      setError(getErrorMessage(e) || "Biometric authentication failed");
     }
   };
 
@@ -403,7 +307,6 @@ export function AuthenticationScreen() {
     await resetPasscodeAndProceed();
   };
 
-  const isMobileReadOnly = authFlowState !== "ENTER_MOBILE";
   const themed = getThemedStyles(
     colors,
     isDark,
@@ -417,6 +320,25 @@ export function AuthenticationScreen() {
     HEADER_OFFSET,
     FOOTER_OFFSET,
     MIN_SCROLL_PADDING
+  );
+
+  // Modals shared by both layouts
+  const screenModals = (
+    <>
+      {/* Biometric Enable Prompt Modal */}
+      <BiometricPromptModal
+        visible={showBiometricModal}
+        biometricType={biometricType}
+        onEnable={handleEnableBiometric}
+        onNotNow={handleNotNowBiometric}
+      />
+
+      {/* Server Configuration Modal */}
+      <ServerConfigModal
+        visible={showServerModal}
+        onClose={() => setShowServerModal(false)}
+      />
+    </>
   );
 
   // ─── BIOMETRIC_REAUTH render ───────────────────────────────────────────────
@@ -438,20 +360,11 @@ export function AuthenticationScreen() {
         >
           <View style={styles.wrapper}>
             {/* Header & Branding */}
-            <TouchableOpacity
-              activeOpacity={0.85}
+            <AuthBrandHeader
               onLongPress={() => setShowServerModal(true)}
-              delayLongPress={500}
-              style={styles.header}
-            >
-              <Image
-                source={require("../../../../assets/images/icon.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <Text style={[styles.brandTitle, themed.brandTitle]}>TAXEDGE</Text>
-              <Text style={[styles.brandSub, themed.brandSub]}>FIN SOLUTIONS</Text>
-            </TouchableOpacity>
+              titleStyle={themed.brandTitle}
+              subtitleStyle={themed.brandSub}
+            />
 
             {/* Welcome Back heading */}
             <View style={reauthStyles.welcomeSection}>
@@ -466,47 +379,16 @@ export function AuthenticationScreen() {
             {/* ── Biometric Area (slides down on dismiss) ── */}
             {!biometricDismissed && (
               <Reanimated.View style={[reauthStyles.animatedSection, biometricAnimStyle]}>
-              <View style={reauthStyles.biometricCard}>
-                <View style={reauthStyles.biometricIconRing}>
-                  <Ionicons
-                    name={
-                      biometricType.toLowerCase().includes("face")
-                        ? "scan-outline"
-                        : "finger-print-outline"
-                    }
-                    size={44}
-                    color={BrandColors.PRIMARY_ORANGE}
-                  />
-                </View>
-                <Text style={[reauthStyles.biometricLabel, { color: colors.text }]}>
-                  {`Authenticate with ${biometricType}`}
-                </Text>
-                <Text style={[reauthStyles.biometricSub, { color: colors.textSecondary }]}>
-                  Use biometrics to securely access your account
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    hasBioTriggered.current = false;
-                    handleBiometricReauth();
-                  }}
-                  activeOpacity={0.75}
-                  style={[reauthStyles.retryBtn, { borderColor: BrandColors.PRIMARY_ORANGE }]}
-                >
-                  <Ionicons name="refresh-outline" size={15} color={BrandColors.PRIMARY_ORANGE} />
-                  <Text style={[reauthStyles.retryBtnText, { color: BrandColors.PRIMARY_ORANGE }]}>
-                    Try Again
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={slideToBiometricDismissed}
-                  activeOpacity={0.7}
-                  style={reauthStyles.switchToPasscodeBtn}
-                >
-                  <Text style={[reauthStyles.switchToPasscodeText, { color: colors.textSecondary }]}>
-                    Use Passcode Instead
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <BiometricReauthCard
+                biometricType={biometricType}
+                textColor={colors.text}
+                secondaryTextColor={colors.textSecondary}
+                onRetry={() => {
+                  hasBioTriggered.current = false;
+                  handleBiometricReauth();
+                }}
+                onUsePasscode={slideToBiometricDismissed}
+              />
               </Reanimated.View>
             )}
 
@@ -531,11 +413,7 @@ export function AuthenticationScreen() {
                   onBiometricLogin={() => {
                     // Allow retrying biometric from passcode view
                     hasBioTriggered.current = false;
-                    setPasscodeVisible(false);
-                    setBiometricDismissed(false);
-                    setPasscodeAutoFocus(false);
-                    biometricAreaY.value = 0;
-                    passcodeAreaY.value = 320;
+                    resetToBiometric();
                     handleBiometricReauth();
                   }}
                   isBiometricEnabled={isBiometricEnabled}
@@ -547,19 +425,7 @@ export function AuthenticationScreen() {
           </View>
         </ScrollView>
 
-        {/* Biometric Enable Prompt Modal */}
-        <BiometricPromptModal
-          visible={showBiometricModal}
-          biometricType={biometricType}
-          onEnable={handleEnableBiometric}
-          onNotNow={handleNotNowBiometric}
-        />
-
-        {/* Server Configuration Modal */}
-        <ServerConfigModal
-          visible={showServerModal}
-          onClose={() => setShowServerModal(false)}
-        />
+        {screenModals}
       </KeyboardAvoidingView>
     );
   }
@@ -593,20 +459,11 @@ export function AuthenticationScreen() {
 
         <View style={styles.wrapper}>
           {/* Header & Branding (Long-press to configure server IP) */}
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <AuthBrandHeader
             onLongPress={() => setShowServerModal(true)}
-            delayLongPress={500}
-            style={styles.header}
-          >
-            <Image
-              source={require("../../../../assets/images/icon.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.brandTitle, themed.brandTitle]}>TAXEDGE</Text>
-            <Text style={[styles.brandSub, themed.brandSub]}>FIN SOLUTIONS</Text>
-          </TouchableOpacity>
+            titleStyle={themed.brandTitle}
+            subtitleStyle={themed.brandSub}
+          />
 
           {/* Welcome Title - Only shown on initial Mobile Number Login Screen */}
           {authFlowState === "ENTER_MOBILE" && (
@@ -620,23 +477,7 @@ export function AuthenticationScreen() {
           {authFlowState !== "RESET_PASSCODE" && (
             <>
               <ErrorBanner error={error} onDismiss={() => setError(null)} />
-              {error && (
-                error.toLowerCase().includes("server") ||
-                error.toLowerCase().includes("connect") ||
-                error.toLowerCase().includes("network") ||
-                error.toLowerCase().includes("url") ||
-                error.toLowerCase().includes("fetch")
-              ) && (
-                  <TouchableOpacity
-                    onPress={() => setShowServerModal(true)}
-                    style={styles.serverConfigBtn}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.serverConfigBtnText}>
-                      ⚙️ Tap to change Server IP / URL
-                    </Text>
-                  </TouchableOpacity>
-                )}
+              <ServerConfigHint error={error} onPress={() => setShowServerModal(true)} />
             </>
           )}
 
@@ -650,204 +491,23 @@ export function AuthenticationScreen() {
               },
             ]}
           >
-            {/* 1. ENTER_MOBILE or OTP_VERIFICATION */}
-            {(authFlowState === "ENTER_MOBILE" || authFlowState === "OTP_VERIFICATION") && (
-              <>
-                <MobileNumberSection
-                  mobile={mobileNumber}
-                  onChangeMobile={setMobileNumber}
-                  onSubmit={handleMobileSubmit}
-                  isReadOnly={isMobileReadOnly}
-                  onChangeNumber={changeNumber}
-                  loading={isLoading && authFlowState === "ENTER_MOBILE"}
-                  showContinueButton={authFlowState === "ENTER_MOBILE"}
-                />
-
-                {authFlowState === "OTP_VERIFICATION" && (
-                  <OTPSection
-                    otp={otp}
-                    onChangeOtp={setOtp}
-                    onVerify={handleOtpVerify}
-                    onResend={resendOtp}
-                    timer={otpTimer}
-                    canResend={canResendOTP}
-                    loading={isLoading}
-                    verifyButtonTitle="Verify OTP"
-                  />
-                )}
-
-                <GoogleLoginSection disabled={isLoading} />
-              </>
-            )}
-
-            {/* 2. PASSCODE_LOGIN (Existing User — reached via OTP verify) */}
-            {authFlowState === "PASSCODE_LOGIN" && (
-              <>
-                <MobileNumberSection
-                  mobile={mobileNumber}
-                  onChangeMobile={setMobileNumber}
-                  onSubmit={() => { }}
-                  isReadOnly={true}
-                  onChangeNumber={changeNumber}
-                  loading={false}
-                  showContinueButton={false}
-                />
-
-                <PasscodeLoginSection
-                  passcode={passcode}
-                  onChangePasscode={setPasscode}
-                  onLogin={handleLoginSubmit}
-                  onForgotPasscode={handleForgotPasscode}
-                  loading={isLoading}
-                  onBiometricLogin={handleBiometricLogin}
-                  isBiometricEnabled={isBiometricEnabled}
-                  biometricTypeLabel={biometricType}
-                  autoFocus={true}
-                />
-
-                <GoogleLoginSection disabled={isLoading} />
-              </>
-            )}
-
-            {/* 3. FORGOT_PASSCODE_OTP */}
-            {authFlowState === "FORGOT_PASSCODE_OTP" && (
-              <>
-                <MobileNumberSection
-                  mobile={mobileNumber}
-                  onChangeMobile={setMobileNumber}
-                  onSubmit={() => { }}
-                  isReadOnly={true}
-                  onChangeNumber={() => setAuthFlowState("PASSCODE_LOGIN")}
-                  loading={false}
-                  showContinueButton={false}
-                />
-
-                <OTPSection
-                  otp={otp}
-                  onChangeOtp={setOtp}
-                  onVerify={handleForgotPasscodeOtpVerify}
-                  onResend={resendOtp}
-                  timer={otpTimer}
-                  canResend={canResendOTP}
-                  loading={isLoading}
-                  verifyButtonTitle="Verify Reset Code"
-                />
-              </>
-            )}
-
-            {/* 4. RESET_PASSCODE */}
-            {authFlowState === "RESET_PASSCODE" && (
-              <ResetPasscodeSection
-                passcode={passcode}
-                confirmPasscode={confirmPasscode}
-                onChangePasscode={setPasscode}
-                onChangeConfirmPasscode={setConfirmPasscode}
-                onSubmit={handleResetPasscodeSubmit}
-                loading={isLoading}
-                error={error}
-                mobileNumber={mobileNumber}
-              />
-            )}
+            <AuthFlowSections
+              biometricTypeLabel={biometricType}
+              onMobileSubmit={handleMobileSubmit}
+              onOtpVerify={handleOtpVerify}
+              onPasscodeLogin={handleLoginSubmit}
+              onForgotPasscode={handleForgotPasscode}
+              onBiometricLogin={handleBiometricLogin}
+              onForgotPasscodeOtpVerify={handleForgotPasscodeOtpVerify}
+              onResetPasscodeSubmit={handleResetPasscodeSubmit}
+            />
           </Animated.View>
         </View>
       </ScrollView>
 
-      {/* Biometric Enable Prompt Modal */}
-      <BiometricPromptModal
-        visible={showBiometricModal}
-        biometricType={biometricType}
-        onEnable={handleEnableBiometric}
-        onNotNow={handleNotNowBiometric}
-      />
-
-      {/* Server Configuration Modal */}
-      <ServerConfigModal
-        visible={showServerModal}
-        onClose={() => setShowServerModal(false)}
-      />
+      {screenModals}
     </KeyboardAvoidingView>
   );
 }
-
-// ─── Styles specific to the BIOMETRIC_REAUTH layout ──────────────────────────
-const reauthStyles = StyleSheet.create({
-  animatedSection: {
-    width: "100%",
-  },
-  welcomeSection: {
-    alignItems: "center",
-    marginBottom: Spacing.xl,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  welcomeSub: {
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 20,
-    opacity: 0.8,
-  },
-  biometricCard: {
-    alignItems: "center",
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: 20,
-    backgroundColor: "rgba(2, 132, 199, 0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(2, 132, 199, 0.12)",
-    marginBottom: Spacing.md,
-  },
-  biometricIconRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: "rgba(245, 130, 32, 0.1)",
-    borderWidth: 2,
-    borderColor: "rgba(245, 130, 32, 0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  biometricLabel: {
-    fontSize: 17,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  biometricSub: {
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-    opacity: 0.75,
-    marginBottom: Spacing.lg,
-  },
-  retryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    marginBottom: Spacing.md,
-  },
-  retryBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  switchToPasscodeBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  switchToPasscodeText: {
-    fontSize: 13,
-    fontWeight: "500",
-    textDecorationLine: "underline",
-    opacity: 0.75,
-  },
-});
 
 export default AuthenticationScreen;

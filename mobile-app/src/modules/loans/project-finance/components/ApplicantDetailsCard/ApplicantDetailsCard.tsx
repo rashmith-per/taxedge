@@ -20,7 +20,7 @@ import { styles } from "./ApplicantDetailsCard.styles";
 
 interface ApplicantDetailsCardProps {
   data: ApplicantDetailsForm;
-  onChange: (field: keyof ApplicantDetailsForm, value: any) => void;
+  onChange: (field: keyof ApplicantDetailsForm, value: ApplicantDetailsForm[keyof ApplicantDetailsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

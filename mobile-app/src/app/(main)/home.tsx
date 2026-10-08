@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect, type Href } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthStore } from "@/store/authStore";
@@ -11,11 +11,12 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { useServiceAccessGuard } from "@/shared/hooks/useServiceAccessGuard";
 import { CompleteProfileModal } from "@/shared/components/CompleteProfileModal";
 import { SERVICE_CATALOGUE } from "@/data/catalogue";
-import { SCREEN_BOTTOM_PADDING } from "@/components/ScreenLayout";
+import { SCREEN_BOTTOM_PADDING } from "@/shared/components/ScreenLayout";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Spacing } from "@/shared/theme";
 import { styles } from "@/styles/app/(main)/home.styles";
-import type { CatalogueItem, IconName, ServiceCategoryId } from "@/types/domain";
+import type { CatalogueItem, ServiceCategoryId } from "@/types/domain";
+import type { DashboardServiceTile, ServiceTile } from "@/modules/dashboard/types/dashboard.types";
 
 // ── Extracted sub-components ──────────────────────────────────────────────────
 import { HomeHeader } from "@/components/screens/home/HomeHeader";
@@ -28,24 +29,8 @@ import { ExploreServicesSheet } from "@/components/screens/home/ExploreServicesS
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-/** A tile in the Quick Services row or the "All Services" sheet. */
-interface ServiceTile {
-  id: string;
-  label: string;
-  icon: IconName;
-  tint: string;
-  tintBg: string;
-  route?: Href;
-  isMore?: boolean;
-}
 
-export interface DashboardServiceTile {
-  id: string;
-  label: string;
-  image: any;
-  route?: any;
-  isMore?: boolean;
-}
+export type { DashboardServiceTile };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -179,7 +164,7 @@ export default function HomeScreen() {
         tile.route === "/service/health-insurance" ||
         tile.route === "/services"
       ) {
-        router.push(tile.route as any);
+        router.push(tile.route);
       } else {
         accessService(tile.route);
       }

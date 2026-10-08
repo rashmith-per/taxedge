@@ -15,7 +15,7 @@ import { styles } from "./RegisteredAddressCard.styles";
 
 interface RegisteredAddressCardProps {
   data: RegisteredAddressForm;
-  onChange: (field: keyof RegisteredAddressForm, value: any) => void;
+  onChange: (field: keyof RegisteredAddressForm, value: RegisteredAddressForm[keyof RegisteredAddressForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

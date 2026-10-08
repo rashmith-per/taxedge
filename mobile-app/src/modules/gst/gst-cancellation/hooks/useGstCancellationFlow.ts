@@ -17,6 +17,9 @@ import {
   CancellationSubmissionResult,
   INITIAL_CANCELLATION_FORM,
 } from "../types/gstCancellationTypes";
+import { buildCancellationApplicationDetails } from "../utils/cancellationApplication";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export function useGstCancellationFlow() {
   const router = useRouter();
@@ -101,7 +104,8 @@ export function useGstCancellationFlow() {
         setFormField("supportingDoc", doc);
         clearError("supportingDoc");
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[useGstCancellationFlow] File selection failed:", { error: err });
       Alert.alert("File Selection Failed", "Unable to select document. Please try again.");
     }
   }, [clearError, setFormField]);
@@ -119,7 +123,8 @@ export function useGstCancellationFlow() {
         setFormField("supportingDoc", doc);
         clearError("supportingDoc");
       }
-    } catch {
+    } catch (err) {
+      logger.warn("[useGstCancellationFlow] Camera scan failed:", { error: err });
       Alert.alert("Camera Error", "Unable to scan document using camera.");
     }
   }, [clearError, setFormField]);
@@ -176,15 +181,16 @@ export function useGstCancellationFlow() {
       let activeId = cancellationId;
 
       // 1. POST save or update record in backend
-      console.log("💾 [Cancellation Review] Saving/updating cancellation in DB via POST...");
+      logger.debug("[Cancellation Review] Saving/updating cancellation in DB via POST");
       const res: any = await gstCancellationApi.createCancellation(form);
-      console.log("💾 [Cancellation Review] Save response:", res);
+      logger.debug("[Cancellation Review] Save response received", { hasResponse: !!res });
 
       let parsedId = null;
       try {
         const parsed = typeof res === "string" ? JSON.parse(res) : res;
         parsedId = parsed?.cancellationId;
-      } catch {
+      } catch (parseErr) {
+        logger.debug("[Cancellation Review] JSON parse fallback for cancellationId", { error: parseErr });
         const match = String(res).match(/cancellationId["':\s]+([A-Za-z0-9_-]+)/i);
         parsedId = match ? match[1] : null;
       }
@@ -196,9 +202,9 @@ export function useGstCancellationFlow() {
 
       // 2. GET retrieve record from DB to populate Review section
       if (activeId) {
-        console.log(`📥 [Cancellation Review] Fetching record from DB: ${activeId}`);
+        logger.debug("[Cancellation Review] Fetching record from DB", { activeId });
         const fetchedDto = await gstCancellationApi.getCancellation(activeId);
-        console.log("📥 [Cancellation Review] Retrieved from DB:", fetchedDto);
+        logger.debug("[Cancellation Review] Retrieved from DB", { hasDto: !!fetchedDto });
         setDbReviewData(fetchedDto);
       }
 
@@ -206,11 +212,11 @@ export function useGstCancellationFlow() {
         setIsEditMode(false);
       }
       setStep("REVIEW");
-    } catch (err: any) {
-      console.error("Error saving/fetching cancellation record:", err);
+    } catch (err) {
+      logger.error("[useGstCancellationFlow] Error saving/fetching cancellation record:", { error: err });
       Alert.alert(
         "Save Failed",
-        err?.message || "Failed to save cancellation details to database. Please check your inputs and try again."
+        getErrorMessage(err) || "Failed to save cancellation details to database. Please check your inputs and try again."
       );
     } finally {
       setIsSaving(false);
@@ -241,8 +247,8 @@ export function useGstCancellationFlow() {
             createdArn = parsed.cancellationId;
             appId = parsed.cancellationId;
           }
-        } catch {
-          // Fallback to local reference
+        } catch (e) {
+          logger.warn("[useGstCancellationFlow] Final cancellation create fallback:", { error: e });
         }
       }
 
@@ -263,16 +269,7 @@ export function useGstCancellationFlow() {
           "gst-cancellation",
           "GST Cancellation (REG-16)",
           "GST",
-          {
-            gstin: form.gstin,
-            reason: form.reason === "Other Valid Reason" ? form.otherReason : form.reason,
-            cancellationDate: form.cancellationDate,
-            closingStock: form.closingStock,
-            pendingLiabilities: form.pendingLiabilities,
-            lastGstr3b: form.lastGstr3b,
-            arn: createdArn,
-            appliedDate: submissionDate,
-          },
+          buildCancellationApplicationDetails(form, createdArn, submissionDate),
           [],
           0
         );
@@ -281,14 +278,17 @@ export function useGstCancellationFlow() {
           `Application for cancellation of GSTIN ${form.gstin} submitted successfully. ARN: ${createdArn}`,
           "gst"
         );
-      } catch {}
+      } catch (e) {
+        logger.warn("[useGstCancellationFlow] ApplicationStore sync failed:", { error: e });
+      }
 
       setIsSubmittedSuccess(true);
       draftGuard.markSubmitted();
       setResult(submissionRes);
       setStep("SUCCESS");
-    } catch (err: any) {
-      Alert.alert("Submission Error", err?.message || "Something went wrong. Please try again.");
+    } catch (err) {
+      logger.error("[useGstCancellationFlow] Cancellation final submission error:", { error: err });
+      Alert.alert("Submission Error", getErrorMessage(err) || "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }

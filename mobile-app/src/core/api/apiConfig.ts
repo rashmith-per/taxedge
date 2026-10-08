@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const SERVER_IP = "192.168.88.75";
+export const SERVER_IP = "192.168.88.28";
 export const SERVER_PORT = 8086;
 export const STORAGE_KEY_SERVER_URL = "@taxedge_server_url";
 
@@ -21,8 +21,9 @@ export function getDefaultBaseUrl(): string {
   }
 
   try {
-    const manifest = (Constants as unknown as Record<string, unknown>).manifest as Record<string, unknown> | undefined;
-    const manifest2 = (Constants as unknown as Record<string, unknown>).manifest2 as Record<string, unknown> | undefined;
+    // Legacy manifest fields are no longer in expo-constants' types; read them only if present.
+    const manifest = ("manifest" in Constants ? Constants.manifest : undefined) as Record<string, unknown> | undefined;
+    const manifest2 = ("manifest2" in Constants ? Constants.manifest2 : undefined) as Record<string, unknown> | undefined;
     const expoGo = manifest2?.extra && typeof manifest2.extra === "object" ? (manifest2.extra as Record<string, unknown>).expoGo as Record<string, unknown> | undefined : undefined;
     
     const hostUri =

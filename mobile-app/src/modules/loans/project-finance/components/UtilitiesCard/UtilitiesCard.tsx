@@ -21,7 +21,7 @@ import { styles } from "./UtilitiesCard.styles";
 
 interface UtilitiesCardProps {
   data: UtilitiesForm;
-  onChange: (field: keyof UtilitiesForm, value: any) => void;
+  onChange: (field: keyof UtilitiesForm, value: UtilitiesForm[keyof UtilitiesForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

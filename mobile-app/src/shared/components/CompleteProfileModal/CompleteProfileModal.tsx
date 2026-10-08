@@ -36,7 +36,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
       propOnCompleteProfile();
     } else {
       closeCompleteProfileModal();
-      router.push("/(auth)/createprofile" as any);
+      router.push("/(auth)/createprofile");
     }
   };
 

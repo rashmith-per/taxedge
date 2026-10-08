@@ -22,6 +22,7 @@ import { useApplicationStore } from "@/store/applicationStore";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { styles } from "./ItrFilingScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export const ItrFilingScreen: React.FC = () => {
   const router = useRouter();
@@ -197,7 +198,7 @@ export const ItrFilingScreen: React.FC = () => {
 
       // Navigate to Success Screen with synchronized parameters
       router.replace({
-        pathname: "/service/itr-success" as any,
+        pathname: "/service/itr-success",
         params: {
           applicationId: generatedAppId,
           serviceTitle,
@@ -210,9 +211,9 @@ export const ItrFilingScreen: React.FC = () => {
           refundBank: maskedBank,
         },
       });
-    } catch (err: any) {
+    } catch (err) {
       setIsSubmitting(false);
-      Alert.alert("Submission Error", err?.message || "Could not submit application. Please try again.");
+      Alert.alert("Submission Error", getErrorMessage(err) || "Could not submit application. Please try again.");
     }
   };
 

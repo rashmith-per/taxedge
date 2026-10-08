@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { localStorage } from "@/core/storage/localStorage";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export type ThemeMode = "light" | "dark";
 
@@ -26,7 +28,7 @@ export const useThemeStore = create<ThemeStoreState>((set, get) => ({
     try {
       await localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (err) {
-      console.warn("Failed to persist theme preference:", err);
+      logger.warn("[ThemeStore] Failed to persist theme preference", { error: getErrorMessage(err) });
     }
   },
 
@@ -47,12 +49,15 @@ export const useThemeStore = create<ThemeStoreState>((set, get) => ({
       }
     } catch (err) {
       // In case of error, default to light mode
+      logger.warn("[ThemeStore] Failed to load theme preference from storage, defaulting to light mode", { error: getErrorMessage(err) });
       set({ theme: "light", isDark: false, isHydrated: true });
     }
   },
 }));
 
 // Initialize theme immediately on import so it begins hydration early
-useThemeStore.getState().initializeTheme().catch(() => {});
+useThemeStore.getState().initializeTheme().catch((err) => {
+  logger.debug("[ThemeStore] Background theme initialization error", { error: getErrorMessage(err) });
+});
 
 export default useThemeStore;

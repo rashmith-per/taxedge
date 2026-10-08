@@ -18,8 +18,9 @@ class DependencyContainer {
     if (this.services.has(key)) {
       return this.services.get(key) as T;
     }
-    if (this.factories.has(key)) {
-      const instance = this.factories.get(key)!();
+    const factory = this.factories.get(key);
+    if (factory) {
+      const instance = factory();
       this.services.set(key, instance);
       return instance as T;
     }

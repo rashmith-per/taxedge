@@ -19,7 +19,7 @@ import { styles } from "./ProjectLocationCard.styles";
 
 interface ProjectLocationCardProps {
   data: ProjectLocationForm;
-  onChange: (field: keyof ProjectLocationForm, value: any) => void;
+  onChange: (field: keyof ProjectLocationForm, value: ProjectLocationForm[keyof ProjectLocationForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

@@ -52,6 +52,33 @@ export interface DevUser {
   createdAt?: string;
 }
 
+/**
+ * Field aliases found on user records saved by older app versions or returned
+ * directly by the backend (`custId` for `customerId`, `mobile` for `mobileNumber`, …).
+ */
+export interface LegacyUserFields {
+  custId?: string;
+  mobile?: string;
+  adhar?: string;
+  pinCode?: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  custType?: string;
+  profileCompleted?: boolean;
+  token?: string;
+}
+
+/** A user record as persisted on the device: `DevUser` plus any legacy aliases it may carry. */
+export type StoredUser = DevUser & LegacyUserFields;
+
+/** The persisted login session. */
+export interface AuthSession {
+  isLoggedIn: boolean;
+  activeMobile: string | null;
+  lastLoginAt?: string | null;
+  activeCustId?: string;
+}
+
 export interface AuthResult {
   success: boolean;
   user?: DevUser;
@@ -69,7 +96,7 @@ export interface AuthStoreState {
   isLoggedIn: boolean;
   mobileNumber: string;
   customer: Customer | null;
-  authenticatedUser: DevUser | null;
+  authenticatedUser: StoredUser | null;
 
   // Flow State
   authFlowState: AuthFlowState;

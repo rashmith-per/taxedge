@@ -6,7 +6,7 @@ import { styles } from "./MachineryLoanBusinessStep.styles";
 
 export interface MachineryLoanBusinessStepProps {
   data: LoanBusinessFormData;
-  onChange: (field: keyof LoanBusinessFormData, value: any) => void;
+  onChange: (field: keyof LoanBusinessFormData, value: LoanBusinessFormData[keyof LoanBusinessFormData]) => void;
   errors?: Record<string, string>;
 }
 

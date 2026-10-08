@@ -11,6 +11,8 @@ import {
   getTodayFormatted,
 } from "@/modules/gst/utils/gstValidation";
 import { gstComplianceApi } from "@/modules/gst/services/gstComplianceApi";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export interface StructuredCompliancePayload {
   service: "GST_COMPLIANCE";
@@ -112,13 +114,14 @@ export async function submitComplianceRequest(
     if (!resolvedId) {
       // 1. Call Spring Boot backend API to store in database if not already saved
       const backendResponse: any = await gstComplianceApi.createCompliance(data);
-      console.log("[GST] Compliance API Response:", backendResponse);
+      logger.debug("[GST] Compliance API Response received", { hasResponse: !!backendResponse });
 
       let parsedId = null;
       try {
         const parsed = typeof backendResponse === "string" ? JSON.parse(backendResponse) : backendResponse;
         parsedId = parsed?.complianceId;
-      } catch {
+      } catch (parseErr) {
+        logger.debug("[GST] JSON parse fallback for complianceId", { error: parseErr });
         const match = String(backendResponse).match(/Compliance ID:\s*([A-Za-z0-9_-]+)/i);
         parsedId = match ? match[1] : null;
       }
@@ -165,13 +168,13 @@ export async function submitComplianceRequest(
       submittedAt,
       estimatedResponse,
     };
-  } catch (err: any) {
+  } catch (err) {
     return {
       success: false,
       referenceId: "",
       submittedAt: "",
       estimatedResponse: "",
-      error: err?.message || "Failed to submit request. Please try again.",
+      error: getErrorMessage(err) || "Failed to submit request. Please try again.",
     };
   }
 }

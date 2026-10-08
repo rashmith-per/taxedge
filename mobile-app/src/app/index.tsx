@@ -6,6 +6,7 @@ import { LandingScreen } from "@/components/landing/LandingScreen";
 import { biometricService } from "@/modules/authentication/services/biometricService";
 import { passcodeService } from "@/modules/authentication/services/passcodeService";
 import { authStorage } from "@/modules/authentication/services/authStorage";
+import { logger } from "@/core/logging/logger";
 import { styles } from "@/styles/app/index.styles";
 
 export default function Index() {
@@ -32,7 +33,9 @@ export default function Index() {
 
         if (isAuthed && user) {
           // Sync profile in background if available
-          useAuthStore.getState().fetchAndSyncProfile(user.mobileNumber).catch(() => {});
+          useAuthStore.getState().fetchAndSyncProfile(user.mobileNumber).catch((err) => {
+            logger.debug("[AppLaunch] Background profile fetch fallback", { error: err });
+          });
 
           // Step 1: Returning users with enrolled biometrics start at Welcome Back.
           let isBioEnabled = false;
@@ -41,7 +44,8 @@ export default function Index() {
               biometricService.isBiometricAvailable(),
               new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 800)),
             ]);
-          } catch {
+          } catch (err) {
+            logger.debug("[AppLaunch] Biometric check fallback", { error: err });
             isBioEnabled = false;
           }
 
@@ -56,7 +60,7 @@ export default function Index() {
             });
             if (!hasNavigated.current) {
               hasNavigated.current = true;
-              router.replace("/(auth)/login" as any);
+              router.replace("/(auth)/login");
             }
             return;
           }
@@ -72,7 +76,7 @@ export default function Index() {
             });
             if (!hasNavigated.current) {
               hasNavigated.current = true;
-              router.replace("/(auth)/login" as any);
+              router.replace("/(auth)/login");
             }
             return;
           }
@@ -86,12 +90,12 @@ export default function Index() {
           useAuthStore.getState().syncFromDevAuth();
           if (!hasNavigated.current) {
             hasNavigated.current = true;
-            router.replace("/(main)/home" as any);
+            router.replace("/(main)/home");
           }
           return;
         }
       } catch (e) {
-        console.warn("App launch init error:", e);
+        logger.warn("[AppLaunch] App launch initialization error:", { error: e });
       } finally {
         if (isMounted && !hasNavigated.current) {
           setIsInitializing(false);

@@ -3,7 +3,9 @@ import { authApi } from "./authApi";
 import { passcodeService } from "./passcodeService";
 import { tokenManager } from "../../../core/authentication/tokenManager";
 import { registerForPushNotificationsAsync } from "../../../utils/pushNotificationService";
-import type { DevUser, RegistrationData, AuthResult } from "../types/auth.types";
+import type { DevUser, StoredUser, RegistrationData, AuthResult } from "../types/auth.types";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
  
 export interface RegisterParams extends Partial<RegistrationData> {
   mobileNumber?: string;
@@ -90,15 +92,15 @@ export const authService = {
         hasPasscode: false,
         error: (checkRes as any).error || "Unable to check customer existence",
       };
-    } catch (e: any) {
-      console.warn("Error calling backend checkUser:", e);
+    } catch (e) {
+      logger.warn("[AuthService] Error calling backend checkUser", { error: getErrorMessage(e) });
       return {
         success: false,
         exists: false,
         customerExists: false,
         profileCompleted: false,
         hasPasscode: false,
-        error: e?.message || "Unable to check customer existence",
+        error: getErrorMessage(e) || "Unable to check customer existence",
       };
     }
   },
@@ -116,10 +118,10 @@ export const authService = {
       const token = await registerForPushNotificationsAsync();
       if (token) {
         pushToken = token;
-        console.log("📲 Push Token Attached for Registration:", pushToken);
+        logger.info("[AuthService] Push token registered", { hasPushToken: Boolean(pushToken) });
       }
     } catch (e) {
-      console.warn("Could not retrieve push token during registration:", e);
+      logger.warn("[AuthService] Could not retrieve push token during registration", { error: getErrorMessage(e) });
     }
  
     const user: DevUser = {
@@ -204,8 +206,17 @@ export const authService = {
     await passcodeService.setPasscode(clean, pass);
 
     try {
-      await authApi.createPasscode(clean, pass);
-    } catch {}
+      const remoteRes = await authApi.createPasscode(clean, pass);
+      if (!remoteRes.success) {
+        logger.warn("[AuthService] Remote passcode sync failed; local passcode preserved", {
+          message: remoteRes.message,
+        });
+      }
+    } catch (err) {
+      logger.warn("[AuthService] Remote passcode sync exception; local passcode preserved", {
+        error: getErrorMessage(err),
+      });
+    }
 
     authStorage.saveSession({
       isLoggedIn: true,
@@ -297,17 +308,19 @@ export const authService = {
     try {
       const refreshToken = await tokenManager.getRefreshToken();
       if (refreshToken) {
-        authApi.revokeRefreshToken(refreshToken).catch(() => {});
+        authApi.revokeRefreshToken(refreshToken).catch((err) => {
+          logger.debug("[AuthService] Background token revocation error", { error: getErrorMessage(err) });
+        });
       }
     } catch (e) {
-      console.warn("Error during logout token revocation:", e);
+      logger.warn("[AuthService] Error during logout token revocation", { error: getErrorMessage(e) });
     } finally {
       await tokenManager.clearTokens();
     }
   },
   isAuthenticated: () => Boolean(authStorage.getSession().isLoggedIn && authStorage.getSession().activeMobile),
   getActiveMobile: () => authStorage.getSession().activeMobile,
-  getCurrentUser: (): DevUser | null => {
+  getCurrentUser: (): StoredUser | null => {
     const session = authStorage.getSession();
     return session.activeMobile ? authStorage.getUserByMobile(session.activeMobile) : null;
   },

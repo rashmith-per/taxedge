@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { styles } from "./ErrorBoundary.styles";
+import { logger } from "@/core/logging/logger";
 
 interface Props {
   children: ReactNode;
@@ -23,7 +24,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("Uncaught error in component tree:", error, errorInfo);
+    logger.error("[ErrorBoundary] Uncaught error in component tree:", {
+      error,
+      componentStack: errorInfo?.componentStack,
+    });
   }
 
   private handleReset = (): void => {

@@ -8,6 +8,7 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { useAuthStore } from "@/store/authStore";
 import { pickImageFromGallery, pickImageFromCamera } from "@/modules/gst/utils/imageUploadHelper";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
+import { logger } from "@/core/logging/logger";
 
 import {
   AmendmentStep,
@@ -26,7 +27,8 @@ import {
 import { resolveTargetGstId } from "../utils/gstAmendmentHelpers";
 import { useGstAmendmentDetails } from "./useGstAmendmentDetails";
 import { submitAmendmentService } from "../services/submitAmendmentService";
-import { gstAmendmentApi } from "@/modules/gst/services/gstAmendmentApi";
+import { persistAmendmentForReview } from "../services/persistAmendmentForReview";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export function useGstAmendmentWorkflow() {
   const router = useRouter();
@@ -151,7 +153,7 @@ export function useGstAmendmentWorkflow() {
   const handleSelectSection = useCallback((sectionId: string) => {
     const validation = validateGstinInput(gstin);
     if (!validation.isValid) {
-      setErrors({ gstin: validation.error! });
+      setErrors({ gstin: validation.error });
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
@@ -197,98 +199,27 @@ export function useGstAmendmentWorkflow() {
     setIsSavingRecord(true);
 
     try {
-      switch (isEditMode) {
-        case true: {
-          // Review Updated Changes: PUT fetch to update record by id only
-          switch (amendmentId !== null && amendmentId !== undefined) {
-            case true: {
-              await gstAmendmentApi.updateAmendmentRecord(
-                selectedSectionId,
-                amendmentId!,
-                formData,
-                supportingDoc
-              );
-              console.log("🔄 [Review] Updated record in DB by ID:", amendmentId);
-              // Retrieve updated details from database by ID only
-              const fetched = await gstAmendmentApi.getAmendmentRecordById(
-                selectedSectionId,
-                amendmentId!
-              );
-              console.log("📥 [Review] Retrieved updated record from DB:", fetched);
-              setDbReviewData(fetched);
-              break;
-            }
-            case false: {
-              const saved = await gstAmendmentApi.saveAmendmentRecord(
-                selectedSectionId,
-                targetGstId,
-                formData,
-                supportingDoc
-              );
-              const newId = saved?.id ?? null;
-              setAmendmentId(newId);
-              console.log("💾 [Review] Saved new record in DB, ID:", newId);
-              switch (newId !== null) {
-                case true: {
-                  const fetched = await gstAmendmentApi.getAmendmentRecordById(
-                    selectedSectionId,
-                    newId!
-                  );
-                  console.log("📥 [Review] Retrieved record from DB:", fetched);
-                  setDbReviewData(fetched);
-                  break;
-                }
-                case false:
-                  break;
-              }
-              break;
-            }
-          }
-          setIsEditMode(false);
-          setCurrentStep("REVIEW");
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          break;
-        }
-
-        case false: {
-          // Review Changes: POST fetch to save data in database
-          const saved = await gstAmendmentApi.saveAmendmentRecord(
-            selectedSectionId,
-            targetGstId,
-            formData,
-            supportingDoc
-          );
-          const newId = saved?.id ?? null;
-          setAmendmentId(newId);
-          console.log("💾 [Review] Saved amendment in DB, ID:", newId);
-
-          // Retrieve from database in review section by ID only
-          switch (newId !== null) {
-            case true: {
-              const fetched = await gstAmendmentApi.getAmendmentRecordById(
-                selectedSectionId,
-                newId!
-              );
-              console.log("📥 [Review] Retrieved record from DB by ID:", fetched);
-              setDbReviewData(fetched);
-              break;
-            }
-            case false: {
-              setDbReviewData(saved);
-              break;
-            }
-          }
-
-          setCurrentStep("REVIEW");
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          break;
-        }
+      await persistAmendmentForReview(
+        {
+          isEditMode,
+          amendmentId,
+          sectionId: selectedSectionId,
+          targetGstId,
+          formData,
+          supportingDoc,
+        },
+        { onSaved: setAmendmentId, onReviewData: setDbReviewData }
+      );
+      if (isEditMode) {
+        setIsEditMode(false);
       }
-    } catch (err: any) {
-      console.error("Error saving/updating amendment record:", err);
+      setCurrentStep("REVIEW");
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } catch (err) {
+      logger.error("[useGstAmendmentWorkflow] Error saving/updating amendment record:", { error: err });
       Alert.alert(
         "Save Failed",
-        err?.message || "Failed to save amendment record. Please try again."
+        getErrorMessage(err) || "Failed to save amendment record. Please try again."
       );
     } finally {
       setIsSavingRecord(false);
@@ -347,11 +278,11 @@ export function useGstAmendmentWorkflow() {
 
       setSubmissionResult(result);
       setCurrentStep("SUCCESS");
-    } catch (error: any) {
-      console.error("Amendment Submission Error:", error);
+    } catch (error) {
+      logger.error("[useGstAmendmentWorkflow] Amendment Submission Error:", { error });
       Alert.alert(
         "Submission Failed",
-        error?.message || "Failed to submit amendment. Please check your network connection and try again."
+        getErrorMessage(error) || "Failed to submit amendment. Please check your network connection and try again."
       );
     } finally {
       setIsSubmitting(false);

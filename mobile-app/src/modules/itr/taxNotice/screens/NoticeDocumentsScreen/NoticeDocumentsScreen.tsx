@@ -27,6 +27,8 @@ import {
   getBottomBarInsetsStyle,
   getProgressFillWidthStyle,
 } from "./NoticeDocumentsScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export const NoticeDocumentsScreen: React.FC = () => {
   const router = useRouter();
@@ -218,7 +220,7 @@ export const NoticeDocumentsScreen: React.FC = () => {
       };
 
       const mappedDocs: Record<string, any> = {};
-      docs.forEach((doc: any) => {
+      docs.forEach((doc) => {
         if (doc.status === "uploaded" && doc.fileUri) {
           const backendKey = docKeyMap[doc.id];
           if (backendKey) {
@@ -248,19 +250,20 @@ export const NoticeDocumentsScreen: React.FC = () => {
       });
 
       router.push({
+        // KNOWN ISSUE: no app/service/tax-notice-preview route exists (typed routes reject it); cast kept, see Wave 6 report.
         pathname: "/service/tax-notice-preview" as any,
         params: {
           noticeId: String(noticeId),
-          pan: String(params.pan || (taxNoticeDraft?.formData as any)?.pan || ""),
-          noticeNumber: String(params.noticeNumber || (taxNoticeDraft?.formData as any)?.noticeNumber || ""),
-          noticeDate: String(params.noticeDate || (taxNoticeDraft?.formData as any)?.noticeDate || ""),
+          pan: String(params.pan || taxNoticeDraft?.formData?.pan || ""),
+          noticeNumber: String(params.noticeNumber || taxNoticeDraft?.formData?.noticeNumber || ""),
+          noticeDate: String(params.noticeDate || taxNoticeDraft?.formData?.noticeDate || ""),
           assessmentYear: String(assessmentYear || ""),
-          noticeType: String(params.noticeType || (taxNoticeDraft?.formData as any)?.noticeType || ""),
+          noticeType: String(params.noticeType || taxNoticeDraft?.formData?.noticeType || ""),
         },
       });
-    } catch (err: any) {
-      console.error(err);
-      Alert.alert("Upload Failed", err.message || "Failed to upload documents.");
+    } catch (err) {
+      logger.error("[NoticeDocumentsScreen] Document upload failed:", { error: err });
+      Alert.alert("Upload Failed", getErrorMessage(err) || "Failed to upload documents.");
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@ import { apiClient } from "../../../core/api/apiClient";
 import { tokenManager, JwtUtils } from "../../../core/authentication/tokenManager";
 import { useAuthStore } from "../../authentication/store/authStore";
 import { authStorage } from "../../authentication/services/authStorage";
+import { logger } from "../../../core/logging/logger";
 import {
   UploadDocumentItem,
   executeXhrUpload,
@@ -10,6 +11,12 @@ import {
   resolveAddressProofEnum,
 } from "./gstUploadHelper";
 import { gstFilingApi } from "./gstFilingApi";
+import { appendFilePart } from "@/shared/utils/formDataFile";
+import type { mapGstRegistrationPayload } from "@/modules/gst/gst-registration/utils/gstRegistrationMapper";
+import type { GstFilingPayload } from "@/modules/gst/gst-filing/types/gstFilingPayload.types";
+
+/** Body sent to the GST business register / update endpoints. */
+type GstRegistrationPayload = ReturnType<typeof mapGstRegistrationPayload>;
 
 export interface GstinEntityDetails {
   gstin: string;
@@ -28,26 +35,32 @@ const resolveCustomerId = async (): Promise<string> => {
     const custId =
       authState.customer?.customerId ||
       authState.authenticatedUser?.customerId ||
-      (authState.authenticatedUser as any)?.custId ||
+      authState.authenticatedUser?.custId ||
       (authState.customer as any)?.custId ||
       "";
     if (custId && typeof custId === "string" && custId.trim() !== "" && custId.trim() !== "undefined") {
       return custId.trim();
     }
-  } catch {}
+  } catch (err) {
+    // Intentional fallback to storage/token resolution cascade
+    logger.debug("[gstApi] Customer ID resolution: authStore unavailable, cascading to storage", { error: err });
+  }
 
   try {
     const user = authStorage.getUser();
     const session = authStorage.getSession();
     const custId =
       user?.customerId ||
-      (user as any)?.custId ||
-      (session as any)?.activeCustId ||
+      user?.custId ||
+      session?.activeCustId ||
       "";
     if (custId && typeof custId === "string" && custId.trim() !== "" && custId.trim() !== "undefined") {
       return custId.trim();
     }
-  } catch {}
+  } catch (err) {
+    // Intentional fallback to token decoding
+    logger.debug("[gstApi] Customer ID resolution: authStorage unavailable, cascading to token", { error: err });
+  }
 
   try {
     const token = await tokenManager.getAccessToken();
@@ -57,7 +70,9 @@ const resolveCustomerId = async (): Promise<string> => {
         return payload.sub.trim();
       }
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[gstApi] Customer ID resolution: token decoding failed", { error: err });
+  }
 
   return "";
 };
@@ -96,11 +111,11 @@ function buildRegistrationFormData(
       hasFiles = true;
       const name = doc.fileName || `${fieldName}.pdf`;
       const isPdf = name.toLowerCase().endsWith(".pdf");
-      formData.append(fieldName, {
+      appendFilePart(formData, fieldName, {
         uri: doc.fileUri,
         name: name,
         type: isPdf ? "application/pdf" : "image/jpeg",
-      } as any);
+      });
     }
   }
 
@@ -147,7 +162,7 @@ export const gstApi = {
     return apiClient.get<any>(`/api/v1/gst/documents/${cleanDocId}`, { headers });
   },
 
-  submitRegistration: async (businessData: any) => {
+  submitRegistration: async (businessData: GstRegistrationPayload) => {
     const token = await tokenManager.getAccessToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -167,7 +182,7 @@ export const gstApi = {
     return apiClient.post<any>("/api/v1/gst/business/register", payload, { headers });
   },
 
-  updateRegistration: async (gstId: string, businessData: any) => {
+  updateRegistration: async (gstId: string, businessData: GstRegistrationPayload) => {
     const token = await tokenManager.getAccessToken();
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -225,19 +240,19 @@ export const gstApi = {
       formData.append("principalPlaceAddressType", resolveAddressProofEnum(addressProofType));
     }
 
-    formData.append(fieldName || "file", {
+    appendFilePart(formData, fieldName || "file", {
       uri: fileUri,
       name: fileName || "document.pdf",
       type: fileName?.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg",
-    } as any);
+    });
 
     const url = `${resolveApiBaseUrl()}/api/v1/gst/documents/${gstId}/register`;
     return executeXhrUpload(url, "POST", formData);
   },
 
   // Filing APIs delegated to gstFilingApi
-  createFiling: async (payload: any) => gstFilingApi.createFiling(payload, resolveCustomerId),
-  updateFiling: async (filingId: string, payload: any) =>
+  createFiling: async (payload: GstFilingPayload) => gstFilingApi.createFiling(payload, resolveCustomerId),
+  updateFiling: async (filingId: string, payload: GstFilingPayload) =>
     gstFilingApi.updateFiling(filingId, payload, resolveCustomerId),
   getFilingById: async (filingId: string) => gstFilingApi.getFilingById(filingId),
   getFilingDocuments: async (gstfilingId: string) => gstFilingApi.getFilingDocuments(gstfilingId),

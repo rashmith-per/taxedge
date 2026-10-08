@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { styles } from "../../../styles/app/(main)/home.styles";
+import { styles } from "../styles/home.styles";
 import { APPLY_BANNERS } from "../constants/home-screen.constants";
 import type { ServiceCategoryId } from "../../../shared/types/domain";
 

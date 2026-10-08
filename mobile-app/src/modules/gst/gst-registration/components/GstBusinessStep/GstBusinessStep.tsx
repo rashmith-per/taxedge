@@ -11,6 +11,7 @@ import { BrandColors } from "@/shared/theme";
 import { styles } from "./GstBusinessStep.styles";
 import { UniversalDatePicker } from "@/shared/components/UniversalDatePicker";
 import { FormInput, FormSelect } from "./GstFormElements";
+import { logger } from "@/core/logging/logger";
 
 // --- CONSTANTS WITH 'as const' FOR STRICT TYPESCRIPT INFERENCE ---
 
@@ -105,7 +106,7 @@ function safeTransform(value: unknown, transformer: (val: string) => string): st
     if (value === null || value === undefined) return "";
     return transformer(typeof value === "string" ? value : String(value));
   } catch (error) {
-    console.error("Input transformation failed:", error);
+    logger.warn("[GstBusinessStep] Input transformation fallback", { error });
     return typeof value === "string" ? value : "";
   }
 }
@@ -203,7 +204,7 @@ export const GstBusinessStep: React.FC<Props> = ({
     try {
       if (BANK_FIELD_KEYS.some((field) => Boolean(errors[field]))) setIsBankExpanded(true);
     } catch (err) {
-      console.error("Failed to evaluate bank errors:", err);
+      logger.warn("[GstBusinessStep] Failed to evaluate bank errors:", { error: err });
     }
   }, [errors]);
 
@@ -211,7 +212,7 @@ export const GstBusinessStep: React.FC<Props> = ({
     try {
       if (SIGNATORY_FIELD_KEYS.some((field) => Boolean(errors[field]))) setIsSignatoryExpanded(true);
     } catch (err) {
-      console.error("Failed to evaluate signatory errors:", err);
+      logger.warn("[GstBusinessStep] Failed to evaluate signatory errors:", { error: err });
     }
   }, [errors]);
 
@@ -220,7 +221,7 @@ export const GstBusinessStep: React.FC<Props> = ({
       try {
         onChange({ [field]: value });
       } catch (err) {
-        console.error(`Error updating field "${String(field)}":`, err);
+        logger.warn("[GstBusinessStep] Error updating field:", { field: String(field), error: err });
       }
     },
     [onChange],
@@ -231,7 +232,7 @@ export const GstBusinessStep: React.FC<Props> = ({
       try {
         onBlurField?.(field);
       } catch (err) {
-        console.error(`Error blurring field "${String(field)}":`, err);
+        logger.warn("[GstBusinessStep] Error blurring field:", { field: String(field), error: err });
       }
     },
     [onBlurField],
@@ -255,7 +256,7 @@ export const GstBusinessStep: React.FC<Props> = ({
           key={field}
           label={label}
           value={val}
-          onChange={(t) => updateField(field, (options?.transform ? options.transform(t) : t) as any)}
+          onChange={(t) => updateField(field, (options?.transform ? options.transform(t) : t))}
           onBlur={() => blurField(field)}
           error={errors?.[field]}
           placeholder={placeholder}
@@ -277,7 +278,7 @@ export const GstBusinessStep: React.FC<Props> = ({
           label={label}
           value={val}
           options={options as string[]}
-          onChange={(t) => updateField(field, t as any)}
+          onChange={(t) => updateField(field, t)}
           error={errors?.[field]}
           placeholder={placeholder}
         />
@@ -294,7 +295,7 @@ export const GstBusinessStep: React.FC<Props> = ({
           key={field}
           label={label}
           value={val}
-          onChange={(d) => updateField(field, d as any)}
+          onChange={(d) => updateField(field, d)}
           error={errors?.[field]}
           valueFormat="DD-MM-YYYY"
           placeholder="DD-MM-YYYY"

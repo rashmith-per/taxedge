@@ -152,7 +152,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
       const kbTop = keyboardTop.current;
       const scrollView = scrollRef.current as any;
       const scrollHost = getScrollHost();
-      const input = TextInput.State.currentlyFocusedInput() as unknown as MeasurableHost | null;
+      const input: MeasurableHost | null = TextInput.State.currentlyFocusedInput();
       const contentHost = scrollView?.getInnerViewRef?.();
       if (kbTop == null || !scrollHost || !input || !contentHost) return;
 

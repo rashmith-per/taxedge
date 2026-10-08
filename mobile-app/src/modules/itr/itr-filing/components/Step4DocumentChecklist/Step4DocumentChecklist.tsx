@@ -99,7 +99,7 @@ export const Step4DocumentChecklist: React.FC<Step4DocumentChecklistProps> = ({ 
           fileSize: doc.fileSize,
           iconType: doc.iconName || "business_income",
         }}
-        onUploadSuccess={(id: string, fileInfo: any) => {
+        onUploadSuccess={(id: string, fileInfo) => {
           onUpdateDocument(id, fileInfo);
         }}
         onRemove={(id: string) => {

@@ -20,7 +20,7 @@ import { styles } from "./MarketDetailsCard.styles";
 
 interface MarketDetailsCardProps {
   data: MarketDetailsForm;
-  onChange: (field: keyof MarketDetailsForm, value: any) => void;
+  onChange: (field: keyof MarketDetailsForm, value: MarketDetailsForm[keyof MarketDetailsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

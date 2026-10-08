@@ -2,6 +2,9 @@ import { Platform } from "react-native";
 
 export type ThemeName = "light" | "dark";
 
+/** Loose colour bag accepted by screen-level themed style helpers. */
+export type ThemeTokens = Record<string, any>;
+
 export interface ThemeColors {
   text: string;
   background: string;

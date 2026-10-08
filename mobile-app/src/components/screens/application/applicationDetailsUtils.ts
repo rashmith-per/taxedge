@@ -1,4 +1,6 @@
 import type { Application, TimelineStep } from "@/types/domain";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -14,7 +16,7 @@ export function formatDisplayDate(dateStr?: string): string {
       return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
     }
   } catch (error) {
-    if (__DEV__) console.warn("Failed to format date string:", dateStr, error);
+    logger.debug("Failed to format date string", { dateStr, error: getErrorMessage(error) });
   }
   return dateStr;
 }
@@ -27,7 +29,7 @@ export function calculateExpectedDate(dateStr?: string): string {
       return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
     }
   } catch (error) {
-    if (__DEV__) console.warn("Failed to calculate expected date:", dateStr, error);
+    logger.debug("Failed to calculate expected date", { dateStr, error: getErrorMessage(error) });
   }
   return "1–2 Business Days";
 }

@@ -13,14 +13,19 @@ import { CompleteProfileModal } from "@/shared/components/CompleteProfileModal";
 import { ErrorBoundary } from "@/core/error-handling/ErrorBoundary";
 import { RootStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { AppBootstrap } from "@/app/bootstrap/AppBootstrap";
+import { logger } from "@/core/logging/logger";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useEffect(() => {
-    AppBootstrap.init().catch(() => {});
+    AppBootstrap.init().catch((err) => {
+      logger.error("[RootLayout] AppBootstrap initialization failed:", { error: err });
+    });
     const timer = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch((err) => {
+        logger.debug("[RootLayout] SplashScreen hide fallback", { error: err });
+      });
     }, 2500);
     return () => clearTimeout(timer);
   }, []);

@@ -24,6 +24,7 @@ import {
   LoanApplicationDraft,
 } from "../../../types/loans.types";
 import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { useLoanDocuments } from "../../../hooks/useLoanDocuments";
 import { LoanStepIndicator } from "../../../components/LoanStepIndicator";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
@@ -54,7 +55,7 @@ export const PropertyLoanScreen: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>(initialLoanDetails);
   const [applicantDetails, setApplicantDetails] = useState<LoanApplicantFormData>(initialApplicantDetails);
@@ -78,15 +79,6 @@ export const PropertyLoanScreen: React.FC = () => {
     onStepChange: scrollToTop,
   });
   const { currentStepIndex } = wizard;
-
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   const handleDetailsChange = (
     field: keyof LoanDetailsFormData,

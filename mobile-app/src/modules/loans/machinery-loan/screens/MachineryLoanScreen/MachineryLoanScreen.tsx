@@ -20,6 +20,7 @@ import {
   validateGstin,
 } from "../../../../../shared/validators/indianTaxValidators";
 import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { useLoanDocuments } from "../../../hooks/useLoanDocuments";
 import { getMissingRequiredDocuments } from "../../../documents/loanDocumentEngine";
 import { LoanProgressHeader, LOAN_PROGRESS_CONFIG } from "@/shared/components/LoanProgressHeader";
@@ -29,9 +30,10 @@ import {
   MachineryLoanFinancialsStep,
   MachineryLoanBusinessStep,
   MachineryLoanBankingStep,
-  MachineryLoanDocumentsStep,
   MachineryLoanReviewStep,
 } from "../../components";
+import { LoanDocumentCardListStep } from "../../../components/steps";
+import { MACHINERY_LOAN_DOCUMENT_CATEGORIES } from "../../config/machineryLoanSteps.config";
 import { styles } from "./MachineryLoanScreen.styles";
 
 const STEPS = LOAN_PROGRESS_CONFIG.machinery.steps;
@@ -45,7 +47,7 @@ export const MachineryLoanScreen: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   // Step 1: Loan Details
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>({
@@ -92,15 +94,6 @@ export const MachineryLoanScreen: React.FC = () => {
     onStepChange: scrollToTop,
   });
   const { currentStepIndex } = wizard;
-
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   const handleDetailsChange = <K extends keyof LoanDetailsFormData>(field: K, value: LoanDetailsFormData[K]) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));
@@ -295,7 +288,7 @@ export const MachineryLoanScreen: React.FC = () => {
           />
         );
       case 3:
-        return <MachineryLoanDocumentsStep loanDocuments={loanDocuments} />;
+        return <LoanDocumentCardListStep categories={MACHINERY_LOAN_DOCUMENT_CATEGORIES} loanDocuments={loanDocuments} />;
       case 4:
       default:
         return (

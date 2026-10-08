@@ -15,7 +15,7 @@ import { styles } from "./TechnicalDetailsCard.styles";
 
 interface TechnicalDetailsCardProps {
   data: TechnicalDetailsForm;
-  onChange: (field: keyof TechnicalDetailsForm, value: any) => void;
+  onChange: (field: keyof TechnicalDetailsForm, value: TechnicalDetailsForm[keyof TechnicalDetailsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

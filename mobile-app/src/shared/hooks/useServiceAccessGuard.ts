@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { useRouter, usePathname } from "expo-router";
+import { useRouter, usePathname, type Href } from "expo-router";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 
 export function useServiceAccessGuard() {
@@ -28,9 +28,9 @@ export function useServiceAccessGuard() {
 
   const hasPanOrAadhaar = Boolean(
     (customer?.pan && customer.pan.trim() !== "") ||
-    ((customer as any)?.aadhaar && (customer as any).aadhaar.trim() !== "") ||
+    (customer?.aadhaar && customer.aadhaar.trim() !== "") ||
     (authenticatedUser?.pan && authenticatedUser.pan.trim() !== "") ||
-    ((authenticatedUser as any)?.aadhaar && (authenticatedUser as any).aadhaar.trim() !== "")
+    (authenticatedUser?.aadhaar && authenticatedUser.aadhaar.trim() !== "")
   );
 
   const isProfileComplete = Boolean(
@@ -40,10 +40,10 @@ export function useServiceAccessGuard() {
   );
 
   const accessService = useCallback(
-    async (targetRoute: any, params?: Record<string, any>): Promise<boolean> => {
+    async (targetRoute: Href, params?: Record<string, string | number>): Promise<boolean> => {
       // 1. Checks authentication
       if (!isLoggedIn) {
-        router.push("/(auth)/login" as any);
+        router.push("/(auth)/login");
         return false;
       }
 
@@ -56,9 +56,9 @@ export function useServiceAccessGuard() {
 
       // 3. Authorized: navigate to requested service
       if (params) {
-        router.push({ pathname: targetRoute, params } as any);
+        router.push({ pathname: targetRoute, params } as Href);
       } else {
-        router.push(targetRoute as any);
+        router.push(targetRoute);
       }
       return true;
     },
@@ -102,9 +102,9 @@ export function useServiceProtection(targetRoute?: any) {
 
   const hasPanOrAadhaar = Boolean(
     (customer?.pan && customer.pan.trim() !== "") ||
-    ((customer as any)?.aadhaar && (customer as any).aadhaar.trim() !== "") ||
+    (customer?.aadhaar && customer.aadhaar.trim() !== "") ||
     (authenticatedUser?.pan && authenticatedUser.pan.trim() !== "") ||
-    ((authenticatedUser as any)?.aadhaar && (authenticatedUser as any).aadhaar.trim() !== "")
+    (authenticatedUser?.aadhaar && authenticatedUser.aadhaar.trim() !== "")
   );
 
   const isProfileComplete = Boolean(
@@ -117,7 +117,7 @@ export function useServiceProtection(targetRoute?: any) {
     let isMounted = true;
     const checkAndProtect = async () => {
       if (!isLoggedIn) {
-        router.replace("/(auth)/login" as any);
+        router.replace("/(auth)/login");
         return;
       }
 

@@ -23,6 +23,7 @@ import {
   getScrollContentInsetsStyle,
   getBottomBarInsetsStyle,
 } from "./ReviewRevisedComputationScreen.styles";
+import { logger } from "@/core/logging/logger";
 
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { useCustomerStore } from "@/modules/customer/store/customerStore";
@@ -77,7 +78,9 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
   if (params.revisedDetails) {
     try {
       formDetails = JSON.parse(params.revisedDetails);
-    } catch {}
+    } catch (e) {
+      logger.debug("[ReviewRevisedComputationScreen] JSON parse fallback for revisedDetails", { error: e });
+    }
   }
 
   const maskPan = (pan?: string): string => {
@@ -106,7 +109,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
 
   const handleEditOriginal = () => {
     router.push({
-      pathname: "/service/revised-itr" as any,
+      pathname: "/service/revised-itr",
       params: {
         acknowledgementNumber: ackNo,
         assessmentYear,
@@ -118,7 +121,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
 
   const handleEditChanges = () => {
     router.push({
-      pathname: "/service/revised-itr-update" as any,
+      pathname: "/service/revised-itr-update",
       params: {
         acknowledgementNumber: ackNo,
         assessmentYear,
@@ -130,7 +133,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
 
   const handleEditDocs = () => {
     router.push({
-      pathname: "/service/revised-itr-documents" as any,
+      pathname: "/service/revised-itr-documents",
       params: {
         acknowledgementNumber: ackNo,
         assessmentYear,
@@ -168,7 +171,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
 
     // Navigate to Application Received / Success screen with Revised ITR details
     router.push({
-      pathname: "/service/itr-success" as any,
+      pathname: "/service/itr-success",
       params: {
         serviceType: "revised",
         serviceTitle,

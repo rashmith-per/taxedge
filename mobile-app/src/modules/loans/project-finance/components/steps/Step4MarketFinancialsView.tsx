@@ -27,7 +27,7 @@ export interface Step4MarketFinancialsViewProps {
   onUpdateProduct: (id: string, field: keyof ProductItemV2, value: string) => void;
   onDeleteProduct: (id: string) => void;
   marketDetails: MarketDetailsForm;
-  onMarketChange: (field: keyof MarketDetailsForm, value: any) => void;
+  onMarketChange: (field: keyof MarketDetailsForm, value: MarketDetailsForm[keyof MarketDetailsForm]) => void;
   customers: CustomerItemV2[];
   onAddCustomer: () => void;
   onUpdateCustomer: (id: string, field: keyof CustomerItemV2, value: any) => void;

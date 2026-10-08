@@ -6,7 +6,7 @@ import { styles } from './NomineeForm.styles';
 
 interface NomineeFormProps {
   nominee: Partial<NomineeDetails>;
-  onChange: (field: keyof NomineeDetails, val: any) => void;
+  onChange: (field: keyof NomineeDetails, val: NomineeDetails[keyof NomineeDetails]) => void;
 }
 
 export const NomineeForm: React.FC<NomineeFormProps> = ({ nominee, onChange }) => {

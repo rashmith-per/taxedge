@@ -41,3 +41,11 @@ export interface ApplyBanner {
   icon: IconName;
   bg: string;
 }
+
+export interface DashboardServiceTile {
+  id: string;
+  label: string;
+  image: any;
+  route?: any;
+  isMore?: boolean;
+}

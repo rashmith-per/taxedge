@@ -5,6 +5,8 @@ import {
   SERVER_PORT,
   STORAGE_KEY_SERVER_URL,
 } from "@/core/api/apiConfig";
+import { getErrorMessage, getErrorField } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export interface AuthTokens {
   accessToken: string;
@@ -59,7 +61,8 @@ export const JwtUtils = {
       const jsonStr = atob(padded); // decode Base64 → JSON string
       return JSON.parse(jsonStr) as JwtPayload;
     } catch {
-      return null; // malformed payload — treat as invalid
+      // Intentional fallback: malformed Base64 or non-JSON JWT segment returns null
+      return null;
     }
   },
 
@@ -204,13 +207,13 @@ class TokenManager {
       }
 
       return (await response.json()) as ServerValidationResponse;
-    } catch (err: any) {
+    } catch (err) {
       // 401 from the server means the signature/expiry check failed
-      if (err?.status === 401 || err?.code === "API_ERROR") {
-        return { valid: false, reason: err?.message || "Server rejected token" };
+      if (getErrorField(err, "status") === 401 || getErrorField(err, "code") === "API_ERROR") {
+        return { valid: false, reason: getErrorMessage(err) || "Server rejected token" };
       }
       // Network error — we cannot determine validity, return null
-      console.warn("[TokenManager] verifyWithServer network error:", err?.message);
+      logger.warn("[TokenManager] verifyWithServer network error", { error: getErrorMessage(err) });
       return null;
     }
   }
@@ -235,7 +238,7 @@ class TokenManager {
     // Layer 1 — fast offline check first
     const clientValid = JwtUtils.isStructureAndExpiryValid(token);
     if (!clientValid) {
-      console.log("[TokenManager] Layer 1 FAILED: token expired or malformed");
+      logger.debug("[TokenManager] Layer 1 token expired or malformed");
       return false;
     }
 
@@ -244,16 +247,16 @@ class TokenManager {
 
     if (serverResult === null) {
       // Network unavailable — trust Layer 1 result (degraded mode)
-      console.warn(
+      logger.warn(
         "[TokenManager] Network unavailable, falling back to client-side expiry check only"
       );
       return clientValid;
     }
 
     if (!serverResult.valid) {
-      console.log(
-        "[TokenManager] Layer 2 FAILED: server rejected token —",
-        serverResult.reason
+      logger.debug(
+        "[TokenManager] Layer 2 server rejected token",
+        { reason: serverResult.reason }
       );
     }
 

@@ -10,11 +10,11 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 import type { ServiceCategory, ServiceCategoryId } from "@/shared/types/domain";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = width - 40;
+export const CARD_WIDTH = width - 40;
 
 const DEFAULT_CATEGORIES: ServiceCategory[] = [
   { id: "GST", name: "GST Services", icon: "receipt-outline", count: 6, color: "#083B75" },
@@ -30,6 +30,7 @@ export interface ServiceCarouselProps {
 }
 
 export function ServiceCarousel({ onExplore, categories = DEFAULT_CATEGORIES }: ServiceCarouselProps) {
+  const colors = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList<ServiceCategory>>(null);
 
@@ -88,10 +89,10 @@ export function ServiceCarousel({ onExplore, categories = DEFAULT_CATEGORIES }: 
         contentContainerStyle={styles.listContent}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: Colors.card, borderColor: Colors.border }]}>
-            <View style={[styles.cardHeader, { backgroundColor: Colors.primary }]}>
+          <View style={[styles.card, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}>
+            <View style={[styles.cardHeader, { backgroundColor: colors.primary }]}>
               <View style={styles.iconBg}>
-                <Ionicons name={item.icon} size={28} color={Colors.primary} />
+                <Ionicons name={item.icon} size={28} color={colors.primary} />
               </View>
               <Text style={styles.cardTitle}>{item.id}</Text>
               <Text style={styles.cardSubTitle}>{getSubTitleText(item.id)}</Text>
@@ -100,8 +101,8 @@ export function ServiceCarousel({ onExplore, categories = DEFAULT_CATEGORIES }: 
             <View style={styles.body}>
               {getSubServices(item.id).map((service, idx) => (
                 <View key={idx} style={styles.checkRow}>
-                  <Ionicons name="checkmark" size={16} color={Colors.primary} />
-                  <Text style={[styles.bulletItem, { color: Colors.text }]}>
+                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                  <Text style={[styles.bulletItem, { color: colors.text }]}>
                     {service}
                   </Text>
                 </View>
@@ -111,7 +112,7 @@ export function ServiceCarousel({ onExplore, categories = DEFAULT_CATEGORIES }: 
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => onExplore(item.id)}
-              style={[styles.exploreBtn, { backgroundColor: Colors.primary }]}
+              style={[styles.exploreBtn, { backgroundColor: colors.primary }]}
             >
               <Text style={styles.exploreText}>Explore</Text>
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
@@ -127,7 +128,7 @@ export function ServiceCarousel({ onExplore, categories = DEFAULT_CATEGORIES }: 
             style={[
               styles.indicatorDot,
               {
-                backgroundColor: activeIndex === index ? Colors.orange : Colors.border,
+                backgroundColor: activeIndex === index ? colors.orange : colors.border,
                 width: activeIndex === index ? 16 : 8,
               },
             ]}

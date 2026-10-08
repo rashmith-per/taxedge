@@ -5,6 +5,8 @@ import {
   SERVER_PORT,
   STORAGE_KEY_SERVER_URL,
 } from "@/core/api/apiConfig";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 /**
  * Backend response shape from POST /auth/refresh
@@ -62,7 +64,7 @@ class TokenRefreshManager {
   async attemptRefresh(): Promise<boolean> {
     // ── Mutex: if already refreshing, piggyback on the same call ──────────
     if (this.refreshPromise) {
-      console.log("[TokenRefresh] Refresh already in progress — waiting...");
+      logger.debug("[TokenRefresh] Refresh already in progress — waiting...");
       return this.refreshPromise;
     }
 
@@ -83,7 +85,7 @@ class TokenRefreshManager {
     const refreshToken = await tokenManager.getRefreshToken();
 
     if (!refreshToken) {
-      console.warn("[TokenRefresh] No refresh token in storage");
+      logger.warn("[TokenRefresh] No refresh token in storage");
       const hasValidAccess = await tokenManager.hasValidToken().catch(() => false);
       if (!hasValidAccess) {
         this.handleSessionExpired();
@@ -94,7 +96,7 @@ class TokenRefreshManager {
     try {
       const normalizedBaseUrl = await getActiveBaseUrl();
 
-      console.log(`[TokenRefresh] Calling POST ${normalizedBaseUrl}/auth/refresh...`);
+      logger.debug(`[TokenRefresh] Calling POST ${normalizedBaseUrl}/auth/refresh...`);
 
       const response = await fetch(`${normalizedBaseUrl}/auth/refresh`, {
         method: "POST",
@@ -109,7 +111,7 @@ class TokenRefreshManager {
 
       // ── Refresh token is itself expired or revoked ───────────────────────
       if (response.status === 401 || response.status === 403) {
-        console.warn(
+        logger.warn(
           `[TokenRefresh] Server rejected refresh token (HTTP ${response.status}) — session expired`
         );
         this.handleSessionExpired();
@@ -117,7 +119,7 @@ class TokenRefreshManager {
       }
 
       if (!response.ok) {
-        console.error(
+        logger.error(
           `[TokenRefresh] Unexpected HTTP ${response.status} from /auth/refresh`
         );
         this.handleSessionExpired();
@@ -127,7 +129,7 @@ class TokenRefreshManager {
       const data: RefreshResponse = await response.json();
 
       if (!data.accessToken || !data.refreshToken) {
-        console.error("[TokenRefresh] Invalid response — missing tokens");
+        logger.error("[TokenRefresh] Invalid response — missing tokens");
         this.handleSessionExpired();
         return false;
       }
@@ -136,11 +138,11 @@ class TokenRefreshManager {
       await tokenManager.setAccessToken(data.accessToken);
       await tokenManager.setRefreshToken(data.refreshToken);
 
-      console.log("[TokenRefresh] ✅ Tokens refreshed successfully");
+      logger.info("[TokenRefresh] Tokens refreshed successfully");
       return true;
-    } catch (error: any) {
+    } catch (error) {
       // Network error (offline, DNS failure, etc.)
-      console.error("[TokenRefresh] Network error during refresh:", error?.message);
+      logger.error("[TokenRefresh] Network error during refresh", error);
       // Do NOT call handleSessionExpired for network errors — the refresh token
       // may still be valid. The caller will propagate the original 401 to the UI.
       return false;
@@ -152,7 +154,11 @@ class TokenRefreshManager {
    * The app should redirect to the login screen.
    */
   private handleSessionExpired(): void {
-    tokenManager.clearTokens().catch(() => {});
+    tokenManager.clearTokens().catch((err) => {
+      logger.warn("[TokenRefresh] Failed to clear tokens on session expiry", {
+        error: getErrorMessage(err),
+      });
+    });
     if (this.sessionExpiredListener) {
       this.sessionExpiredListener();
     }
@@ -161,3 +167,4 @@ class TokenRefreshManager {
 
 export const tokenRefreshManager = new TokenRefreshManager();
 export default tokenRefreshManager;
+

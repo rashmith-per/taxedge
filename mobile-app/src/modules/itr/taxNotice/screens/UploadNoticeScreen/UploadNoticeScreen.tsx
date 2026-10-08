@@ -27,6 +27,7 @@ import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { taxNoticeApi } from "../../../services/taxNoticeApi";
+import { logger } from "@/core/logging/logger";
 import {
   styles,
   getContainerInsetsStyle,
@@ -35,6 +36,7 @@ import {
 } from "./UploadNoticeScreen.styles";
 import { validateStep1Data, validateStep2Data } from "./UploadNoticeScreen.utils";
 import { AssessmentYearDropdown, NoticeTypeDropdown } from "./UploadNoticeScreen.components";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export const UploadNoticeScreen: React.FC = () => {
   const router = useRouter();
@@ -145,7 +147,7 @@ export const UploadNoticeScreen: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      let noticeId = (taxNoticeDraft?.formData as any)?.noticeId ? String((taxNoticeDraft?.formData as any).noticeId) : "";
+      let noticeId = taxNoticeDraft?.formData?.noticeId ? String((taxNoticeDraft?.formData as any).noticeId) : "";
       const payload = {
         pan: formData.pan,
         assessmentYear: formData.assessmentYear,
@@ -186,9 +188,9 @@ export const UploadNoticeScreen: React.FC = () => {
           assessmentYear: formData.assessmentYear,
         },
       });
-    } catch (err: any) {
-      console.error("API Error: ", err);
-      Alert.alert("Registration Failed", err.message || "Could not register tax notice.");
+    } catch (err) {
+      logger.error("[UploadNoticeScreen] Tax notice registration failed:", { error: err });
+      Alert.alert("Registration Failed", getErrorMessage(err) || "Could not register tax notice.");
     } finally {
       setIsSubmitting(false);
     }

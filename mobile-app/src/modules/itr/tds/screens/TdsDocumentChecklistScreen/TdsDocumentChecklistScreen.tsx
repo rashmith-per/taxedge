@@ -26,16 +26,18 @@ import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { tdsApiService } from "../../services/tdsApiService";
 import { tdsDraftService } from "../../services/tdsDraftService";
+import { logger } from "@/core/logging/logger";
 import {
   styles,
   getContainerInsetsStyle,
   getScrollContentInsetsStyle,
   getBottomBarInsetsStyle,
 } from "./TdsDocumentChecklistScreen.styles";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export const TdsDocumentChecklistScreen: React.FC = () => {
   const router = useRouter();
-  const maxStepReached = useTdsProgressStore((s: any) => s.maxStepReached);
+  const maxStepReached = useTdsProgressStore((s) => s.maxStepReached);
   const insets = useSafeAreaInsets();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -47,7 +49,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     const draft = tdsDraft as any;
     if (draft && draft.documents && Array.isArray(draft.documents) && draft.documents.length > 0) {
       const savedMap = new Map(draft.documents.map((d: any) => [d.id, d]));
-      return INITIAL_TDS_DOCUMENTS.map((doc: any) => {
+      return INITIAL_TDS_DOCUMENTS.map((doc) => {
         const saved = savedMap.get(doc.id) as any;
         if (saved && (saved.fileUri || saved.status === "uploaded")) {
           return {
@@ -73,13 +75,14 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
         const tdsRefundId = await tdsDraftService.getApplicationId();
         if (tdsRefundId) {
           const backendDocs = await tdsApiService.fetchAndMapDocumentsList(tdsRefundId, documents);
-          const hasBackendUploaded = backendDocs.some((d: any) => d.status === 'uploaded' || d.status === 'verified');
+          // TdsDocStatus has no 'verified'; kept as a defensive check for backend-reported status.
+          const hasBackendUploaded = backendDocs.some((d) => d.status === 'uploaded' || (d.status as string) === 'verified');
           if (hasBackendUploaded) {
             setDocuments(backendDocs);
           }
         }
       } catch (err) {
-        console.warn("[TDS Docs Screen] Error fetching backend documents:", err);
+        logger.warn("[TDS Docs Screen] Error fetching backend documents:", { error: err });
       }
     }
     loadBackendDocuments();
@@ -95,11 +98,11 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     saveDestination: "/service/itr",
     discardDestination: "/service/itr",
     isDirty: () =>
-      documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded")),
+      documents.some((d) => Boolean(d.fileUri || d.status === "uploaded")),
     onSaveDraft: async () => {
       saveTdsDraft?.({
         formData: tdsDraft?.formData || {},
-        documents: documents as any,
+        documents: documents,
         step: "DOCUMENTS",
         updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
@@ -110,7 +113,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
           await tdsApiService.saveDocuments(documents, tdsRefundId);
         }
       } catch (err) {
-        console.warn("[TDS Docs Screen] Draft save to backend warning:", err);
+        logger.warn("[TDS Docs Screen] Draft save to backend warning:", { error: err });
       }
     },
     onDiscardDraft: async () => {
@@ -120,13 +123,13 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
 
   // Functional count of uploaded documents - zero loops
   const uploadedCount = documents.filter(
-    (d: any) => d.status === "uploaded" || !!d.fileUri
+    (d) => d.status === "uploaded" || !!d.fileUri
   ).length;
   const totalCount = documents.length;
 
-  const mandatoryDocs = documents.filter((d: any) => d.isMandatory);
+  const mandatoryDocs = documents.filter((d) => d.isMandatory);
   const isMandatoryComplete = mandatoryDocs.every(
-    (d: any) => d.status === "uploaded" || !!d.fileUri
+    (d) => d.status === "uploaded" || !!d.fileUri
   );
 
   const getOrFetchRefundId = async (): Promise<string | null> => {
@@ -152,7 +155,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
   };
 
   const handleUploadSuccess = async (id: string, payload: DocumentUploadPayload) => {
-    const updated = documents.map((doc: any) =>
+    const updated = documents.map((doc) =>
       doc.id === id
         ? {
             ...doc,
@@ -171,7 +174,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     // Immediately persist uploaded documents to draft store
     saveTdsDraft?.({
       formData: tdsDraft?.formData || {},
-      documents: updated as any,
+      documents: updated,
       step: "DOCUMENTS",
       updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     });
@@ -184,7 +187,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
         await tdsApiService.saveDocuments(updated, tdsRefundId);
       }
     } catch (err) {
-      console.warn("[TDS Docs Screen] Backend document upload save warning:", err);
+      logger.warn("[TDS Docs Screen] Backend document upload save warning:", { error: err });
     }
   };
 
@@ -203,7 +206,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
   };
 
   const handleRemove = async (id: string) => {
-    const updated = documents.map((doc: any) =>
+    const updated = documents.map((doc) =>
       doc.id === id
         ? {
             ...doc,
@@ -222,7 +225,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     // Immediately persist document removal to draft store
     saveTdsDraft?.({
       formData: tdsDraft?.formData || {},
-      documents: updated as any,
+      documents: updated,
       step: "DOCUMENTS",
       updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     });
@@ -235,7 +238,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
         await tdsApiService.saveDocuments(updated, tdsRefundId);
       }
     } catch (err) {
-      console.warn("[TDS Docs Screen] Backend document removal sync warning:", err);
+      logger.warn("[TDS Docs Screen] Backend document removal sync warning:", { error: err });
     }
   };
 
@@ -261,36 +264,36 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     try {
       const tdsRefundId = await getOrFetchRefundId();
       if (tdsRefundId) {
-        console.log("🚀 [TDS Docs] Explicitly saving documents before review for refund ID:", tdsRefundId);
+        logger.debug("[TDS Docs] Explicitly saving documents before review", { tdsRefundId });
         const res = await tdsApiService.saveDocuments(documents, tdsRefundId);
-        console.log("✅ [TDS Docs] Backend document save response:", res);
+        logger.debug("[TDS Docs] Backend document save response received", { hasResponse: !!res });
       }
-    } catch (err: any) {
-      console.warn("[TDS Docs Screen] Backend save before estimate warning:", err?.message || err);
+    } catch (err) {
+      logger.warn("[TDS Docs Screen] Backend save before estimate warning:", { error: getErrorMessage(err) || err });
     } finally {
       setIsSaving(false);
     }
 
     saveTdsDraft?.({
       formData: tdsDraft?.formData || {},
-      documents: documents as any,
+      documents: documents,
       step: "ESTIMATE",
       updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     });
     await tdsDraftService.saveDocumentsDraft(documents);
 
     // Navigate to next screen: TDS Refund Estimate & Review Screen
-    router.push("/service/tds-estimate" as any);
+    router.push("/service/tds-estimate");
   };
 
   const handleBackPress = () => {
-    const isDirty = documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded"));
+    const isDirty = documents.some((d) => Boolean(d.fileUri || d.status === "uploaded"));
     if (isDirty) {
       openDraftModal();
     } else if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/service/itr" as any);
+      router.replace("/service/itr");
     }
   };
 
@@ -317,7 +320,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
         />
 
         {/* 9 Document Cards with inline field validation - zero loops */}
-        {documents.map((doc: any) => (
+        {documents.map((doc) => (
           <TdsDocumentCard
             key={doc.id}
             item={doc}

@@ -129,7 +129,7 @@ export function ApplicationCardItem({
   const badge = getStatusBadgeStyle(item.status);
   const isDraft = item.status === "Draft" || Boolean(item.formData?.isDraft);
   const pendingDocsCount = item.documents.filter(
-    (doc: any) => doc.status === "Pending"
+    (doc) => doc.status === "Pending"
   ).length;
   const isGstAmendment = item.serviceId === "gst-amendment";
   const isGstCancellation = item.serviceId === "gst-cancellation";

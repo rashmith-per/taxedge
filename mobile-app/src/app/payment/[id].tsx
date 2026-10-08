@@ -8,7 +8,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useApplicationStore } from "@/store/applicationStore";
 import { useAuthStore } from "@/store/authStore";
 import { paymentService } from "@/modules/payments/services/paymentService";
-import { AppHeader } from "@/components";
+import { AppHeader } from "@/shared/components/AppHeader";
 import { styles } from "@/styles/app/payment/[id].styles";
 
 import { OrderSummaryCard } from "@/components/screens/payment/OrderSummaryCard";

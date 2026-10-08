@@ -7,7 +7,7 @@ import { styles } from "./DisbursementScheduleCard.styles";
 
 interface DisbursementScheduleCardProps {
   data: DisbursementScheduleForm;
-  onChange: (field: keyof DisbursementScheduleForm, value: any) => void;
+  onChange: (field: keyof DisbursementScheduleForm, value: DisbursementScheduleForm[keyof DisbursementScheduleForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

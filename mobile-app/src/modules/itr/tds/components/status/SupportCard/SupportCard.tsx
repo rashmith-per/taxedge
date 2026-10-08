@@ -19,7 +19,7 @@ export const SupportCard: React.FC<SupportCardProps> = ({
     if (onContactExecutive) {
       onContactExecutive();
     } else {
-      router.push("/chat/support" as any);
+      router.push("/chat/support");
     }
   };
 
@@ -27,7 +27,7 @@ export const SupportCard: React.FC<SupportCardProps> = ({
     if (onContactSupport) {
       onContactSupport();
     } else {
-      router.push("/chat/support" as any);
+      router.push("/chat/support");
     }
   };
 

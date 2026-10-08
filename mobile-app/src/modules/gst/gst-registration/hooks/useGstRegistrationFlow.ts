@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Alert } from "react-native";
+import { Alert, type ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useApplicationStore } from "@/store/applicationStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -23,10 +23,12 @@ import {
 import { GstBusinessFormData } from "@/modules/gst/gst-registration/components/GstBusinessStep/GstBusinessStep";
 import { INITIAL_DOCUMENTS } from "@/modules/gst/gst-registration/components/GstUnifiedDocumentStep/GstUnifiedDocumentStep";
 import { DocumentItem } from "@/modules/gst/gst-registration/components/GstUnifiedDocumentStep/GstUnifiedDocumentStep.types";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 // --- CONSTANTS & HELPERS ---
 
-export const isBackendGstId = (id?: unknown): boolean => {
+export const isBackendGstId = (id?: unknown): id is string => {
   if (!id || typeof id !== "string") return false;
   const clean = id.trim();
   if (/^GST-2026-\d+/i.test(clean)) return false;
@@ -48,7 +50,7 @@ export const resolveTargetGstId = (
   candidates: Array<string | undefined | null>,
 ): string => {
   for (const c of candidates) {
-    if (isBackendGstId(c)) return c!.trim();
+    if (isBackendGstId(c)) return c.trim();
   }
   return "";
 };
@@ -67,7 +69,7 @@ const INITIAL_BUSINESS_DATA: GstBusinessFormData = {
 
 // --- MAIN HOOK ---
 
-export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
+export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<ScrollView | null>) => {
   const router = useRouter();
   const params = useLocalSearchParams<{
     gstId?: string; id?: string; appId?: string; isEdit?: string; edit?: string; step?: string;
@@ -101,7 +103,7 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
   const getResolvedCustomerId = useCallback(async (): Promise<string> => {
     try {
       if (businessData.customerId?.trim()) return businessData.customerId.trim();
-      const storeCustId = authCustomer?.customerId || authUser?.customerId || (authUser as any)?.custId || (authCustomer as any)?.custId;
+      const storeCustId = authCustomer?.customerId || authUser?.customerId || authUser?.custId || (authCustomer as any)?.custId;
       if (storeCustId && String(storeCustId).trim()) return String(storeCustId).trim();
 
       const token = await tokenManager.getAccessToken();
@@ -111,10 +113,10 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
       }
       const u = authStorage.getUser();
       const s = authStorage.getSession();
-      const storageCustId = u?.customerId || (u as any)?.custId || (s as any)?.activeCustId;
+      const storageCustId = u?.customerId || u?.custId || s?.activeCustId;
       if (storageCustId && String(storageCustId).trim()) return String(storageCustId).trim();
     } catch (err) {
-      console.warn("Error resolving customer ID:", err);
+      logger.warn("[useGstRegistrationFlow] Error resolving customer ID:", { error: err });
     }
     return "";
   }, [authCustomer, authUser, businessData.customerId]);
@@ -155,9 +157,9 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
           documents: docsToSave as any,
           updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           ...(documentId ? { documentId } : {}),
-        } as any);
+        });
       } catch (err) {
-        console.warn("Failed to sync GST draft:", err);
+        logger.warn("[useGstRegistrationFlow] Failed to sync GST draft:", { error: err });
       }
     },
     [businessData, createdGstId, documentId, documents, saveGstDraft, screenIndex],
@@ -182,7 +184,7 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
         setBusinessData((prev) => ({ ...prev, gstId: routeGstId }));
         gstApi.getBusiness(routeGstId)
           .then((dto) => dto && setBusinessData((p) => ({ ...p, ...mapDtoToGstBusinessFormData(dto), gstId: routeGstId })))
-          .catch((e) => console.warn("Could not fetch business details:", e));
+          .catch((e) => logger.warn("[useGstRegistrationFlow] Could not fetch business details:", { error: e }));
       }
 
       if (params.edit === "true" || params.isEdit === "true") setIsEditMode(true);
@@ -206,16 +208,17 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
         if (typeof gstDraft.stepIndex === "number" && gstDraft.stepIndex < 3 && !params.step) {
           setScreenIndex(gstDraft.stepIndex);
         }
-        if (isBackendGstId(gstDraft.createdGstId)) {
-          setCreatedGstId((prev) => (isBackendGstId(prev) ? prev : gstDraft.createdGstId!));
+        const draftGstId = gstDraft.createdGstId;
+        if (isBackendGstId(draftGstId)) {
+          setCreatedGstId((prev) => (isBackendGstId(prev) ? prev : draftGstId));
         } else if (isBackendGstId((gstDraft.businessData as any)?.gstId)) {
           setCreatedGstId((prev) => (isBackendGstId(prev) ? prev : (gstDraft.businessData as any).gstId));
         }
-        if ((gstDraft as any).documentId) setDocumentId((gstDraft as any).documentId);
+        if (gstDraft.documentId) setDocumentId(gstDraft.documentId);
       }
       hasRestoredDraftRef.current = true;
     } catch (err) {
-      console.warn("Failed to restore GST draft/params:", err);
+      logger.warn("[useGstRegistrationFlow] Failed to restore GST draft/params:", { error: err });
     }
   }, [params.gstId, params.id, params.appId, params.edit, params.isEdit, params.step, gstDraft]);
 
@@ -229,13 +232,13 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
         const dbBusiness = await gstApi.getBusiness(activeGstId);
         if (dbBusiness) setBusinessData((prev) => ({ ...prev, ...mapDtoToGstBusinessFormData(dbBusiness), gstId: activeGstId }));
       }
-      const activeDocId = docIdToFetch || documentId || (gstDraft as any)?.documentId;
+      const activeDocId = docIdToFetch || documentId || gstDraft?.documentId;
       if (activeDocId) {
         const dbDocs = await gstApi.getRegistrationDocuments(activeDocId);
         if (dbDocs) setDocuments((prev) => mapDtoToDocuments(dbDocs, prev));
       }
-    } catch (err: any) {
-      console.warn("Could not retrieve documents from DB:", err?.message || err);
+    } catch (err) {
+      logger.warn("[useGstRegistrationFlow] Could not retrieve documents from DB:", { error: getErrorMessage(err) || err });
     } finally {
       setIsFetchingReview(false);
     }
@@ -337,8 +340,8 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
       params.gstId,
       params.id,
       params.appId,
-      (gstDraft as any)?.createdGstId,
-      (gstDraft as any)?.gstId,
+      gstDraft?.createdGstId,
+      gstDraft?.gstId,
       (gstDraft?.businessData as any)?.gstId,
     ]);
 
@@ -401,7 +404,7 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
         const custId = await getResolvedCustomerId();
         await gstApi.updateRegistration(createdGstId, mapGstRegistrationPayload(businessData, custId, createdGstId));
       } catch (e) {
-        console.warn("Failed to update final registration details", e);
+        logger.warn("[useGstRegistrationFlow] Failed to update final registration details", { error: e });
       }
     }
     setScreenIndex(3);
@@ -419,9 +422,9 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
       const handler = stepHandlers[screenIndex];
       if (handler) await handler();
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } catch (err: any) {
-      Alert.alert("Error", err?.message || "An unexpected error occurred. Please try again.");
-      console.error("GST Flow Error:", err);
+    } catch (err) {
+      Alert.alert("Error", getErrorMessage(err) || "An unexpected error occurred. Please try again.");
+      logger.error("[useGstRegistrationFlow] GST Flow Error:", { error: err });
     } finally {
       setIsLoading(false);
     }
@@ -434,8 +437,8 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
         resolveTargetGstId([
           createdGstId,
           businessData.gstId,
-          (gstDraft as any)?.createdGstId,
-          (gstDraft as any)?.businessData?.gstId,
+          gstDraft?.createdGstId,
+          gstDraft?.businessData?.gstId,
           params.gstId,
           params.id,
         ]) || createdGstId || businessData.gstId || "";
@@ -451,7 +454,7 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
           paymentMethod,
           paymentAmount: 1499,
           paymentStatus: "Paid",
-        } as any,
+        },
         documents.map((d) => ({
           name: d.name, status: "Uploaded" as const, fileUri: d.fileUri, fileName: d.fileName, fileSize: d.fileSize,
         })),
@@ -468,7 +471,7 @@ export const useGstRegistrationFlow = (scrollViewRef: React.RefObject<any>) => {
       setScreenIndex(4);
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     } catch (err) {
-      console.error("Payment finalization failed:", err);
+      logger.error("[useGstRegistrationFlow] Payment finalization failed:", { error: err });
       Alert.alert("Submission Failed", "Could not complete the process. Please try again.");
     }
   };

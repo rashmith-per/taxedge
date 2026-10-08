@@ -13,6 +13,8 @@ import {
   buildFilingPayload,
   extractUploadedDocumentNames,
 } from "@/modules/gst/gst-filing/hooks/gstFilingHelpers";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export async function submitPeriodStep({
   periodData,
@@ -48,15 +50,13 @@ export async function submitPeriodStep({
         }
         setCurrentStep(1);
         return;
-      } catch (updateErr: any) {
-        const errMsg = String(updateErr?.message || updateErr || "");
+      } catch (updateErr) {
+        const errMsg = String(getErrorMessage(updateErr) || updateErr || "");
         if (
           errMsg.includes("does not belong to GSTIN") ||
           errMsg.includes("not found with ID")
         ) {
-          console.log(
-            `[FilingFlow] Target filing ID ${targetFilingId} does not belong to GSTIN ${periodData.gstin}. Creating a new filing session...`,
-          );
+          logger.debug("[FilingFlow] Target filing ID does not belong to GSTIN, creating new session", { targetFilingId, gstin: periodData.gstin });
         } else {
           throw updateErr;
         }
@@ -98,10 +98,10 @@ export async function submitPeriodStep({
       return;
     }
     setCurrentStep(1);
-  } catch (err: any) {
+  } catch (err) {
     Alert.alert(
       "Filing Notice",
-      err?.message || "Failed to update filing details. Please try again.",
+      getErrorMessage(err) || "Failed to update filing details. Please try again.",
     );
   } finally {
     setIsSubmitting(false);
@@ -144,7 +144,7 @@ export async function submitDocumentsStep({
         setFilingId(targetFilingId);
       }
     } catch (createErr) {
-      console.debug("[DocumentStep] Auto-creation of filing session failed:", createErr);
+      logger.debug("[DocumentStep] Auto-creation of filing session failed:", { error: createErr });
     }
   }
 
@@ -194,10 +194,10 @@ export async function submitDocumentsStep({
       setIsEditMode(false);
     }
     setCurrentStep(2);
-  } catch (uploadErr: any) {
+  } catch (uploadErr) {
     Alert.alert(
       "Upload Failed",
-      uploadErr?.message || "Failed to upload documents. Please try again.",
+      getErrorMessage(uploadErr) || "Failed to upload documents. Please try again.",
     );
   } finally {
     setIsSubmitting(false);
@@ -253,7 +253,7 @@ export async function submitReviewStep({
       const payload = buildFilingPayload(periodData, custId, true);
       await gstApi.updateFiling(filingId, payload);
     } catch (err) {
-      console.debug("[ReviewStep] Update manual estimates notice:", err);
+      logger.debug("[ReviewStep] Update manual estimates notice:", { error: err });
     } finally {
       setIsSubmitting(false);
     }

@@ -36,9 +36,10 @@ import {
   WorkingCapitalFinancialsStep,
   WorkingCapitalBusinessStep,
   WorkingCapitalBankingStep,
-  WorkingCapitalDocumentsStep,
   WorkingCapitalReviewStep,
 } from "../../components";
+import { LoanDocumentCardListStep } from "../../../components/steps";
+import { WORKING_CAPITAL_DOCUMENT_CATEGORIES } from "../../config/workingCapitalSteps.config";
 import { styles } from "./WorkingCapitalScreen.styles";
 
 const STEPS = LOAN_PROGRESS_CONFIG.workingCapital.steps;
@@ -303,7 +304,7 @@ export const WorkingCapitalScreen: React.FC = () => {
           </>
         );
       case 2:
-        return <WorkingCapitalDocumentsStep loanDocuments={loanDocuments} />;
+        return <LoanDocumentCardListStep categories={WORKING_CAPITAL_DOCUMENT_CATEGORIES} loanDocuments={loanDocuments} />;
       case 3:
       default:
         return (

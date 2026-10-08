@@ -13,6 +13,7 @@ import { RevisedItrHeader } from "../../components/common";
 import { RevisedFormField } from "../../components/update";
 import { DEFAULT_REVISED_FORM_FIELDS } from "../../mock/revisedItrData";
 import { RevisedFormFields } from "../../types/revisedItr.types";
+import { logger } from "@/core/logging/logger";
 import {
   styles,
   getContainerInsetsStyle,
@@ -42,7 +43,9 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
     if (params.revisedDetails) {
       try {
         return JSON.parse(params.revisedDetails);
-      } catch (e) {}
+      } catch (e) {
+        logger.debug("[UpdateRevisedDetailsScreen] JSON parse fallback for revisedDetails", { error: e });
+      }
     }
     return storeFormData || DEFAULT_REVISED_FORM_FIELDS;
   };
@@ -130,7 +133,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
     if (maxStepReached >= 3) {
       router.push({
-        pathname: "/service/revised-itr-review" as any,
+        pathname: "/service/revised-itr-review",
         params: {
           acknowledgementNumber: params.acknowledgementNumber,
           assessmentYear: params.assessmentYear || "AY 2025—26",
@@ -143,7 +146,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
     // Navigate to Screen 4: Upload Supporting Documents
     router.push({
-      pathname: "/service/revised-itr-documents" as any,
+      pathname: "/service/revised-itr-documents",
       params: {
         acknowledgementNumber: params.acknowledgementNumber,
         assessmentYear: params.assessmentYear || "AY 2025—26",

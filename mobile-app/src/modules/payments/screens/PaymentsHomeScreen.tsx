@@ -17,17 +17,18 @@ import {
   CardFormData,
   NetBankingFormData,
 } from "../components";
-import { styles } from "@/styles/app/(main)/payments.styles";
-import {
-  GstPaymentSuccessStep,
-  GstPaymentReceiptStep,
-} from "@/modules/gst/gst-filing";
-import { GstApplicationStatusStep } from "@/modules/gst/gst-status";
-import { GstValidators } from "@/modules/gst/utils/gstValidators";
+import { styles } from "./PaymentsHomeScreen.styles";
+import { PaymentValidators } from "@/shared/validators/paymentValidators";
+import type { PaymentOutcomeViews } from "@/shared/types/paymentOutcome.types";
 
 type PaymentScreenView = "checkout" | "success" | "receipt" | "status";
 
-export function PaymentsHomeScreen() {
+export interface PaymentsHomeScreenProps {
+  /** Service-specific success / receipt / status views shown after checkout. */
+  outcomeViews?: PaymentOutcomeViews;
+}
+
+export function PaymentsHomeScreen({ outcomeViews }: PaymentsHomeScreenProps = {}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -66,19 +67,19 @@ export function PaymentsHomeScreen() {
     let isValid = false;
 
     if (selectedMethod === "upi") {
-      if (!GstValidators.isValidUpi(upiId)) {
+      if (!PaymentValidators.isValidUpi(upiId)) {
         setUpiError("Enter a valid UPI ID (e.g. pavan@ybl / yourname@bank)");
         return;
       }
       setUpiError("");
       isValid = true;
     } else if (selectedMethod === "debit" || selectedMethod === "credit") {
-      const errs = GstValidators.validateCard(cardData);
+      const errs = PaymentValidators.validateCard(cardData);
       setCardErrors(errs);
       if (Object.keys(errs).length > 0) return;
       isValid = true;
     } else if (selectedMethod === "netbanking") {
-      const errs = GstValidators.validateNetBanking(netBankingData);
+      const errs = PaymentValidators.validateNetBanking(netBankingData);
       setNetBankingErrors(errs);
       if (Object.keys(errs).length > 0) return;
       isValid = true;
@@ -182,24 +183,15 @@ export function PaymentsHomeScreen() {
           </>
         )}
 
-        {currentView === "success" && (
-          <GstPaymentSuccessStep
-            amount="Amount unavailable"
-            serviceName="GST Registration"
-            onViewReceipt={() => setCurrentView("receipt")}
-            onViewApplication={() => setCurrentView("status")}
-          />
-        )}
+        {currentView === "success" &&
+          outcomeViews?.renderSuccess({
+            onViewReceipt: () => setCurrentView("receipt"),
+            onViewApplication: () => setCurrentView("status"),
+          })}
 
-        {currentView === "receipt" && (
-          <GstPaymentReceiptStep
-            amount="Amount unavailable"
-            serviceName="GST Registration Service"
-            invoiceNo="INV-2026-00001"
-          />
-        )}
+        {currentView === "receipt" && outcomeViews?.renderReceipt()}
 
-        {currentView === "status" && <GstApplicationStatusStep />}
+        {currentView === "status" && outcomeViews?.renderStatus()}
       </ScrollView>
     </View>
   );

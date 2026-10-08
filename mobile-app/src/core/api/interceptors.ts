@@ -35,7 +35,7 @@ export class InterceptorManager {
   }
 
   async runResponseInterceptors<T>(response: T): Promise<T> {
-    let current: any = response;
+    let current: T = response;
     await this.responseInterceptors.reduce(async (accPromise, interceptor) => {
       await accPromise;
       current = await interceptor(current);

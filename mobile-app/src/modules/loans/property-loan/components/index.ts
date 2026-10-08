@@ -1,4 +1,3 @@
-export * from "./PropertyLoanStepIndicator";
 export * from "./PropertyLoanFinancialsStep";
 export * from "./PropertyLoanApplicantStep";
 export * from "./PropertyLoanPropertyStep";

@@ -18,8 +18,12 @@ export interface UniversalDraftModalProps {
   discardButtonText?: string;
   cancelButtonText?: string;
   onSaveAndExit: () => void;
-  onDiscardAndExit: () => void;
-  onCancel: () => void;
+  onDiscardAndExit?: () => void;
+  onCancel?: () => void;
+  /** Backward-compatible alias for onDiscardAndExit */
+  onDiscard?: () => void;
+  /** Backward-compatible alias for onCancel */
+  onKeepEditing?: () => void;
 }
 
 export const UniversalDraftModal: React.FC<UniversalDraftModalProps> = ({
@@ -32,13 +36,18 @@ export const UniversalDraftModal: React.FC<UniversalDraftModalProps> = ({
   onSaveAndExit,
   onDiscardAndExit,
   onCancel,
+  onDiscard,
+  onKeepEditing,
 }) => {
+  const handleDiscard = onDiscardAndExit || onDiscard || (() => {});
+  const handleCancel = onCancel || onKeepEditing || (() => {});
+
   return (
     <Modal
       visible={visible}
       transparent={true}
       animationType="fade"
-      onRequestClose={onCancel}
+      onRequestClose={handleCancel}
     >
       <View style={styles.backdrop}>
         <View style={styles.modalCard}>
@@ -65,7 +74,7 @@ export const UniversalDraftModal: React.FC<UniversalDraftModalProps> = ({
           <TouchableOpacity
             style={styles.discardBtn}
             activeOpacity={0.8}
-            onPress={onDiscardAndExit}
+            onPress={handleDiscard}
           >
             <Text style={styles.discardBtnText}>{discardButtonText}</Text>
           </TouchableOpacity>
@@ -74,7 +83,7 @@ export const UniversalDraftModal: React.FC<UniversalDraftModalProps> = ({
           <TouchableOpacity
             style={styles.cancelBtn}
             activeOpacity={0.7}
-            onPress={onCancel}
+            onPress={handleCancel}
           >
             <Text style={styles.cancelBtnText}>{cancelButtonText}</Text>
           </TouchableOpacity>

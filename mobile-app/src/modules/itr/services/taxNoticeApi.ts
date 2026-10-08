@@ -3,7 +3,9 @@ import { tokenManager, JwtUtils } from "@/core/authentication/tokenManager";
 import { tokenRefreshManager } from "@/core/authentication/tokenRefreshManager";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { authStorage } from "@/modules/authentication/services/authStorage";
+import { logger } from "@/core/logging/logger";
 import type { TaxNoticeFormData } from "../taxNotice/types/taxNotice.types";
+import { appendFilePart } from "@/shared/utils/formDataFile";
 
 /**
  * Resolve the active backend base URL with robust fallbacks.
@@ -27,22 +29,28 @@ const resolveAccessToken = async (): Promise<string | null> => {
   try {
     const token = await tokenManager.getAccessToken();
     if (token && token.trim()) return token.trim();
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] Token manager lookup fallback", { error: err });
+  }
 
   try {
     const authState = useAuthStore.getState();
     const token =
-      (authState.authenticatedUser as any)?.token ||
+      authState.authenticatedUser?.token ||
       (authState.customer as any)?.token;
     if (token && typeof token === "string" && token.trim()) return token.trim();
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] AuthStore token lookup fallback", { error: err });
+  }
 
   try {
     const user = authStorage.getUser();
-    if ((user as any)?.token && typeof (user as any).token === "string" && (user as any).token.trim()) {
+    if (user?.token && typeof (user as any).token === "string" && (user as any).token.trim()) {
       return (user as any).token.trim();
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] AuthStorage token lookup fallback", { error: err });
+  }
 
   return null;
 };
@@ -56,24 +64,28 @@ const resolveCustomerId = async (): Promise<string> => {
     const custId =
       authState.customer?.customerId ||
       authState.authenticatedUser?.customerId ||
-      (authState.authenticatedUser as any)?.custId ||
+      authState.authenticatedUser?.custId ||
       (authState.customer as any)?.custId;
     if (custId && typeof custId === "string" && custId.trim() && custId.trim() !== "undefined") {
       return custId.trim();
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] AuthStore customerId lookup fallback", { error: err });
+  }
 
   try {
     const user = authStorage.getUser();
     const session = authStorage.getSession();
     const custId =
       user?.customerId ||
-      (user as any)?.custId ||
-      (session as any)?.activeCustId;
+      user?.custId ||
+      session?.activeCustId;
     if (custId && typeof custId === "string" && custId.trim() && custId.trim() !== "undefined") {
       return custId.trim();
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] AuthStorage customerId lookup fallback", { error: err });
+  }
 
   try {
     const token = await tokenManager.getAccessToken();
@@ -83,7 +95,9 @@ const resolveCustomerId = async (): Promise<string> => {
         return payload.sub.trim();
       }
     }
-  } catch {}
+  } catch (err) {
+    logger.debug("[taxNoticeApi] Token payload customerId lookup fallback", { error: err });
+  }
 
   return "";
 };
@@ -154,11 +168,11 @@ const executeXhrWithAuth = async (
     xhr.onload = async () => {
       // Handle 401/403 with automatic token refresh retry
       if ((xhr.status === 401 || xhr.status === 403) && !isRetry) {
-        console.log(`[taxNoticeApi] 401 received for ${options.url} — attempting token refresh`);
+        logger.debug("[taxNoticeApi] 401/403 received — attempting token refresh retry", { url: options.url, status: xhr.status });
         try {
           const refreshed = await tokenRefreshManager.attemptRefresh();
           if (refreshed) {
-            console.log(`[taxNoticeApi] Token refreshed — retrying ${options.method} request`);
+            logger.debug("[taxNoticeApi] Token refreshed — retrying request", { method: options.method });
             try {
               const retryResult = await executeXhrWithAuth(options, true);
               resolve(retryResult);
@@ -169,7 +183,7 @@ const executeXhrWithAuth = async (
             }
           }
         } catch (refreshErr) {
-          console.warn("[taxNoticeApi] Refresh attempt failed:", refreshErr);
+          logger.warn("[taxNoticeApi] Refresh attempt failed during XHR retry:", { error: refreshErr });
         }
         reject(new Error("Session expired. Please log in again."));
         return;
@@ -190,7 +204,9 @@ const executeXhrWithAuth = async (
         try {
           const parsed = JSON.parse(xhr.responseText);
           if (parsed.message) errMessage = parsed.message;
-        } catch {}
+        } catch (parseErr) {
+          logger.debug("[taxNoticeApi] Non-JSON error response from server", { status: xhr.status, error: parseErr });
+        }
         reject(new Error(errMessage));
       }
     };
@@ -230,11 +246,11 @@ export const taxNoticeApi = {
     formData.append("data", JSON.stringify(jsonData));
 
     if (data.noticeFileUri) {
-      formData.append("file", {
+      appendFilePart(formData, "file", {
         uri: data.noticeFileUri,
         name: data.noticeFileName || "notice_document.pdf",
         type: data.noticeFileType || "application/pdf",
-      } as any);
+      });
     }
 
     const url = `${resolveBaseUrl()}/api/v1/itr/tax-notice/register`;
@@ -251,7 +267,9 @@ export const taxNoticeApi = {
           try {
             const parsed = JSON.parse(responseText);
             finalNoticeId = parsed.noticeId || parsed.id || responseText;
-          } catch {}
+          } catch (parseErr) {
+            logger.debug("[taxNoticeApi] Non-JSON success response for registerTaxNotice", { error: parseErr });
+          }
         }
         return finalNoticeId;
       },
@@ -280,11 +298,11 @@ export const taxNoticeApi = {
     formData.append("data", JSON.stringify(jsonData));
 
     if (data.noticeFileUri) {
-      formData.append("file", {
+      appendFilePart(formData, "file", {
         uri: data.noticeFileUri,
         name: data.noticeFileName || "notice_document.pdf",
         type: data.noticeFileType || "application/pdf",
-      } as any);
+      });
     }
 
     const url = `${resolveBaseUrl()}/api/v1/itr/tax-notice/update/${noticeId}`;
@@ -319,11 +337,11 @@ export const taxNoticeApi = {
 
     for (const [key, fileObj] of Object.entries(documents)) {
       if (fileObj && fileObj.uri) {
-        formData.append(key, {
+        appendFilePart(formData, key, {
           uri: fileObj.uri,
           name: fileObj.name || `${key}.pdf`,
           type: fileObj.mimeType || "application/pdf",
-        } as any);
+        });
       }
     }
 
@@ -352,11 +370,11 @@ export const taxNoticeApi = {
 
     for (const [key, fileObj] of Object.entries(documents)) {
       if (fileObj && fileObj.uri) {
-        formData.append(key, {
+        appendFilePart(formData, key, {
           uri: fileObj.uri,
           name: fileObj.name || `${key}.pdf`,
           type: fileObj.mimeType || "application/pdf",
-        } as any);
+        });
       }
     }
 

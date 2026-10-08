@@ -7,7 +7,7 @@ import { styles } from "./BusinessLoanBusinessStep.styles";
 
 export interface BusinessLoanBusinessStepProps {
   data: LoanBusinessFormData;
-  onChange: (field: keyof LoanBusinessFormData, value: any) => void;
+  onChange: (field: keyof LoanBusinessFormData, value: LoanBusinessFormData[keyof LoanBusinessFormData]) => void;
   errors?: Record<string, string>;
 }
 
@@ -35,7 +35,7 @@ export const BusinessLoanBusinessStep: React.FC<BusinessLoanBusinessStepProps> =
 }) => {
   const [isConstitutionModalOpen, setIsConstitutionModalOpen] = useState(false);
   const [customConstitution, setCustomConstitution] = useState(
-    data.businessConstitution && !BUSINESS_CONSTITUTIONS.includes(data.businessConstitution as any)
+    data.businessConstitution && !BUSINESS_CONSTITUTIONS.includes(data.businessConstitution)
       ? data.businessConstitution
       : ""
   );

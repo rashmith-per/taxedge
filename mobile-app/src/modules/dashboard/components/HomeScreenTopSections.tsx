@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import type { EdgeInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { styles } from "../../../styles/app/(main)/home.styles";
+import { styles } from "../styles/home.styles";
 import type { ServiceTile } from "../types/dashboard.types";
 import { HOME_TILES } from "../constants/home-screen.constants";
 

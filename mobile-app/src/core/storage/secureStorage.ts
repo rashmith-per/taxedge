@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 class SecureStorageService {
   private prefix = "taxedge_secure_";
@@ -12,7 +14,8 @@ class SecureStorageService {
         return this.memoryFallback.get(fullKey) ?? null;
       }
       return await SecureStore.getItemAsync(fullKey);
-    } catch {
+    } catch (err) {
+      logger.debug("[SecureStorage] SecureStore read failed, falling back to memory", { key, error: getErrorMessage(err) });
       return this.memoryFallback.get(fullKey) ?? null;
     }
   }
@@ -24,8 +27,9 @@ class SecureStorageService {
       if (Platform.OS !== "web") {
         await SecureStore.setItemAsync(fullKey, value);
       }
-    } catch {
-      // Memory fallback is already updated
+    } catch (err) {
+      // Memory fallback is already updated; log warning without exposing value
+      logger.warn("[SecureStorage] SecureStore write failed, preserved in memory fallback", { key, error: getErrorMessage(err) });
     }
   }
 
@@ -36,11 +40,13 @@ class SecureStorageService {
       if (Platform.OS !== "web") {
         await SecureStore.deleteItemAsync(fullKey);
       }
-    } catch {
+    } catch (err) {
       // Memory fallback is already updated
+      logger.warn("[SecureStorage] SecureStore delete failed", { key, error: getErrorMessage(err) });
     }
   }
 }
 
 export const secureStorage = new SecureStorageService();
 export default secureStorage;
+

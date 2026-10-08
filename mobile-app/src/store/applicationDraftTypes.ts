@@ -22,6 +22,9 @@ export interface GstRegistrationDraft {
   id: string;
   stepIndex: number;
   createdGstId?: string;
+  /** Backend document-set id, once documents have been uploaded. */
+  documentId?: string;
+  gstId?: string;
   personalData: Record<string, string>;
   businessData: Record<string, string>;
   documents: DraftDocumentItem[];
@@ -70,7 +73,7 @@ export interface ItrRegistrationDraft {
   };
   previousFilingOption: string;
   previousAckNumber: string;
-  documents: Array<{
+  documents: {
     id: string;
     name: string;
     subtitle: string;
@@ -79,7 +82,7 @@ export interface ItrRegistrationDraft {
     fileName?: string;
     fileSize?: string;
     uploadedAt?: string;
-  }>;
+  }[];
   filingData?: Record<string, unknown>;
   updatedAt: string;
 }
@@ -123,7 +126,7 @@ export interface TaxNoticeDraft {
 
 export interface GenericServiceDraft {
   id?: string;
-  step?: number;
+  step?: number | string;
   formData?: Record<string, unknown>;
   documents?: DraftDocumentItem[];
   updatedAt?: string;

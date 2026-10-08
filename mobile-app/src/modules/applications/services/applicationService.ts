@@ -1,5 +1,6 @@
 import { apiClient } from "../../../core/api/apiClient";
 import { useAuthStore } from "../../authentication/store/authStore";
+import { logger } from "../../../core/logging/logger";
 import type { Application } from "../../../types/domain";
 
 function getAuthHeaders(): Record<string, string> {
@@ -85,7 +86,7 @@ export const applicationService = {
       await applicationService.updateApplication(updatedApp);
       return true;
     } catch (e) {
-      console.warn("Failed to persist chat message to backend:", e);
+      logger.warn("[applicationService] Failed to persist chat message to backend:", { error: e });
       return false;
     }
   },

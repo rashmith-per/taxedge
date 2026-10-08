@@ -121,9 +121,9 @@ export function SettingsScreen() {
       useAuthStore.getState().setMobileNumber(mobile);
       useAuthStore.getState().setAuthFlowState("FORGOT_PASSCODE_OTP");
       useAuthStore.getState().startForgotPasscode();
-      router.push("/(auth)/login" as any);
+      router.push("/(auth)/login");
     } else {
-      router.push("/(auth)/login" as any);
+      router.push("/(auth)/login");
     }
   };
 
@@ -138,7 +138,7 @@ export function SettingsScreen() {
           style: "destructive",
           onPress: () => {
             useAuthStore.getState().logout();
-            router.replace("/(auth)/login" as any);
+            router.replace("/(auth)/login");
           },
         },
       ]

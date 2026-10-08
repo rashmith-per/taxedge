@@ -8,20 +8,12 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { styles } from "@/styles/app/(main)/home.styles";
-import type { IconName } from "@/types/domain";
+import type { StatTile } from "@/modules/dashboard/types/dashboard.types";
 
-export interface StatTile {
-  id: string;
-  label: string;
-  value: string;
-  tint: string;
-  tintBg: string;
-  icon: IconName;
-  route: Href;
-}
+export type { StatTile };
 
 interface StatsGridProps {
   stats: StatTile[];

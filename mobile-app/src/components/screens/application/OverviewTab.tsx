@@ -2,11 +2,9 @@ import React from "react";
 import { View, Text, TouchableOpacity, Linking } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "@/styles/app/application/[id].styles";
-
-interface RowItem {
-  key: string;
-  val: string;
-}
+import type { RowItem } from "./types";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 interface OverviewTabProps {
   isGstAmendment: boolean;
@@ -49,7 +47,7 @@ export function OverviewTab({
         ? JSON.parse(formData.currentValues || "{}")
         : (formData.currentValues as Record<string, unknown>) || {};
   } catch (err) {
-    if (__DEV__) console.warn("Failed to parse currentValues:", err);
+    logger.debug("Failed to parse currentValues", { error: getErrorMessage(err) });
   }
   try {
     parsedRequested =
@@ -57,7 +55,7 @@ export function OverviewTab({
         ? JSON.parse(formData.requestedValues || "{}")
         : (formData.requestedValues as Record<string, unknown>) || {};
   } catch (err) {
-    if (__DEV__) console.warn("Failed to parse requestedValues:", err);
+    logger.debug("Failed to parse requestedValues", { error: getErrorMessage(err) });
   }
   const hasRequested = Object.keys(parsedRequested).length > 0;
 

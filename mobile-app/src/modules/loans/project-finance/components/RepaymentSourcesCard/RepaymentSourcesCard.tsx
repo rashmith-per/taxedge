@@ -18,7 +18,7 @@ import { styles } from "./RepaymentSourcesCard.styles";
 
 export interface RepaymentSourcesCardProps {
   data: RepaymentSourcesForm;
-  onChange: (field: keyof RepaymentSourcesForm, value: any) => void;
+  onChange: (field: keyof RepaymentSourcesForm, value: RepaymentSourcesForm[keyof RepaymentSourcesForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
   autoCalculatedDscr?: string;

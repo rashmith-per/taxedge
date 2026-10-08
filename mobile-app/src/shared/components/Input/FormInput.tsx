@@ -9,7 +9,7 @@ import {
   type ViewStyle,
   type TextStyle,
 } from "react-native";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 
 export interface FormInputProps {
   label: string;
@@ -38,18 +38,19 @@ export function FormInput({
   style,
   inputStyle,
 }: FormInputProps) {
+  const colors = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   return (
     <View style={[styles.container, style]}>
-      <Text style={[styles.label, { color: Colors.text }]}>
-        {label} {required && <Text style={{ color: Colors.error }}>*</Text>}
+      <Text style={[styles.label, { color: colors.text }]}>
+        {label} {required && <Text style={{ color: colors.error }}>*</Text>}
       </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Colors.textSecondary}
+        placeholderTextColor={colors.textSecondary}
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
@@ -58,20 +59,20 @@ export function FormInput({
         style={[
           styles.input,
           {
-            color: Colors.text,
-            backgroundColor: "#F8FAFC",
+            color: colors.text,
+            backgroundColor: colors.background,
             borderColor: error
-              ? Colors.error
+              ? colors.error
               : isFocused
-              ? Colors.primary
-              : Colors.border,
+              ? colors.primary
+              : colors.border,
           },
           inputStyle,
         ]}
       />
 
       {error && (
-        <Text style={[styles.errorText, { color: Colors.error }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
       )}
     </View>
   );

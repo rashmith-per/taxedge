@@ -20,7 +20,7 @@ import { styles } from "./RightOfWayCard.styles";
 
 interface RightOfWayCardProps {
   data: RightOfWayForm;
-  onChange: (field: keyof RightOfWayForm, value: any) => void;
+  onChange: (field: keyof RightOfWayForm, value: RightOfWayForm[keyof RightOfWayForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

@@ -20,7 +20,7 @@ import { styles } from "./ProjectClassificationCard.styles";
 
 interface ProjectClassificationCardProps {
   data: ProjectClassificationForm;
-  onChange: (field: keyof ProjectClassificationForm, value: any) => void;
+  onChange: (field: keyof ProjectClassificationForm, value: ProjectClassificationForm[keyof ProjectClassificationForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

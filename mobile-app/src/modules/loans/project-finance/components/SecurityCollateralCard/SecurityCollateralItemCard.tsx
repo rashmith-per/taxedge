@@ -9,7 +9,7 @@ interface SecurityCollateralItemCardProps {
   item: SecurityCollateralItem;
   index: number;
   totalCount: number;
-  onUpdate: (field: keyof SecurityCollateralItem, value: any) => void;
+  onUpdate: (field: keyof SecurityCollateralItem, value: SecurityCollateralItem[keyof SecurityCollateralItem]) => void;
   onDelete: () => void;
   onOpenPicker: (
     title: string,

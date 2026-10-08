@@ -6,7 +6,7 @@ import { styles } from "./MachineryLoanFinancialsStep.styles";
 
 export interface MachineryLoanFinancialsStepProps {
   data: LoanDetailsFormData;
-  onChange: (field: keyof LoanDetailsFormData, value: any) => void;
+  onChange: (field: keyof LoanDetailsFormData, value: LoanDetailsFormData[keyof LoanDetailsFormData]) => void;
   errors?: Record<string, string>;
 }
 

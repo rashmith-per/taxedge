@@ -3,13 +3,15 @@ import { TdsCustomerIncomeFormData } from "../types/customerIncome.types";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { authStorage } from "@/modules/authentication/services/authStorage";
 import { addDraftToIndex, removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 function getAuthMobile(): string {
   const state = useAuthStore.getState();
   return String(
     state.customer?.mobile ||
     state.authenticatedUser?.mobileNumber ||
-    (state.authenticatedUser as any)?.mobile ||
+    state.authenticatedUser?.mobile ||
     authStorage.getSession().activeMobile ||
     state.mobileNumber ||
     ""
@@ -99,7 +101,7 @@ export const tdsDraftService = {
       await AsyncStorage.setItem(getStorageKeyForm(), JSON.stringify(payload));
       await addDraftToIndex(cleanMobile, "tds-refund");
     } catch (err) {
-      console.error("Failed to save TDS form draft:", err);
+      logger.warn("[TdsDraftService] Failed to save TDS form draft", { error: getErrorMessage(err) });
     }
   },
 
@@ -116,7 +118,7 @@ export const tdsDraftService = {
         };
       }
     } catch (err) {
-      console.error("Failed to read TDS form draft:", err);
+      logger.warn("[TdsDraftService] Failed to read TDS form draft", { error: getErrorMessage(err) });
     }
     return INITIAL_TDS_FORM_DATA;
   },
@@ -131,7 +133,9 @@ export const tdsDraftService = {
           updatedAt: parsed.updatedAt,
         };
       }
-    } catch {}
+    } catch (err) {
+      logger.debug("[TdsDraftService] Failed to read draft metadata", { error: getErrorMessage(err) });
+    }
     return null;
   },
 
@@ -155,7 +159,7 @@ export const tdsDraftService = {
       );
       await addDraftToIndex(cleanMobile, "tds-refund");
     } catch (err) {
-      console.error("Failed to save TDS documents draft:", err);
+      logger.warn("[TdsDraftService] Failed to save TDS documents draft", { error: getErrorMessage(err) });
     }
   },
 
@@ -166,7 +170,7 @@ export const tdsDraftService = {
         return JSON.parse(raw);
       }
     } catch (err) {
-      console.error("Failed to read TDS documents draft:", err);
+      logger.warn("[TdsDraftService] Failed to read TDS documents draft", { error: getErrorMessage(err) });
     }
     return null;
   },
@@ -175,14 +179,15 @@ export const tdsDraftService = {
     try {
       await AsyncStorage.setItem(getStorageKeyAppId(), appId);
     } catch (err) {
-      console.error("Failed to save application ID:", err);
+      logger.warn("[TdsDraftService] Failed to save application ID", { error: getErrorMessage(err) });
     }
   },
 
   getApplicationId: async (): Promise<string | null> => {
     try {
       return await AsyncStorage.getItem(getStorageKeyAppId());
-    } catch {
+    } catch (err) {
+      logger.debug("[TdsDraftService] Failed to get application ID", { error: getErrorMessage(err) });
       return null;
     }
   },
@@ -194,7 +199,9 @@ export const tdsDraftService = {
       await AsyncStorage.removeItem(getStorageKeyDocs());
       await AsyncStorage.removeItem(getStorageKeyAppId());
       await removeDraftFromIndex(cleanMobile, "tds-refund");
-    } catch {}
+    } catch (err) {
+      logger.warn("[TdsDraftService] Failed to clear draft", { error: getErrorMessage(err) });
+    }
   },
 };
 

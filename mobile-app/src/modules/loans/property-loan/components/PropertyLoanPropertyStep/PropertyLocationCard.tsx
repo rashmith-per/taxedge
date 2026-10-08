@@ -10,7 +10,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "../../../../../shared/theme";
 import { LoanPropertyFormData } from "../../../types/loans.types";
-import { pinCodeService } from "../../../../gst/services/pinCodeService";
+import { pinCodeService } from "@/shared/services/lookup/pinCodeService";
 import { styles } from "./PropertyLoanPropertyStep.styles";
 
 export type PropertyDropdownKey =

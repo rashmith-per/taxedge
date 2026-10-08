@@ -6,7 +6,7 @@ import { styles } from './MemberForm.styles';
 
 interface MemberFormProps {
   member: Partial<InsuranceMember>;
-  onChange: (field: keyof InsuranceMember, val: any) => void;
+  onChange: (field: keyof InsuranceMember, val: InsuranceMember[keyof InsuranceMember]) => void;
 }
 
 export const MemberForm: React.FC<MemberFormProps> = ({ member, onChange }) => {

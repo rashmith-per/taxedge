@@ -29,7 +29,7 @@ export const CompanyRegistrationHomeScreen: React.FC = () => {
             key={item.type}
             item={item}
             selected={false}
-            onSelect={() => router.push('/(main)/applications' as any)}
+            onSelect={() => router.push('/(main)/applications')}
           />
         ))}
       </View>

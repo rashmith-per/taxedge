@@ -11,11 +11,18 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 import { PrimaryButton } from "@/shared/components/Button/PrimaryButton";
 import { SecondaryButton } from "@/shared/components/Button/SecondaryButton";
 import type { ApplicationDocument, IconName } from "@/shared/types/domain";
-import { styles } from "./DocumentChecklist.styles";
+import {
+  styles,
+  CATEGORIES,
+  KYC_KEYWORDS,
+  GST_KEYWORDS,
+} from "./DocumentChecklist.styles";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export interface DocumentChecklistProps {
   documents: ApplicationDocument[];
@@ -23,17 +30,12 @@ export interface DocumentChecklistProps {
   grouped?: boolean;
 }
 
-const CATEGORIES = [
-  "KYC Documents",
-  "GST Documents",
-  "Financial Documents",
-] as const;
-
 export function DocumentChecklist({
   documents,
   onUpload,
   grouped = true,
 }: DocumentChecklistProps) {
+  const colors = useTheme();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [showSourceModal, setShowSourceModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -58,7 +60,7 @@ export function DocumentChecklist({
         setShowPreviewModal(true);
       }
     } catch (error) {
-      console.error("Document pick error:", error);
+      logger.error("Document pick error", { error: getErrorMessage(error) });
       Alert.alert("Error", "Failed to pick document");
     }
   }, []);
@@ -99,7 +101,7 @@ export function DocumentChecklist({
         setShowPreviewModal(true);
       }
     } catch (error) {
-      console.error("Image pick error:", error);
+      logger.error("Image pick error", { error: getErrorMessage(error) });
       Alert.alert("Error", "Failed to capture image");
     }
   }, []);
@@ -119,27 +121,17 @@ export function DocumentChecklist({
       }, 1500);
     } catch (error) {
       setIsUploading(false);
-      console.error("Upload confirmation error:", error);
+      logger.error("Upload confirmation error", { error: getErrorMessage(error) });
       Alert.alert("Error", "Failed to confirm upload");
     }
   }, [selectedDoc, previewUri, onUpload]);
 
   const getDocumentCategory = (name: string): string => {
     const lowerName = name.toLowerCase();
-    if (
-      lowerName.includes("pan") ||
-      lowerName.includes("aadhaar") ||
-      lowerName.includes("photo")
-    ) {
+    if (KYC_KEYWORDS.some((kw) => lowerName.includes(kw))) {
       return "KYC Documents";
     }
-    if (
-      lowerName.includes("gst") ||
-      lowerName.includes("sales") ||
-      lowerName.includes("purchase") ||
-      lowerName.includes("certificate") ||
-      lowerName.includes("register")
-    ) {
+    if (GST_KEYWORDS.some((kw) => lowerName.includes(kw))) {
       return "GST Documents";
     }
     return "Financial Documents";
@@ -150,16 +142,16 @@ export function DocumentChecklist({
     const isRejected = doc.status === "Rejected";
 
     let statusIcon: IconName = "time-outline";
-    let statusColor: string = Colors.textSecondary;
-    let cardBg = Colors.background;
+    let statusColor: string = colors.textSecondary;
+    let cardBg = colors.background;
 
     if (isUploaded) {
       statusIcon = "checkmark-circle";
-      statusColor = Colors.success;
+      statusColor = colors.success;
     } else if (isRejected) {
       statusIcon = "close-circle";
-      statusColor = Colors.error;
-      cardBg = Colors.errorLight;
+      statusColor = colors.error;
+      cardBg = `${colors.error}08`;
     }
 
     return (
@@ -169,14 +161,14 @@ export function DocumentChecklist({
           styles.docCard,
           {
             backgroundColor: cardBg,
-            borderColor: Colors.border,
+            borderColor: colors.border,
           },
         ]}
       >
         <View style={styles.docInfo}>
           <Ionicons name={statusIcon} size={20} color={statusColor} />
           <View style={styles.textContainer}>
-            <Text style={[styles.docName, { color: Colors.text }]}>
+            <Text style={[styles.docName, { color: colors.text }]}>
               {doc.name}
             </Text>
           </View>
@@ -189,23 +181,23 @@ export function DocumentChecklist({
             style={[
               styles.uploadBtn,
               {
-                backgroundColor: Colors.orangeLight,
+                backgroundColor: colors.orangeLight,
               },
             ]}
             accessibilityRole="button"
             accessibilityLabel={`Upload ${doc.name}`}
           >
-            <Text style={[styles.uploadBtnText, { color: Colors.orange }]}>
+            <Text style={[styles.uploadBtnText, { color: colors.orange }]}>
               Upload
             </Text>
             <Ionicons
               name="cloud-upload-outline"
               size={14}
-              color={Colors.orange}
+              color={colors.orange}
             />
           </TouchableOpacity>
         ) : (
-          <Ionicons name="checkmark-done" size={18} color={Colors.success} />
+          <Ionicons name="checkmark-done" size={18} color={colors.success} />
         )}
       </View>
     );
@@ -228,7 +220,7 @@ export function DocumentChecklist({
 
           return (
             <View key={category} style={styles.categorySection}>
-              <Text style={[styles.categoryTitle, { color: Colors.text }]}>
+              <Text style={[styles.categoryTitle, { color: colors.text }]}>
                 {category}
               </Text>
               <View style={styles.docsList}>
@@ -249,29 +241,29 @@ export function DocumentChecklist({
           <View
             style={[
               styles.sourceModalContainer,
-              { backgroundColor: Colors.card },
+              { backgroundColor: colors.backgroundElement },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: Colors.text }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               Upload Document
             </Text>
-            <Text style={[styles.modalSub, { color: Colors.textSecondary }]}>
+            <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
               Choose source for {selectedDoc}
             </Text>
 
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => handlePickImage(true)}
-              style={[styles.sourceBtn, { borderColor: Colors.border }]}
+              style={[styles.sourceBtn, { borderColor: colors.border }]}
               accessibilityRole="button"
               accessibilityLabel="Open Camera"
             >
               <Ionicons
                 name="camera-outline"
                 size={24}
-                color={Colors.orange}
+                color={colors.orange}
               />
-              <Text style={[styles.sourceBtnText, { color: Colors.text }]}>
+              <Text style={[styles.sourceBtnText, { color: colors.text }]}>
                 Camera
               </Text>
             </TouchableOpacity>
@@ -279,16 +271,16 @@ export function DocumentChecklist({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => handlePickImage(false)}
-              style={[styles.sourceBtn, { borderColor: Colors.border }]}
+              style={[styles.sourceBtn, { borderColor: colors.border }]}
               accessibilityRole="button"
               accessibilityLabel="Open Gallery"
             >
               <Ionicons
                 name="image-outline"
                 size={24}
-                color={Colors.orange}
+                color={colors.orange}
               />
-              <Text style={[styles.sourceBtnText, { color: Colors.text }]}>
+              <Text style={[styles.sourceBtnText, { color: colors.text }]}>
                 Gallery
               </Text>
             </TouchableOpacity>
@@ -296,16 +288,16 @@ export function DocumentChecklist({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handlePickDocument}
-              style={[styles.sourceBtn, { borderColor: Colors.border }]}
+              style={[styles.sourceBtn, { borderColor: colors.border }]}
               accessibilityRole="button"
               accessibilityLabel="Choose File"
             >
               <Ionicons
                 name="document-outline"
                 size={24}
-                color={Colors.orange}
+                color={colors.orange}
               />
-              <Text style={[styles.sourceBtnText, { color: Colors.text }]}>
+              <Text style={[styles.sourceBtnText, { color: colors.text }]}>
                 Files
               </Text>
             </TouchableOpacity>
@@ -330,18 +322,18 @@ export function DocumentChecklist({
           <View
             style={[
               styles.previewModalContainer,
-              { backgroundColor: Colors.card },
+              { backgroundColor: colors.backgroundElement },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: Colors.text }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               Preview Upload
             </Text>
-            <Text style={[styles.modalSub, { color: Colors.textSecondary }]}>
+            <Text style={[styles.modalSub, { color: colors.textSecondary }]}>
               {selectedDoc}
             </Text>
 
             <View
-              style={[styles.previewBox, { borderColor: Colors.border }]}
+              style={[styles.previewBox, { borderColor: colors.border }]}
             >
               {previewUri &&
               (previewUri.endsWith(".jpg") ||
@@ -358,13 +350,13 @@ export function DocumentChecklist({
                   <Ionicons
                     name="document-text"
                     size={64}
-                    color={Colors.textSecondary}
+                    color={colors.textSecondary}
                   />
-                  <Text style={[styles.fileText, { color: Colors.text }]}>
+                  <Text style={[styles.fileText, { color: colors.text }]}>
                     Document File Selected
                   </Text>
                   <Text
-                    style={[styles.fileUri, { color: Colors.textSecondary }]}
+                    style={[styles.fileUri, { color: colors.textSecondary }]}
                     numberOfLines={1}
                   >
                     {previewUri}
@@ -375,9 +367,9 @@ export function DocumentChecklist({
 
             {isUploading ? (
               <View style={styles.uploadingState}>
-                <ActivityIndicator size="large" color={Colors.primary} />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text
-                  style={[styles.uploadingText, { color: Colors.text }]}
+                  style={[styles.uploadingText, { color: colors.text }]}
                 >
                   Uploading document...
                 </Text>

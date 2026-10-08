@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { addDraftToIndex, removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
 import type { Application } from "@/types/domain";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 /**
  * Retrieves the cleaned mobile number of the currently authenticated customer.
@@ -15,7 +17,7 @@ export function getActiveCustomerMobile(): string {
       authState.mobileNumber;
     return mobile ? String(mobile).replace(/\D/g, "") : "";
   } catch (error) {
-    console.warn("Failed to get active customer mobile:", error);
+    logger.warn("Failed to get active customer mobile", { error: getErrorMessage(error) });
     return "";
   }
 }
@@ -31,7 +33,7 @@ export async function getPersistedApplications(cleanMobile: string): Promise<App
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.warn(`Failed to parse persisted applications for ${cleanMobile}:`, error);
+    logger.warn("Failed to parse persisted applications", { error: getErrorMessage(error) });
     return [];
   }
 }
@@ -53,7 +55,7 @@ export async function savePersistedApplications(
       JSON.stringify(realApps)
     );
   } catch (err) {
-    console.warn("Failed to persist applications to AsyncStorage:", err);
+    logger.warn("Failed to persist applications to AsyncStorage", { error: getErrorMessage(err) });
   }
 }
 
@@ -73,7 +75,7 @@ export async function persistDraftRecord(
       JSON.stringify(payload)
     );
   } catch (error) {
-    console.warn(`Failed to persist draft for ${serviceKey}:`, error);
+    logger.warn("Failed to persist draft", { serviceKey, error: getErrorMessage(error) });
   }
 }
 
@@ -91,6 +93,7 @@ export async function removeDraftRecord(
       `@taxedge_draft_${cleanMobile}_${serviceKey}`
     );
   } catch (error) {
-    console.warn(`Failed to remove draft for ${serviceKey}:`, error);
+    logger.warn("Failed to remove draft", { serviceKey, error: getErrorMessage(error) });
   }
 }
+

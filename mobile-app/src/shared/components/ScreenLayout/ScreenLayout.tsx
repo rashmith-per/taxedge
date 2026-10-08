@@ -6,7 +6,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
-import { Colors } from "@/design-system/colors";
+import { useTheme } from "@/hooks/use-theme";
 import { AppHeader } from "@/shared/components/AppHeader/AppHeader";
 
 export const FLOATING_TAB_HEIGHT = 64;
@@ -31,14 +31,16 @@ export function ScreenLayout({
   children,
   showBack = false,
   showNotification = true,
-  unreadCount = 0,
+  unreadCount,
   onBack,
   onNotificationPress,
   style,
 }: ScreenLayoutProps) {
+  const colors = useTheme();
+
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }, style]}>
-      <FocusAwareStatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
+    <View style={[styles.container, { backgroundColor: colors.background }, style]}>
+      <FocusAwareStatusBar barStyle="light-content" backgroundColor={colors.primaryDark} />
       <AppHeader
         title={title}
         showBack={showBack}

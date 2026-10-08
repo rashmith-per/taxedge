@@ -26,6 +26,7 @@ import {
   validateLoanBanking,
 } from "../../../validation/loansSchema";
 import { useLoanWizard } from "../../../hooks/useLoanWizard";
+import { useLoanFormErrors } from "../../../hooks/useLoanFormErrors";
 import { useLoanDocuments } from "../../../hooks/useLoanDocuments";
 import { LoanStepIndicator } from "../../../components/LoanStepIndicator";
 import { LoanCustomerCard, type LoanCustomerCardLabels } from "../../../components/LoanCustomerCard";
@@ -58,7 +59,7 @@ export const MsmeLoanScreen: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConsentChecked, setIsConsentChecked] = useState(true);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, clearFieldError } = useLoanFormErrors();
 
   // Step 1: Financials
   const [loanDetails, setLoanDetails] = useState<LoanDetailsFormData>({
@@ -109,15 +110,6 @@ export const MsmeLoanScreen: React.FC = () => {
     onStepChange: scrollToTop,
   });
   const { currentStepIndex } = wizard;
-
-  const clearFieldError = (field: string) => {
-    if (!errors[field]) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
 
   const handleDetailsChange = <K extends keyof LoanDetailsFormData>(field: K, value: LoanDetailsFormData[K]) => {
     setLoanDetails((prev) => ({ ...prev, [field]: value }));

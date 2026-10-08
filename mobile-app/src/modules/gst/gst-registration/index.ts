@@ -14,6 +14,7 @@ export * from "./components/GstUnifiedDocumentStep/GstDocumentModals";
 export * from "./components/GstUnifiedDocumentStep/GstUnifiedDocumentStep.types";
 export * from "./components/GstReviewStep/GstReviewStep";
 export * from "./components/GstRegistrationPaymentStep/GstRegistrationPaymentStep";
+export * from "./components/GstRegistrationPaymentOutcome/gstRegistrationPaymentOutcomeViews";
 
 // Hooks & Flow Orchestration
 export * from "./hooks/useGstRegistrationFlow";

@@ -20,7 +20,7 @@ import { styles } from "./LoanRequirementCard.styles";
 
 interface LoanRequirementCardProps {
   data: LoanRequirementForm;
-  onChange: (field: keyof LoanRequirementForm, value: any) => void;
+  onChange: (field: keyof LoanRequirementForm, value: LoanRequirementForm[keyof LoanRequirementForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

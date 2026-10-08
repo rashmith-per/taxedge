@@ -97,7 +97,7 @@ export const NoticeUploadSourceModal: React.FC<NoticeUploadSourceModalProps> = (
           {
             uri: asset.uri,
             name: fileName,
-            size: (asset as any).fileSize,
+            size: asset.fileSize,
             mimeType: asset.mimeType || "image/jpeg",
           },
           fileName
@@ -129,7 +129,7 @@ export const NoticeUploadSourceModal: React.FC<NoticeUploadSourceModalProps> = (
           {
             uri: asset.uri,
             name: fileName,
-            size: (asset as any).fileSize,
+            size: asset.fileSize,
             mimeType: asset.mimeType || "image/jpeg",
           },
           fileName

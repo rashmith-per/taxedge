@@ -23,6 +23,8 @@ import {
   draftToApplication,
   getServiceTimeline,
 } from "./applicationDraftMappers";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 import {
   DraftSliceState,
@@ -193,7 +195,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
     }
 
     applicationService.createApplication(newApp).catch((err) => {
-      console.warn("Backend application persistence error:", err);
+      logger.warn("[ApplicationStore] Backend application persistence error", { error: getErrorMessage(err) });
     });
 
     if (!skipNotification) {
@@ -212,7 +214,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
     }));
 
     applicationService.createApplication(newApp).catch((err) => {
-      console.warn("Backend application persistence error:", err);
+      logger.warn("[ApplicationStore] Backend application persistence error", { error: getErrorMessage(err) });
     });
   },
 
@@ -243,7 +245,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
               : ("Document Collection" as const),
         };
         applicationService.updateApplication(updated).catch((err) => {
-          console.warn("Failed to sync updated document to backend:", err);
+          logger.warn("[ApplicationStore] Failed to sync updated document to backend", { error: getErrorMessage(err) });
         });
         return updated;
       });
@@ -268,7 +270,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
           chatHistory: [...(app.chatHistory || []), newMessage],
         };
         applicationService.updateApplication(updated).catch((err) => {
-          console.warn("Failed to sync chat message to backend:", err);
+          logger.warn("[ApplicationStore] Failed to sync chat message to backend", { error: getErrorMessage(err) });
         });
         return updated;
       });
@@ -299,7 +301,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
           timeline: newTimeline,
         };
         applicationService.updateApplication(updated).catch((err) => {
-          console.warn("Failed to update paid application on backend:", err);
+          logger.warn("[ApplicationStore] Failed to update paid application on backend", { error: getErrorMessage(err) });
         });
         return updated;
       });

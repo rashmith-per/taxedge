@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  Modal,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -18,6 +17,7 @@ import {
 import { BrandColors } from "@/shared/theme";
 import { RegimeComparisonTable } from "../../../components/RegimeComparisonTable";
 import { styles } from "./Step3RegimeAndDeductions.styles";
+import { AddDeductionModal } from "./AddDeductionModal";
 
 interface Step3RegimeAndDeductionsProps {
   isEditing?: boolean;
@@ -40,9 +40,6 @@ export const Step3RegimeAndDeductions: React.FC<Step3RegimeAndDeductionsProps> =
   onContinue,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newDeductionType, setNewDeductionType] = useState<"80G" | "80TTA" | "80CCD_NPS" | "80DD">("80G");
-  const [newDeductionTitle, setNewDeductionTitle] = useState("");
-  const [newDeductionAmount, setNewDeductionAmount] = useState("");
 
   const hasExistingDeductions =
     Number(deductions.sec80c.epf || 0) > 0 ||
@@ -77,35 +74,10 @@ export const Step3RegimeAndDeductions: React.FC<Step3RegimeAndDeductionsProps> =
     });
   };
 
-  const handleAddDeduction = () => {
-    if (!newDeductionAmount.trim()) {
-      Alert.alert("Amount Required", "Please enter the deduction amount.");
-      return;
-    }
-
-    const defaultTitle =
-      newDeductionType === "80G"
-        ? "80G Charitable Donations"
-        : newDeductionType === "80TTA"
-        ? "80TTA Savings Account Interest"
-        : newDeductionType === "80CCD_NPS"
-        ? "80CCD(1B) NPS Additional Contribution"
-        : "80DD Medical for Disabled Dependent";
-
-    const newItem: AdditionalDeductionItem = {
-      id: `ded-${Date.now()}`,
-      type: newDeductionType,
-      title: newDeductionTitle.trim() || defaultTitle,
-      amount: newDeductionAmount.replace(/[^0-9]/g, ""),
-    };
-
+  const handleAddDeduction = (newItem: AdditionalDeductionItem) => {
     onChangeDeductions({
       otherDeductionsList: [...deductions.otherDeductionsList, newItem],
     });
-
-    setNewDeductionTitle("");
-    setNewDeductionAmount("");
-    setShowAddModal(false);
   };
 
   const handleRemoveDeduction = (id: string) => {
@@ -438,64 +410,11 @@ export const Step3RegimeAndDeductions: React.FC<Step3RegimeAndDeductionsProps> =
       </TouchableOpacity>
 
       {/* Add Additional Deduction Modal */}
-      <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeaderRow}>
-              <Text style={styles.modalTitle}>Add Additional Deduction</Text>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={22} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Deduction Section</Text>
-              <View style={styles.inputBox}>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. 80G Charitable Donations"
-                  placeholderTextColor="#94A3B8"
-                  value={newDeductionTitle}
-                  onChangeText={setNewDeductionTitle}
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Amount Claimed</Text>
-              <View style={styles.inputBox}>
-                <Text style={styles.currencyPrefix}>₹</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  placeholder="Enter amount"
-                  placeholderTextColor="#94A3B8"
-                  value={newDeductionAmount}
-                  onChangeText={setNewDeductionAmount}
-                />
-              </View>
-            </View>
-
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.actionBtnCancel}
-                onPress={() => setShowAddModal(false)}
-              >
-                <Text style={styles.actionBtnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.actionBtnSave}
-                onPress={handleAddDeduction}
-              >
-                <Text style={styles.actionBtnSaveText}>Add Deduction</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <AddDeductionModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddDeduction}
+      />
     </View>
   );
 };

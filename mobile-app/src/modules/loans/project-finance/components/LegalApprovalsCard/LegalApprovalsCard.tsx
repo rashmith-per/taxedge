@@ -6,7 +6,7 @@ import { styles } from "./LegalApprovalsCard.styles";
 
 interface LegalApprovalsCardProps {
   data: LegalApprovalsForm;
-  onChange: (field: keyof LegalApprovalsForm, value: any) => void;
+  onChange: (field: keyof LegalApprovalsForm, value: LegalApprovalsForm[keyof LegalApprovalsForm]) => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
 }

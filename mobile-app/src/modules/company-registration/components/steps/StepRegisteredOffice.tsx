@@ -3,14 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { DocumentUploadBottomSheet } from '@/modules/itr/tds/components/upload/DocumentUploadBottomSheet/DocumentUploadBottomSheet';
-import { TdsDocumentCard } from '@/modules/itr/tds/components/upload/TdsDocumentCard/TdsDocumentCard';
-import { TdsChecklistItem } from '@/modules/itr/tds/types/checklist.types';
-import { DocumentPreviewModal } from '@/modules/itr/itr-filing/components/DocumentPreviewModal/DocumentPreviewModal';
-import { ItrDocumentItem } from '@/modules/itr/itr-filing/types/itrFiling.types';
+import { DocumentUploadBottomSheet } from '@/shared/components/DocumentUploadBottomSheet';
+import { DocumentCard as TdsDocumentCard, type DocumentChecklistItem as TdsChecklistItem } from '@/shared/components/documents';
+import { DocumentPreviewModal, type PreviewDocumentItem } from '@/shared/components/documents/DocumentPreviewModal';
 import { useCompanyRegistrationStore } from '../../store/companyRegistrationSlice';
 import { CompanySectionCard } from '../CompanySectionCard/CompanySectionCard';
 import { styles } from './StepRegisteredOffice.styles';
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 type DocType = 'proof' | 'ownership' | 'noc';
 
@@ -20,7 +19,7 @@ export const StepRegisteredOffice: React.FC = () => {
   const fieldErrors = useCompanyRegistrationStore((state) => state.fieldErrors);
 
   const [activeDocType, setActiveDocType] = useState<DocType | null>(null);
-  const [previewItem, setPreviewItem] = useState<ItrDocumentItem | null>(null);
+  const [previewItem, setPreviewItem] = useState<PreviewDocumentItem | null>(null);
 
   const isNocRequired = company.premisesOwnership === 'Rented' || company.premisesOwnership === 'Leased';
 
@@ -45,7 +44,7 @@ export const StepRegisteredOffice: React.FC = () => {
     try {
       const res = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/jpeg', 'image/png'], copyToCacheDirectory: true });
       if (!res.canceled && res.assets && res.assets.length > 0) handleDocumentSelected(res.assets[0].name, res.assets[0].uri);
-    } catch (e: any) { Alert.alert('Upload Error', e?.message || 'Failed to select document.'); }
+    } catch (e) { Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to select document.'); }
   };
 
   const handlePickGallery = async () => {
@@ -54,7 +53,7 @@ export const StepRegisteredOffice: React.FC = () => {
       if (!perm.granted) return Alert.alert('Permission Required', 'Please allow gallery access.');
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
       if (!res.canceled && res.assets && res.assets.length > 0) handleDocumentSelected(res.assets[0].fileName || `doc_${Date.now()}.jpg`, res.assets[0].uri);
-    } catch (e: any) { Alert.alert('Upload Error', e?.message || 'Failed to select image.'); }
+    } catch (e) { Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to select image.'); }
   };
 
   const handleTakePhoto = async () => {
@@ -63,7 +62,7 @@ export const StepRegisteredOffice: React.FC = () => {
       if (!perm.granted) return Alert.alert('Permission Required', 'Please allow camera access.');
       const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
       if (!res.canceled && res.assets && res.assets.length > 0) handleDocumentSelected(res.assets[0].fileName || `photo_${Date.now()}.jpg`, res.assets[0].uri);
-    } catch (e: any) { Alert.alert('Upload Error', e?.message || 'Failed to take photo.'); }
+    } catch (e) { Alert.alert('Upload Error', getErrorMessage(e) || 'Failed to take photo.'); }
   };
 
   const handleRemoveDoc = (type: DocType) => {

@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { LoanDraftStorageKey } from "../constants/loanDraftKeys";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 /** A draft as persisted: the screen's data plus the time it was saved. */
 export type StoredLoanDraft<TDraft extends object> = TDraft & { savedAt: string };
@@ -12,8 +14,8 @@ export interface LoanDraftStorage<TDraft extends object> {
 }
 
 /**
- * Same read/write behaviour as `homeLoanDraftService` and `vehicleLoanDraftService`:
- * JSON of `{ ...draft, savedAt }` under a fixed key, storage errors swallowed.
+ * Standard loan draft persistence:
+ * JSON of `{ ...draft, savedAt }` under a fixed key with graceful degradation.
  */
 export function createLoanDraftStorage<TDraft extends object>(
   storageKey: LoanDraftStorageKey
@@ -22,8 +24,8 @@ export function createLoanDraftStorage<TDraft extends object>(
     saveDraft: async (draft) => {
       try {
         await AsyncStorage.setItem(storageKey, JSON.stringify({ ...draft, savedAt: new Date().toISOString() }));
-      } catch {
-        // Ignore storage errors
+      } catch (err) {
+        logger.warn("[LoanDraftStorage] Failed to save draft", { storageKey, error: getErrorMessage(err) });
       }
     },
 
@@ -34,7 +36,8 @@ export function createLoanDraftStorage<TDraft extends object>(
         // Trust boundary: the stored JSON was written by `saveDraft` for this key.
         const draft: StoredLoanDraft<TDraft> = JSON.parse(raw);
         return draft;
-      } catch {
+      } catch (err) {
+        logger.warn("[LoanDraftStorage] Failed to load draft", { storageKey, error: getErrorMessage(err) });
         return null;
       }
     },
@@ -42,17 +45,19 @@ export function createLoanDraftStorage<TDraft extends object>(
     clearDraft: async () => {
       try {
         await AsyncStorage.removeItem(storageKey);
-      } catch {
-        // Ignore storage errors
+      } catch (err) {
+        logger.warn("[LoanDraftStorage] Failed to clear draft", { storageKey, error: getErrorMessage(err) });
       }
     },
 
     hasDraft: async () => {
       try {
         return Boolean(await AsyncStorage.getItem(storageKey));
-      } catch {
+      } catch (err) {
+        logger.warn("[LoanDraftStorage] Failed to check draft existence", { storageKey, error: getErrorMessage(err) });
         return false;
       }
     },
   };
 }
+

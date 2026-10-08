@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { SecondaryButton } from "@/components/SecondaryButton";
+import { SecondaryButton } from "@/shared/components/Button/SecondaryButton";
 import { styles } from "@/styles/app/(main)/profile.styles";
 import type { PersonalFormState } from "./useProfileManager";
 

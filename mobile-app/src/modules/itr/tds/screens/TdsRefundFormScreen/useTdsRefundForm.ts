@@ -6,8 +6,7 @@ import { authStorage } from "@/modules/authentication/services/authStorage";
 import { useCustomerStore } from "@/modules/customer/store/customerStore";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
 import { authApi } from "@/modules/authentication/services/authApi";
-import { ifscService } from "@/modules/gst/services/ifscService";
-import type { Customer } from "@/shared/types/domain";
+import { ifscService } from "@/shared/services/lookup/ifscService";
 import {
   TdsCustomerIncomeFormData,
   PersonalDetails,
@@ -24,8 +23,17 @@ import {
 } from "../../services/tdsDraftService";
 import { tdsApiService } from "../../services/tdsApiService";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
+import { logger } from "@/core/logging/logger";
 import { ApiError } from "@/core/api/apiError";
 import { UpdateBankField, UpdateIncomeField } from "./TdsRefundFormSections.types";
+import {
+  mergeFetchedCustomer,
+  buildPersonalDetails,
+  buildCustomerFromPersonal,
+  buildCustomerProfileUpdate,
+  type CustomerProfileRecord,
+} from "./useTdsRefundForm.helpers";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 const describeSaveError = (err: unknown): string => {
   if (err instanceof ApiError) {
@@ -79,19 +87,19 @@ export const useTdsRefundForm = () => {
 
       const activeMobile =
         currentCustomer?.mobile ||
-        (currentAuthUser as any)?.mobileNumber ||
-        (currentAuthUser as any)?.mobile ||
+        currentAuthUser?.mobileNumber ||
+        currentAuthUser?.mobile ||
         authStorage.getSession().activeMobile ||
         useAuthStore.getState().mobileNumber;
 
       const activeCustId =
         currentCustomer?.customerId ||
-        (currentAuthUser as any)?.customerId ||
-        (currentAuthUser as any)?.custId;
+        currentAuthUser?.customerId ||
+        currentAuthUser?.custId;
 
       const cleanMob = activeMobile ? String(activeMobile).replace(/\D/g, "").slice(-10) : "";
 
-      let apiRes: any = null;
+      let apiRes: CustomerProfileRecord | null = null;
       const lookupId = activeCustId || cleanMob;
       if (lookupId) {
         const backendRes = await authApi.getCustomerDetails(lookupId);
@@ -105,30 +113,14 @@ export const useTdsRefundForm = () => {
       }
 
       if (apiRes && (apiRes.name || apiRes.fullName || apiRes.mobileNumber || apiRes.mobile || apiRes.pan || apiRes.aadhaar)) {
-        const mergedCust: Customer = {
-          name: apiRes.name || apiRes.fullName || currentCustomer?.name || "",
-          email: apiRes.email || currentCustomer?.email || "",
-          mobile: apiRes.mobileNumber || apiRes.mobile || currentCustomer?.mobile || activeMobile || "",
-          pan: apiRes.pan || currentCustomer?.pan || "",
-          aadhaar: apiRes.aadhaar || currentCustomer?.aadhaar || "",
-          dob: apiRes.dob || apiRes.dateOfBirth || currentCustomer?.dob || "",
-          customerType: apiRes.customerType || apiRes.custType || currentCustomer?.customerType || "Individual",
-          addressLine1: apiRes.addressLine1 || currentCustomer?.addressLine1 || "",
-          addressLine2: apiRes.addressLine2 || currentCustomer?.addressLine2 || "",
-          city: apiRes.city || currentCustomer?.city || "",
-          state: apiRes.state || currentCustomer?.state || "",
-          pincode: apiRes.pincode || apiRes.pinCode || currentCustomer?.pincode || "",
-          address: apiRes.address || currentCustomer?.address || "",
-          customerId: apiRes.custId || apiRes.customerId || currentCustomer?.customerId || activeCustId || "",
-          avatarUri: currentCustomer?.avatarUri || null,
-          profileCompleted: true,
-          hasPasscode: currentCustomer?.hasPasscode ?? Boolean(currentAuthUser?.passcode),
-        };
+        const mergedCust = mergeFetchedCustomer(apiRes, currentCustomer, currentAuthUser, activeMobile, activeCustId);
         currentCustomer = mergedCust;
         useAuthStore.setState({ customer: mergedCust, profileCompleted: true });
         try {
           useCustomerStore.getState().setProfile(mergedCust);
-        } catch {}
+        } catch (err) {
+          logger.debug("[useTdsRefundForm] CustomerStore profile sync fallback", { error: err });
+        }
       }
 
       if (!currentCustomer && !currentAuthUser && !apiRes) {
@@ -136,35 +128,8 @@ export const useTdsRefundForm = () => {
         return null;
       }
 
-      const rawPan = apiRes?.pan || currentCustomer?.pan || (currentAuthUser as any)?.pan || "";
-      const rawAadhaar = apiRes?.aadhaar || currentCustomer?.aadhaar || (currentAuthUser as any)?.aadhaar || "";
-      const rawDob = apiRes?.dob || apiRes?.dateOfBirth || currentCustomer?.dob || (currentAuthUser as any)?.dob || "";
-      const rawMobile = apiRes?.mobileNumber || apiRes?.mobile || currentCustomer?.mobile || (currentAuthUser as any)?.mobileNumber || "";
-      const rawEmail = apiRes?.email || currentCustomer?.email || (currentAuthUser as any)?.email || "";
-      const rawName = apiRes?.name || apiRes?.fullName || currentCustomer?.name || (currentAuthUser as any)?.name || "";
-
-      let rawAddress = apiRes?.addressLine1 || currentCustomer?.addressLine1 || apiRes?.address || currentCustomer?.address || "";
-      if (apiRes?.addressLine2 || currentCustomer?.addressLine2) {
-        const line2 = apiRes?.addressLine2 || currentCustomer?.addressLine2;
-        rawAddress = rawAddress ? `${rawAddress}, ${line2}` : line2;
-      }
-
-      const rawCity = apiRes?.city || currentCustomer?.city || "";
-      const rawState = apiRes?.state || currentCustomer?.state || "";
-      const rawPin = apiRes?.pincode || apiRes?.pinCode || currentCustomer?.pincode || "";
-
-      const populatedPersonal: PersonalDetails = {
-        fullName: rawName,
-        pan: rawPan,
-        aadhaar: rawAadhaar,
-        dob: rawDob,
-        mobileNumber: rawMobile,
-        email: rawEmail,
-        residentialAddress: rawAddress,
-        city: rawCity,
-        state: rawState,
-        pinCode: rawPin,
-      };
+      const populatedPersonal = buildPersonalDetails(apiRes, currentCustomer, currentAuthUser);
+      const rawName = populatedPersonal.fullName;
 
       setFormData((prev) => ({
         ...prev,
@@ -176,8 +141,8 @@ export const useTdsRefundForm = () => {
       }));
 
       return populatedPersonal;
-    } catch (e: any) {
-      setProfileFetchError(e?.message || "Failed to load profile.");
+    } catch (e) {
+      setProfileFetchError(getErrorMessage(e) || "Failed to load profile.");
       return null;
     } finally {
       setIsProfileLoading(false);
@@ -214,7 +179,7 @@ export const useTdsRefundForm = () => {
           return;
         }
       } catch (err) {
-        console.warn("[TDS Screen] Backend fetch warning:", err);
+        logger.warn("[useTdsRefundForm] Backend fetch warning:", { error: err });
       }
 
       const savedDraft = await tdsDraftService.getFormDraft();
@@ -263,30 +228,14 @@ export const useTdsRefundForm = () => {
     const currentCust = useAuthStore.getState().customer;
     const currentAuthUser = useAuthStore.getState().authenticatedUser;
 
-    const updatedCustomer: Customer = {
-      name: normalizedPersonal.fullName,
-      email: normalizedPersonal.email,
-      mobile: cleanMob || normalizedPersonal.mobileNumber,
-      pan: normalizedPersonal.pan,
-      aadhaar: normalizedPersonal.aadhaar,
-      dob: normalizedPersonal.dob,
-      customerType: currentCust?.customerType || "Individual",
-      addressLine1: normalizedPersonal.residentialAddress,
-      addressLine2: currentCust?.addressLine2 || "",
-      city: normalizedPersonal.city,
-      state: normalizedPersonal.state,
-      pincode: normalizedPersonal.pinCode,
-      address: `${normalizedPersonal.residentialAddress}, ${normalizedPersonal.city}, ${normalizedPersonal.state} - ${normalizedPersonal.pinCode}`,
-      customerId: currentCust?.customerId || (currentAuthUser as any)?.customerId || (currentAuthUser as any)?.custId || "",
-      avatarUri: currentCust?.avatarUri || null,
-      profileCompleted: true,
-      hasPasscode: currentCust?.hasPasscode ?? Boolean(currentAuthUser?.passcode),
-    };
+    const updatedCustomer = buildCustomerFromPersonal(normalizedPersonal, cleanMob, currentCust, currentAuthUser);
 
     useAuthStore.setState({ customer: updatedCustomer, profileCompleted: true });
     try {
       useCustomerStore.getState().setProfile(updatedCustomer);
-    } catch {}
+    } catch (err) {
+      logger.debug("[useTdsRefundForm] CustomerStore profile sync fallback", { error: err });
+    }
 
     try {
       const existingUser = authStorage.getUser() || {};
@@ -314,33 +263,21 @@ export const useTdsRefundForm = () => {
           activeMobile: cleanMob,
         });
       }
-    } catch {}
+    } catch (err) {
+      logger.warn("[useTdsRefundForm] Storage user save fallback", { error: err });
+    }
 
     try {
-      console.log("🚀 [TDS Form] Calling authApi.updateCustomerProfile for customer:", updatedCustomer.mobile);
-      const updateResult = await authApi.updateCustomerProfile({
-        custId: updatedCustomer.customerId || undefined,
-        name: updatedCustomer.name,
-        email: updatedCustomer.email,
-        mobileNumber: updatedCustomer.mobile,
-        pan: updatedCustomer.pan,
-        aadhaar: updatedCustomer.aadhaar,
-        dob: updatedCustomer.dob,
-        addressLine1: updatedCustomer.addressLine1,
-        addressLine2: updatedCustomer.addressLine2,
-        city: updatedCustomer.city,
-        state: updatedCustomer.state,
-        pincode: updatedCustomer.pincode,
-        address: updatedCustomer.address,
-      });
+      logger.debug("[useTdsRefundForm] Calling authApi.updateCustomerProfile", { hasMobile: !!updatedCustomer.mobile });
+      const updateResult = await authApi.updateCustomerProfile(buildCustomerProfileUpdate(updatedCustomer));
 
       if (updateResult.success) {
-        console.log("✅ [TDS Form] Customer profile updated successfully on backend!");
+        logger.debug("[useTdsRefundForm] Customer profile updated successfully on backend");
       } else {
-        console.warn("⚠️ [TDS Form] Customer profile update warning from backend:", updateResult.message);
+        logger.warn("[useTdsRefundForm] Customer profile update warning from backend:", { message: updateResult.message });
       }
-    } catch (err: any) {
-      console.warn("⚠️ [TDS Form] Error sending customer update to backend:", err?.message);
+    } catch (err) {
+      logger.warn("[useTdsRefundForm] Error sending customer update to backend:", { error: getErrorMessage(err) });
     }
 
     await tdsDraftService.saveFormDraft(nextFormState);
@@ -400,7 +337,8 @@ export const useTdsRefundForm = () => {
           },
         }));
         setIfscError(null);
-      } catch {
+      } catch (err) {
+        logger.debug("[useTdsRefundForm] IFSC lookup fallback", { error: err });
         setIfscError("Invalid IFSC code. Please check branch details.");
         updateBank("isIfscVerified", false);
       } finally {
@@ -447,7 +385,7 @@ export const useTdsRefundForm = () => {
       );
       await tdsDraftService.saveApplicationId(savedTdsId);
     } catch (err) {
-      console.error("[TDS Screen] Backend save failed:", err);
+      logger.error("[useTdsRefundForm] Backend save failed:", { error: err });
       Alert.alert("Unable to Save Application", describeSaveError(err));
       return;
     } finally {
@@ -457,10 +395,10 @@ export const useTdsRefundForm = () => {
     draftGuard.markSubmitted();
     
       if (useTdsProgressStore.getState().maxStepReached >= 3) {
-        router.push("/service/tds-estimate" as any);
+        router.push("/service/tds-estimate");
       } else {
         useTdsProgressStore.getState().setMaxStepReached(2);
-        router.push("/service/tds-checklist" as any);
+        router.push("/service/tds-checklist");
       }
             
   };

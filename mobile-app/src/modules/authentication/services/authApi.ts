@@ -1,10 +1,88 @@
 import { apiClient } from "../../../core/api/apiClient";
 import { tokenManager } from "../../../core/authentication/tokenManager";
 import type { DevUser, RegistrationData } from "../types/auth.types";
+import { buildRegisterPayload } from "./customerRegistrationPayload";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
+
+const maskMobile = (mobile: string): string => {
+  if (!mobile) return "";
+  const clean = mobile.replace(/\D/g, "");
+  return clean.length >= 4 ? clean.slice(-4).padStart(clean.length, "*") : "****";
+};
 
 export interface SendOtpResponse {
   success: boolean;
   message?: string;
+}
+
+/** Customer record as returned by the customer endpoints (backend CustomerDto; legacy aliases included). */
+export interface CustomerApiRecord {
+  custId?: string;
+  customerId?: string;
+  name?: string;
+  fullName?: string;
+  email?: string;
+  mobileNumber?: string;
+  mobile?: string;
+  customerType?: string;
+  custType?: string;
+  pan?: string;
+  aadhaar?: string;
+  adhar?: string;
+  dob?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  fatherSpouseName?: string;
+  address?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  pinCode?: string;
+  avatarUri?: string | null;
+  profileCompleted?: boolean;
+  registrationCompleted?: boolean;
+}
+
+/** `POST /otp/verify` body. The embedded customer is present only for registered numbers. */
+interface VerifyOtpApiResponse {
+  customerExists?: boolean;
+  isExistingUser?: boolean;
+  profileCompleted?: boolean;
+  hasPasscode?: boolean;
+  message?: string;
+  customer?: CustomerApiRecord & { custId: string; name: string; email: string };
+}
+
+/** `GET /customer/exists/:mobile` body. */
+interface CustomerStatusResponse {
+  exists?: boolean;
+  customerExists?: boolean;
+  profileCompleted?: boolean;
+  hasPasscode?: boolean;
+}
+
+/** Token pair and identity returned by `/customer/login` and `/customer/register`. */
+export interface CustomerLoginResponse {
+  accessToken?: string;
+  refreshToken?: string;
+  custId: string;
+  mobileNumber: string;
+  name: string;
+}
+
+/** Result of `getCustomerDetails`. */
+export type CustomerDetailsResult =
+  | { success: true; data: CustomerApiRecord }
+  | { success: false; message: string };
+
+/** Fields sent to `PUT /customer/update`; other profile fields pass through unchanged. */
+export interface CustomerProfileUpdate {
+  mobileNumber?: string;
+  dob?: string;
+  [field: string]: unknown;
 }
 
 export interface VerifyOtpResponse {
@@ -15,7 +93,7 @@ export interface VerifyOtpResponse {
   hasPasscode?: boolean;
   message?: string;
   user?: DevUser;
-  customer?: any;
+  customer?: CustomerApiRecord;
 }
 
 export interface CheckUserResponse {
@@ -50,28 +128,20 @@ export const authApi = {
   sendOtp: async (mobileNumber: string): Promise<SendOtpResponse> => {
     const cleanMobile = mobileNumber.replace(/\D/g, "");
     try {
-      console.log(
-        `🚀 [OTP] Sending POST ${apiClient.getBaseUrl()}/otp/generate for mobile: ${cleanMobile}`,
-      );
-      const res = await apiClient.post<any>("/otp/generate", {
+      logger.info("[OTP] Requesting OTP generation", { mobile: maskMobile(cleanMobile) });
+      const res = await apiClient.post<unknown>("/otp/generate", {
         mobileNumber: cleanMobile,
       });
-      console.log(
-        `✅ [OTP] Backend generated OTP successfully! Response:`,
-        res,
-      );
+      logger.info("[OTP] Backend generated OTP successfully");
       return {
         success: true,
         message: typeof res === "string" ? res : "OTP generated successfully",
       };
-    } catch (error: any) {
-      console.log(
-        "ℹ️ [OTP] Error requesting OTP from backend:",
-        error?.message,
-      );
-      const errorMsg = error?.message?.includes("Network request failed")
+    } catch (error) {
+      logger.warn("[OTP] Error requesting OTP from backend", { error: getErrorMessage(error) });
+      const errorMsg = getErrorMessage(error)?.includes("Network request failed")
         ? `Network error: Unable to reach backend at ${apiClient.getBaseUrl()}. Check connection.`
-        : error?.message || "Failed to generate OTP";
+        : getErrorMessage(error) || "Failed to generate OTP";
       return { success: false, message: errorMsg };
     }
   },
@@ -82,14 +152,16 @@ export const authApi = {
   ): Promise<VerifyOtpResponse> => {
     const cleanMobile = mobileNumber.replace(/\D/g, "");
     try {
-      console.log(
-        `🚀 [OTP] Verifying with Backend POST /otp/verify for: ${cleanMobile}, code: ${otp}`,
-      );
-      const res = await apiClient.post<any>("/otp/verify", {
+      logger.info("[OTP] Verifying OTP with backend", { mobile: maskMobile(cleanMobile) });
+      const res = await apiClient.post<VerifyOtpApiResponse>("/otp/verify", {
         mobileNumber: cleanMobile,
         otpCode: otp,
       });
-      console.log("✅ [OTP] Backend verified OTP successfully:", res);
+      logger.info("[OTP] Backend verified OTP response received", {
+        customerExists: Boolean(res?.customerExists || res?.isExistingUser),
+        profileCompleted: Boolean(res?.profileCompleted),
+        hasPasscode: Boolean(res?.hasPasscode),
+      });
 
       const customerExists =
         res?.customerExists === true || res?.isExistingUser === true;
@@ -118,13 +190,17 @@ export const authApi = {
         user: devUser,
         customer: res?.customer,
       };
-    } catch (error: any) {
-      console.log("ℹ️ [OTP] Incorrect OTP entered for:", cleanMobile);
+    } catch (error) {
+      logger.warn("[OTP] Incorrect OTP entered or verification failed", {
+        mobile: maskMobile(cleanMobile),
+        error: getErrorMessage(error),
+      });
+      const errorMessage = getErrorMessage(error);
       const backendMsg =
-        error?.message &&
-        error.message !== "Request failed" &&
-        !error.message.includes("status code")
-          ? error.message
+        errorMessage &&
+        errorMessage !== "Request failed" &&
+        !errorMessage.includes("status code")
+          ? errorMessage
           : "Incorrect OTP code. Please enter the valid OTP sent to your terminal.";
       return {
         success: false,
@@ -140,12 +216,10 @@ export const authApi = {
   checkUser: async (mobileNumber: string): Promise<CheckUserResponse> => {
     const cleanMobile = mobileNumber.replace(/\D/g, "");
     try {
-      console.log(
-        `🚀 [API] Checking customer status GET /customer/exists/${cleanMobile}`,
-      );
-      const res = await apiClient.get<any>(`/customer/exists/${cleanMobile}`);
-      console.log(`✅ [API] Customer status for ${cleanMobile}:`, res);
+      logger.debug("[API] Checking customer status", { mobile: maskMobile(cleanMobile) });
+      const res = await apiClient.get<CustomerStatusResponse>(`/customer/exists/${cleanMobile}`);
       const exists = res?.exists === true || res?.customerExists === true;
+      logger.debug("[API] Customer status retrieved", { exists });
       return {
         success: true,
         exists,
@@ -153,8 +227,8 @@ export const authApi = {
         profileCompleted: res?.profileCompleted === true,
         hasPasscode: res?.hasPasscode === true,
       };
-    } catch (err: any) {
-      console.warn("Error calling /customer/exists:", err?.message);
+    } catch (err) {
+      logger.warn("Error calling /customer/exists", { error: getErrorMessage(err) });
       return {
         success: false,
         exists: false,
@@ -169,82 +243,16 @@ export const authApi = {
     data: RegistrationData & { mobileNumber: string; passcode?: string },
   ): Promise<RegisterResponse> => {
     try {
-      // Format DOB from DD-MM-YYYY to YYYY-MM-DD for Spring Boot LocalDate
-      let formattedDob = data.dob || "";
-      if (formattedDob && /^\d{2}-\d{2}-\d{4}$/.test(formattedDob)) {
-        const [d, m, y] = formattedDob.split("-");
-        formattedDob = `${y}-${m}-${d}`;
-      }
-
-      // Format CustomerType string to match Spring Boot Enum
-      let rawType = (data.customerType || "INDIVIDUAL").trim();
-      const typeLower = rawType.toLowerCase();
-      if (typeLower.includes("freelancer")) {
-        rawType = "FREELANCER";
-      } else if (
-        typeLower.includes("private limited") ||
-        typeLower.includes("pvt")
-      ) {
-        rawType = "PRIVATE_LIMITED";
-      } else if (typeLower.includes("public limited")) {
-        rawType = "PUBLIC_LIMITED";
-      } else if (typeLower === "llp") {
-        rawType = "LLP";
-      } else if (typeLower.includes("partnership")) {
-        rawType = "PARTNERSHIP";
-      } else if (typeLower.includes("proprietorship")) {
-        rawType = "PROPRIETORSHIP";
-      } else if (typeLower.includes("huf")) {
-        rawType = "HUF";
-      } else if (typeLower.includes("aop") || typeLower.includes("boi")) {
-        rawType = "AOP_BOI";
-      } else if (typeLower.includes("ngo") || typeLower.includes("trust")) {
-        rawType = "NGO_TRUST";
-      } else if (typeLower.includes("individual")) {
-        rawType = "INDIVIDUAL";
-      } else {
-        rawType = rawType.toUpperCase().replace(/[\s\/]+/g, "_");
-      }
-
-      // Format full address from discrete fields if provided
-      let formattedAddress = data.address || "";
-      if (!formattedAddress && data.addressLine1) {
-        formattedAddress = [
-          data.addressLine1,
-          data.addressLine2,
-          data.city,
-          data.state
-            ? `${data.state}${data.pincode ? " - " + data.pincode : ""}`
-            : data.pincode,
-        ]
-          .filter(Boolean)
-          .join(", ");
-      }
-
-      // Map payload to match Spring Boot CustomerDto format exactly
-      const payload = {
-        name: data.name,
-        email: data.email,
-        mobileNumber: data.mobileNumber.replace(/\D/g, ""),
-        aadhaar: data.aadhaar,
-        pan: data.pan,
-        dob: formattedDob,
-        customerType: rawType,
-        gender: data.gender,
-        fatherSpouseName: data.fatherSpouseName,
-        addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2,
-        city: data.city,
-        pincode: data.pincode,
-        state: data.state,
-        address: formattedAddress,
-        password: data.passcode,
-        pushToken: data.pushToken,
-      };
-
-      console.log("🚀 FETCHING POST /customer/register Payload:", payload);
-      const response = await apiClient.post<any>("/customer/register", payload);
-      console.log("✅ Backend Registration Response:", response);
+      const payload = buildRegisterPayload(data);
+      logger.info("[API] Registering customer", {
+        customerType: data.customerType,
+        mobile: maskMobile(data.mobileNumber),
+      });
+      const response = await apiClient.post<Partial<CustomerLoginResponse>>("/customer/register", payload);
+      logger.info("[API] Customer registration response received", {
+        custId: response.custId,
+        hasAccessToken: Boolean(response.accessToken),
+      });
 
       if (response.accessToken) {
         await tokenManager.setAccessToken(response.accessToken);
@@ -264,11 +272,11 @@ export const authApi = {
         },
         token: response.accessToken,
       };
-    } catch (error: any) {
-      console.error("❌ Backend Registration Fetch Error:", error);
+    } catch (error) {
+      logger.error("[API] Customer registration failed", error);
       return {
         success: false,
-        message: error?.message || "Registration failed on backend",
+        message: getErrorMessage(error) || "Registration failed on backend",
         user: {} as DevUser,
       };
     }
@@ -279,12 +287,20 @@ export const authApi = {
     passcode: string,
   ): Promise<PasscodeResponse> => {
     try {
-      return await apiClient.post<PasscodeResponse>("/auth/create-passcode", {
+      const res = await apiClient.post<PasscodeResponse>("/auth/create-passcode", {
         mobileNumber,
         passcode,
       });
-    } catch {
-      return { success: true, message: "Passcode created successfully" };
+      logger.info("[API] Passcode created successfully");
+      return res;
+    } catch (error) {
+      logger.warn("[API] Failed to create passcode on server", {
+        error: getErrorMessage(error),
+      });
+      return {
+        success: false,
+        message: getErrorMessage(error) || "Failed to create passcode on server",
+      };
     }
   },
 
@@ -294,12 +310,15 @@ export const authApi = {
   ): Promise<PasscodeResponse> => {
     try {
       const cleanMobile = mobileNumber.replace(/\D/g, "");
-      console.log("🚀 FETCHING POST /customer/login for:", cleanMobile);
-      const response = await apiClient.post<any>("/customer/login", {
+      logger.info("[API] Attempting passcode login", { mobile: maskMobile(cleanMobile) });
+      const response = await apiClient.post<CustomerLoginResponse>("/customer/login", {
         mobileNumber: cleanMobile,
         password: passcode,
       });
-      console.log("✅ Backend Login Response:", response);
+      logger.info("[API] Customer login successful", {
+        custId: response.custId,
+        hasAccessToken: Boolean(response.accessToken),
+      });
 
       if (response.accessToken) {
         await tokenManager.setAccessToken(response.accessToken);
@@ -318,11 +337,11 @@ export const authApi = {
           email: `${response.mobileNumber}@taxedge.in`,
         },
       };
-    } catch (error: any) {
-      console.error("❌ Backend Login Fetch Error:", error);
+    } catch (error) {
+      logger.warn("[API] Passcode login failed", { error: getErrorMessage(error) });
       return {
         success: false,
-        message: error?.message || "Invalid mobile number or passcode",
+        message: getErrorMessage(error) || "Invalid mobile number or passcode",
       };
     }
   },
@@ -333,14 +352,12 @@ export const authApi = {
   ): Promise<UpdatePasswordResponse> => {
     const cleanMobile = mobileNumber.replace(/\D/g, "");
     try {
-      console.log(
-        `🚀 [API] Sending PATCH /customer/update_password for: ${cleanMobile}`,
-      );
-      const res = await apiClient.patch<any>("/customer/update_password", {
+      logger.info("[API] Updating customer password", { mobile: maskMobile(cleanMobile) });
+      const res = await apiClient.patch<string | { message?: string }>("/customer/update_password", {
         mobileNumber: cleanMobile,
         password,
       });
-      console.log("✅ [API] Password update response:", res);
+      logger.info("[API] Password update completed");
 
       const msg =
         typeof res === "string"
@@ -350,11 +367,11 @@ export const authApi = {
         return { success: false, message: msg };
       }
       return { success: true, message: msg };
-    } catch (error: any) {
-      console.error("❌ [API] Password update error:", error);
+    } catch (error) {
+      logger.error("[API] Password update error", error);
       return {
         success: false,
-        message: error?.message || "Failed to update password",
+        message: getErrorMessage(error) || "Failed to update password",
       };
     }
   },
@@ -378,29 +395,29 @@ export const authApi = {
 
   revokeRefreshToken: async (refreshToken: string): Promise<boolean> => {
     try {
-      console.log("🚀 [API] Revoking refresh token on server POST /auth/revoke");
+      logger.info("[API] Revoking refresh token on server");
       await apiClient.post("/auth/revoke", { refreshToken });
-      console.log("✅ [API] Refresh token revoked successfully on backend");
+      logger.info("[API] Refresh token revoked successfully on backend");
       return true;
-    } catch (err: any) {
-      console.warn("⚠️ [API] Failed to revoke refresh token on backend:", err?.message);
+    } catch (err) {
+      logger.warn("[API] Failed to revoke refresh token on backend", { error: getErrorMessage(err) });
       return false;
     }
   },
 
-  getCustomerDetails: async (custId: string): Promise<any> => {
+  getCustomerDetails: async (custId: string): Promise<CustomerDetailsResult> => {
     try {
-      console.log(`🚀 [API] Fetching GET /customer/details/${custId}`);
-      const res = await apiClient.get<any>(`/customer/details/${custId}`);
-      console.log(`✅ [API] Customer details fetched successfully:`, res);
-      return { success: true, data: res };
-    } catch (error: any) {
-      console.error(`❌ [API] Error fetching customer details for ${custId}:`, error);
-      return { success: false, message: error?.message || "Failed to fetch customer details" };
+      logger.debug("[API] Fetching customer details", { custId });
+      const res = await apiClient.get<CustomerApiRecord>(`/customer/details/${custId}`);
+      logger.debug("[API] Customer details fetched successfully", { custId });
+      return { success: true as const, data: res };
+    } catch (error) {
+      logger.error("[API] Error fetching customer details", error, { custId });
+      return { success: false as const, message: getErrorMessage(error) || "Failed to fetch customer details" };
     }
   },
 
-  updateCustomerProfile: async (customerData: any): Promise<{ success: boolean; message?: string }> => {
+  updateCustomerProfile: async (customerData: CustomerProfileUpdate): Promise<{ success: boolean; message?: string }> => {
     try {
       // Format DOB from DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD for Spring Boot LocalDate if needed
       let formattedDob = customerData.dob || "";
@@ -417,15 +434,16 @@ export const authApi = {
         dob: formattedDob || customerData.dob,
       };
 
-      console.log("🚀 [API] Sending PUT /customer/update Payload:", payload);
-      const res = await apiClient.put<any>("/customer/update", payload);
-      console.log("✅ [API] Customer profile updated successfully on backend:", res);
+      logger.info("[API] Updating customer profile");
+      const res = await apiClient.put<unknown>("/customer/update", payload);
+      logger.info("[API] Customer profile updated successfully");
       return { success: true, message: typeof res === "string" ? res : "Profile updated successfully" };
-    } catch (error: any) {
-      console.error("❌ [API] Customer profile update error:", error);
-      return { success: false, message: error?.message || "Failed to update profile" };
+    } catch (error) {
+      logger.error("[API] Customer profile update error", error);
+      return { success: false, message: getErrorMessage(error) || "Failed to update profile" };
     }
   },
 };
 
 export default authApi;
+

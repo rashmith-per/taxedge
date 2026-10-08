@@ -14,6 +14,8 @@ import { GstValidators } from "@/modules/gst/utils/gstValidators";
 import { CertificateRequestParams } from "../types/gstCertificateTypes";
 import { buildCertificateHtml } from "../utils/gstCertificateHtml";
 import { mapRegistrationDataToCertificate } from "../utils/gstCertificateMapper";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 export function useGstCertificateFlow() {
   const router = useRouter();
@@ -59,10 +61,10 @@ export function useGstCertificateFlow() {
   useEffect(() => {
     if (gstCertificateDraft?.formData) {
       if (gstCertificateDraft.formData.gstin && !gstin) {
-        setGstin(gstCertificateDraft.formData.gstin);
+        setGstin(String(gstCertificateDraft.formData.gstin));
       }
       if (gstCertificateDraft.formData.requestType) {
-        setRequestType(gstCertificateDraft.formData.requestType);
+        setRequestType(String(gstCertificateDraft.formData.requestType));
       }
     }
   }, [gstCertificateDraft]);
@@ -125,8 +127,8 @@ export function useGstCertificateFlow() {
       } else {
         Alert.alert("Certificate Ready", `PDF generated successfully as ${fileName}`);
       }
-    } catch (err: any) {
-      if (err?.message?.includes?.("cancel") || err?.message?.includes?.("dismiss")) return;
+    } catch (err) {
+      if (getErrorMessage(err)?.includes?.("cancel") || getErrorMessage(err)?.includes?.("dismiss")) return;
       Alert.alert("Certificate Ready", `Your certificate PDF (${fileName}) is ready.`);
     }
   }, []);
@@ -187,10 +189,13 @@ export function useGstCertificateFlow() {
           `Form GST REG-06 for ${regData.gstin} is ready.`,
           "gst"
         );
-      } catch {}
+      } catch (appErr) {
+        logger.warn("[useGstCertificateFlow] ApplicationStore sync failed:", { error: appErr });
+      }
 
       await downloadAndSharePdf(uri, fileName);
-    } catch {
+    } catch (err) {
+      logger.error("[useGstCertificateFlow] Certificate generation failed:", { error: err });
       Alert.alert("Generation Failed", "Could not generate certificate. Please try again.");
     } finally {
       setIsProcessing(false);

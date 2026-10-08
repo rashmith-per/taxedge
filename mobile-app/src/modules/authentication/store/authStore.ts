@@ -1,62 +1,14 @@
 import { create } from "zustand";
-import type { Customer, CustomerProfile } from "../../../shared/types/domain";
-import type { DevUser, AuthState, AuthFlowState } from "../types/auth.types";
+import type { DevUser, AuthState } from "../types/auth.types";
 import { authService } from "../services/authService";
 import { authStorage } from "../services/authStorage";
-import { authApi } from "../services/authApi";
 import { biometricService } from "../services/biometricService";
-import { useNotificationStore } from "../../../store/notificationStore";
-import {
-  validateLoginPhone,
-  validateOtp,
-  validatePasscode,
-  validatePasscodeMatch,
-} from "../validation/authSchema";
-
-const refreshNotificationsForActiveCustomer = () => {
-  useNotificationStore.getState().loadPersisted().catch(() => {});
-};
-
-const toCustomer = (u: DevUser): Customer => {
-  const isPlaceholderName =
-    !u.name ||
-    u.name.trim() === "" ||
-    u.name.toLowerCase() === "valued client" ||
-    u.name.toLowerCase() === "client" ||
-    u.name.toLowerCase() === "valued";
-
-  const hasBackendIdentity = Boolean(u.customerId && !isPlaceholderName);
-
-  return {
-    name: u.name,
-    email: u.email,
-    dob: u.dob || "",
-    gender: u.gender || "",
-    fatherSpouseName: u.fatherSpouseName || "",
-    pan: u.pan || "",
-    aadhaar: u.aadhaar || (u as any).adhar || "",
-    address: u.address || "",
-    addressLine1: u.addressLine1 || "",
-    addressLine2: u.addressLine2 || "",
-    city: u.city || "",
-    pincode: u.pincode || (u as any).pinCode || "",
-    state: u.state || "",
-    customerType: u.customerType || "Individual",
-    mobile: u.mobileNumber || (u as any).mobile || "",
-    customerId: u.customerId || (u as any).custId || "",
-    avatarUri: u.avatarUri,
-    profileCompleted: Boolean(
-      !isPlaceholderName &&
-      (
-        Boolean(u.customerId && u.customerId.trim() !== "") ||
-        Boolean(u.registrationCompleted) ||
-        Boolean((u as any).profileCompleted) ||
-        Boolean(u.pan || u.aadhaar || (u as any).adhar)
-      )
-    ),
-    hasPasscode: Boolean(u.passcode || (u as any).hasPasscode || hasBackendIdentity),
-  };
-};
+import { validateLoginPhone, validateOtp } from "../validation/authSchema";
+import { refreshNotificationsForActiveCustomer, toCustomer } from "./authStore.helpers";
+import { createPasscodeRecoveryActions } from "./authPasscodeRecoveryActions";
+import { createSessionActions } from "./authSessionActions";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
+import { logger } from "@/core/logging/logger";
 
 const initialUser = authService.getCurrentUser();
 
@@ -74,11 +26,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profileCompleted: Boolean(
     initialUser &&
     (initialUser.registrationCompleted ||
-     (initialUser as any).profileCompleted ||
+     initialUser.profileCompleted ||
      Boolean(initialUser.customerId && initialUser.customerId.trim() !== "") ||
      (initialUser.passcode && initialUser.passcode.length === 6))
   ),
-  hasPasscode: Boolean(initialUser && (initialUser.passcode || (initialUser as any).hasPasscode)),
+  hasPasscode: Boolean(initialUser && (initialUser.passcode || initialUser.hasPasscode)),
   isLoading: false,
   error: null,
 
@@ -143,115 +95,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }),
   resetTimer: (initialSeconds = 30) => set({ otpTimer: initialSeconds, canResendOTP: false }),
 
-  // Check user existence in DB
-  checkUser: async (overrideMobile?: string) => {
-    const mobileToUse = overrideMobile || get().mobileNumber;
-    const cleanMobile = mobileToUse.replace(/\D/g, "");
-    if (cleanMobile.length !== 10) return { exists: false, customerExists: false, profileCompleted: false, hasPasscode: false };
-    const res = await authService.checkUser(cleanMobile);
-    set({
-      customerExists: res.customerExists,
-      profileCompleted: res.profileCompleted,
-      hasPasscode: res.hasPasscode,
-      isExistingUser: res.customerExists,
-    });
-    return res;
-  },
-
-  // Sync customer profile into auth state from local storage and backend API
-  fetchAndSyncProfile: async (identifier?: string) => {
-    try {
-      const activeMobile =
-        identifier ||
-        get().mobileNumber ||
-        get().authenticatedUser?.mobileNumber ||
-        (get().authenticatedUser as any)?.mobile ||
-        get().customer?.mobile ||
-        authStorage.getUser()?.mobileNumber ||
-        authStorage.getSession().activeMobile;
-
-      if (!activeMobile) {
-        console.warn("⚠️ [authStore] fetchAndSyncProfile called with no mobile number or user");
-        return { success: false, isComplete: false, customer: null };
-      }
-      const cleanMobile = String(activeMobile).replace(/\D/g, "");
-
-      // 1. Fetch fresh customer profile details from backend database if available
-      let backendCustomer: any = null;
-      try {
-        const backendRes = await authApi.getCustomerDetails(cleanMobile);
-        if (backendRes?.success && backendRes?.data) {
-          backendCustomer = backendRes.data;
-        }
-      } catch (err) {
-        console.warn("⚠️ [authStore] Backend getCustomerDetails failed in fetchAndSyncProfile:", err);
-      }
-
-      const d: any = backendCustomer || (cleanMobile ? authStorage.getUserByMobile(cleanMobile) : null) || authStorage.getUser();
-      if (d && typeof d === "object") {
-        const currentU = get().authenticatedUser || authStorage.getUser();
-        const custId = d.customerId || d.custId || currentU?.customerId || "";
-        const name = d.name || d.fullName || currentU?.name || "";
-        const isPlaceholderName =
-          !name ||
-          name.trim() === "" ||
-          name.toLowerCase() === "valued client" ||
-          name.toLowerCase() === "client" ||
-          name.toLowerCase() === "valued";
-
-        const hasRealIdentity = Boolean(name && name.trim() !== "" && !isPlaceholderName);
-        const isComplete = Boolean(
-          hasRealIdentity &&
-          (Boolean(custId) || d.profileCompleted === true || d.registrationCompleted === true || Boolean(d.pan || d.aadhaar || d.adhar))
-        );
-
-        const mergedUser: DevUser = {
-          customerId: custId || currentU?.customerId || "",
-          name: name || currentU?.name || "",
-          mobileNumber: d.mobileNumber || d.mobile || cleanMobile,
-          email: d.email || currentU?.email || `${cleanMobile}@taxedge.in`,
-          customerType: d.customerType || currentU?.customerType || "Individual",
-          dob: d.dob || currentU?.dob || "",
-          gender: d.gender || currentU?.gender || "",
-          fatherSpouseName: d.fatherSpouseName || currentU?.fatherSpouseName || "",
-          pan: d.pan || currentU?.pan || "",
-          aadhaar: d.aadhaar || d.adhar || currentU?.aadhaar || "",
-          address: d.address || currentU?.address || "",
-          addressLine1: d.addressLine1 || currentU?.addressLine1 || "",
-          addressLine2: d.addressLine2 || currentU?.addressLine2 || "",
-          city: d.city || currentU?.city || "",
-          pincode: d.pincode || d.pinCode || currentU?.pincode || "",
-          state: d.state || currentU?.state || "",
-          registrationCompleted: isComplete,
-          passcode: currentU?.passcode || get().passcode,
-          avatarUri: d.avatarUri || currentU?.avatarUri,
-        };
-
-        authStorage.saveUser(mergedUser);
-        const custObj = toCustomer(mergedUser);
-
-        set({
-          customerExists: Boolean(custId || hasRealIdentity),
-          isExistingUser: Boolean(custId || hasRealIdentity),
-          profileCompleted: isComplete,
-          hasPasscode: Boolean(mergedUser.passcode || custId),
-          authenticatedUser: mergedUser,
-          customer: custObj,
-        });
-
-        console.log("✅ [authStore] fetchAndSyncProfile synced customer:", {
-          customerId: custId,
-          name: name,
-          isComplete,
-        });
-        return { success: true, isComplete, customer: custObj };
-      }
-      return { success: false, isComplete: false, customer: null };
-    } catch (err) {
-      console.warn("⚠️ [authStore] fetchAndSyncProfile warning:", err);
-      return { success: false, isComplete: false, customer: null };
-    }
-  },
+  // Identity, profile sync & session lifecycle
+  ...createSessionActions(set, get),
 
   // Business Flow Operations
   sendOtp: async (overrideMobile?: string) => {
@@ -289,8 +134,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         canResendOTP: false,
       });
       return true;
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Failed to send OTP. Please try again." });
+    } catch (err) {
+      set({ isLoading: false, error: getErrorMessage(err) || "Failed to send OTP. Please try again." });
       return false;
     }
   },
@@ -319,7 +164,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const profileCompleted = customerExists;
       const hasPasscode = customerExists;
 
-      console.log("🔍 [authStore] verifyOtp (Checked in Customer table) -> customerExists:", customerExists);
+      logger.debug("[authStore] verifyOtp", { customerExists });
 
       set({
         customerExists,
@@ -379,8 +224,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profileCompleted: false,
         };
       }
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Invalid OTP. Please try again." });
+    } catch (err) {
+      set({ isLoading: false, error: getErrorMessage(err) || "Invalid OTP. Please try again." });
       return { success: false };
     }
   },
@@ -427,116 +272,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           await get().fetchAndSyncProfile(mobileNumber || res.user.mobileNumber);
         } catch (e) {
-          console.warn("⚠️ [authStore] Profile sync warning after passcode login:", e);
+          logger.warn("[AuthStore] Profile sync warning after passcode login", { error: getErrorMessage(e) });
         }
 
         return { success: true };
       }
       set({ isLoading: false, error: res.error || "Incorrect passcode. Please try again." });
       return { success: false, error: res.error };
-    } catch (err: any) {
-      const msg = err?.message || "Incorrect passcode. Please try again.";
+    } catch (err) {
+      const msg = getErrorMessage(err) || "Incorrect passcode. Please try again.";
       set({ isLoading: false, error: msg });
       return { success: false, error: msg };
     }
   },
 
-
-  startForgotPasscode: async () => {
-    const { mobileNumber } = get();
-    if (!mobileNumber) {
-      set({ error: "Mobile number is required" });
-      return false;
-    }
-
-    set({ isLoading: true, error: null });
-    try {
-      await authService.forgotPasscode(mobileNumber);
-      set({
-        isLoading: false,
-        authFlowState: "FORGOT_PASSCODE_OTP",
-        otp: "",
-        otpTimer: 30,
-        canResendOTP: false,
-      });
-      return true;
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Failed to send reset code." });
-      return false;
-    }
-  },
-
-  verifyForgotPasscodeOtp: async (codeToVerify?: string) => {
-    const code = codeToVerify !== undefined ? codeToVerify : get().otp;
-    const v = validateOtp(code);
-    if (!v.valid) {
-      set({ error: v.error });
-      return false;
-    }
-
-    set({ isLoading: true, error: null });
-    try {
-      const { mobileNumber } = get();
-      const res = await authService.verifyOtp(mobileNumber, code);
-      if (res.success) {
-        set({
-          isLoading: false,
-          authFlowState: "RESET_PASSCODE",
-          passcode: "",
-          confirmPasscode: "",
-          error: null,
-        });
-        return true;
-      }
-      set({ isLoading: false, error: "Invalid OTP code" });
-      return false;
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Invalid OTP code" });
-      return false;
-    }
-  },
-
-  resetPasscodeAndProceed: async () => {
-    const { mobileNumber, passcode, confirmPasscode, otp } = get();
-    const v = validatePasscodeMatch(passcode, confirmPasscode, mobileNumber);
-    if (!v.valid) {
-      set({ error: v.error });
-      return false;
-    }
-
-    set({ isLoading: true, error: null });
-    try {
-      const res = await authService.resetPasscode(mobileNumber, passcode, otp);
-      if (res.success) {
-        set({
-          isLoading: false,
-          authFlowState: "PASSCODE_LOGIN",
-          passcode: "",
-          confirmPasscode: "",
-          error: null,
-        });
-        return true;
-      }
-      set({ isLoading: false, error: res.error || "Failed to reset passcode" });
-      return false;
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Failed to reset passcode" });
-      return false;
-    }
-  },
-
-  updatePassword: async (mobileNumber: string, newPassword: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await authService.updatePassword(mobileNumber, newPassword);
-      set({ isLoading: false, error: res.success ? null : res.error || "Failed to update password" });
-      return { success: res.success, message: res.message || res.error };
-    } catch (err: any) {
-      const msg = err?.message || "Failed to update password";
-      set({ isLoading: false, error: msg });
-      return { success: false, message: msg };
-    }
-  },
+  // Forgot-passcode flow
+  ...createPasscodeRecoveryActions(set, get),
 
   resendOtp: async () => {
     const { mobileNumber, canResendOTP } = get();
@@ -556,8 +307,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         canResendOTP: false,
       });
       return true;
-    } catch (err: any) {
-      set({ isLoading: false, error: err?.message || "Failed to resend code" });
+    } catch (err) {
+      set({ isLoading: false, error: getErrorMessage(err) || "Failed to resend code" });
       return false;
     }
   },
@@ -590,112 +341,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   // Registration & Session actions
   login: async (passcode = "") => get().loginWithPasscode(passcode),
-
-  register: async (profile: CustomerProfile, passcode = "123456", autoLogin = true) => {
-    const mobile = (profile as any).mobileNumber || get().mobileNumber || "9876543210";
-    const res = await authService.registerUser(
-      {
-        ...profile,
-        mobileNumber: mobile,
-        passcode,
-      },
-      autoLogin
-    );
-    if (res.success && res.user) {
-      authStorage.saveUser(res.user);
-      if (autoLogin) {
-        set({
-          isLoggedIn: true,
-          customerExists: true,
-          profileCompleted: true,
-          hasPasscode: true,
-          mobileNumber: res.user.mobileNumber,
-          customer: toCustomer(res.user),
-          authenticatedUser: res.user,
-          isCompleteProfileModalOpen: false,
-        });
-        get().fetchAndSyncProfile(res.user.mobileNumber).catch(() => {});
-      } else {
-        set({
-          customerExists: true,
-          profileCompleted: true,
-          hasPasscode: true,
-          isCompleteProfileModalOpen: false,
-        });
-      }
-      return { success: true };
-    }
-    return { success: false, error: res.error || "Registration failed" };
-  },
-
-  setAvatar: (avatarUri) => {
-    authService.setAvatar(avatarUri);
-    set((s) => (s.customer ? { customer: { ...s.customer, avatarUri } } : {}));
-  },
-
-  logout: () => {
-    // 1. Synchronously reset state immediately to prevent routing race conditions/glitches
-    set({
-      isLoggedIn: false,
-      customerExists: false,
-      isExistingUser: false,
-      profileCompleted: false,
-      hasPasscode: false,
-      customer: null,
-      authenticatedUser: null,
-      mobileNumber: "",
-      otp: "",
-      passcode: "",
-      confirmPasscode: "",
-      authFlowState: "ENTER_MOBILE",
-      pendingServiceRoute: null,
-      isCompleteProfileModalOpen: false,
-    });
-    // 2. Perform server token revocation and secure storage cleanup in background
-    authService.logout().catch(() => {});
-    try {
-      const { useApplicationStore } = require("../../../store/applicationStore");
-      useApplicationStore.getState().resetStore?.();
-    } catch {}
-    refreshNotificationsForActiveCustomer();
-  },
-
-  syncFromDevAuth: () => {
-    const u = authService.getCurrentUser();
-    const isAuth = Boolean(authService.isAuthenticated() && u);
-    const isPlaceholder =
-      !u?.name ||
-      u.name.trim() === "" ||
-      u.name.toLowerCase() === "valued client" ||
-      u.name.toLowerCase() === "client" ||
-      u.name.toLowerCase() === "valued";
-    const hasRealIdentity = Boolean(u && u.customerId && !isPlaceholder);
-    const hasPanOrAadhaar = Boolean(u && (u.pan || u.aadhaar || (u as any).adhar));
-    const isComplete = Boolean(
-      u &&
-      (u.registrationCompleted ||
-       (u as any).profileCompleted ||
-       hasRealIdentity ||
-       (hasPanOrAadhaar && Boolean(u.dob)) ||
-       (u.passcode && u.passcode.length === 6))
-    );
-
-    set({
-      isLoggedIn: isAuth,
-      customerExists: Boolean(u && (u.registrationCompleted || u.passcode || hasRealIdentity)),
-      isExistingUser: Boolean(u && (u.registrationCompleted || u.passcode || hasRealIdentity)),
-      profileCompleted: isComplete,
-      hasPasscode: Boolean(u && (u.passcode || (u as any).hasPasscode || hasRealIdentity)),
-      mobileNumber: u?.mobileNumber || "",
-      customer: u ? toCustomer(u) : null,
-      authenticatedUser: u,
-    });
-  },
 }));
 
 // Initialize biometric state asynchronously after bootstrap
 setTimeout(() => {
-  useAuthStore.getState().syncBiometricState().catch?.(() => {});
+  useAuthStore.getState().syncBiometricState().catch?.((err) => {
+    logger.debug("[AuthStore] Background biometric sync skipped/failed", { error: getErrorMessage(err) });
+  });
 }, 300);
 
 export default useAuthStore;

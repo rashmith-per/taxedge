@@ -116,23 +116,8 @@ export const validateStep1 = (state: Step1ValidationState): string | null => {
   return null;
 };
 
-export const validateStep2 = (state: Step2ValidationState): string | null => {
-  const {
-    projectLocation,
-    landDetails,
-    parcels,
-    rightOfWay,
-    utilities,
-    technicalDetails,
-    capacityProduction,
-    machineries,
-    rawMaterials,
-    epcExecution,
-    milestones,
-    manpower,
-  } = state;
-
-  // 1. Project Location
+/** Project Location */
+const checkProjectLocation = ({ projectLocation }: Pick<Step2ValidationState, "projectLocation">): string | null => {
   if (!projectLocation.projectAddress?.trim()) {
     return "Please enter Project Site Address.";
   }
@@ -153,7 +138,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     return "Please select Project Zone / Category.";
   }
 
-  // 2. Land Details
+  return null;
+};
+
+/** Land Details */
+const checkLandDetails = ({ landDetails }: Pick<Step2ValidationState, "landDetails">): string | null => {
   if (!landDetails.totalLandRequired?.trim()) {
     return "Please enter Total Land Required (Acres).";
   }
@@ -170,7 +159,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     return "Please select Title Status.";
   }
 
-  // 3. Land Parcels
+  return null;
+};
+
+/** Land Parcels */
+const checkLandParcels = ({ parcels }: Pick<Step2ValidationState, "parcels">): string | null => {
   if (!parcels || parcels.length === 0) {
     return "Please add at least one Land Parcel.";
   }
@@ -185,7 +178,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     }
   }
 
-  // 4. Right of Way
+  return null;
+};
+
+/** Right of Way */
+const checkRightOfWay = ({ rightOfWay }: Pick<Step2ValidationState, "rightOfWay">): string | null => {
   if (rightOfWay.rowRequired) {
     if (!rightOfWay.rowType?.trim()) {
       return "Please select Right of Way Type.";
@@ -195,7 +192,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     }
   }
 
-  // 5. Utilities
+  return null;
+};
+
+/** Utilities */
+const checkUtilities = ({ utilities }: Pick<Step2ValidationState, "utilities">): string | null => {
   if (!utilities.powerSource?.trim()) {
     return "Please select Power Requirement / Source.";
   }
@@ -206,7 +207,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     return "Please select Approach Road arrangement.";
   }
 
-  // 6. Technical Details
+  return null;
+};
+
+/** Technical Details */
+const checkTechnicalDetails = ({ technicalDetails }: Pick<Step2ValidationState, "technicalDetails">): string | null => {
   if (!technicalDetails.technologyType?.trim()) {
     return "Please select Technology Type.";
   }
@@ -214,7 +219,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     return "Please enter Technology Description.";
   }
 
-  // 7. Capacity & Production
+  return null;
+};
+
+/** Capacity & Production */
+const checkCapacityProduction = ({ capacityProduction }: Pick<Step2ValidationState, "capacityProduction">): string | null => {
   if (!capacityProduction.proposedCapacity?.trim()) {
     return "Please enter Proposed Capacity.";
   }
@@ -222,7 +231,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     return "Please select Unit of Measurement for Capacity.";
   }
 
-  // 8. Plant & Machinery
+  return null;
+};
+
+/** Plant & Machinery */
+const checkPlantMachinery = ({ machineries }: Pick<Step2ValidationState, "machineries">): string | null => {
   if (!machineries || machineries.length === 0) {
     return "Please add at least one Plant & Machinery item.";
   }
@@ -237,7 +250,11 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     }
   }
 
-  // 9. Raw Material Inputs
+  return null;
+};
+
+/** Raw Material Inputs */
+const checkRawMaterialInputs = ({ rawMaterials }: Pick<Step2ValidationState, "rawMaterials">): string | null => {
   if (!rawMaterials || rawMaterials.length === 0) {
     return "Please add at least one Raw Material item.";
   }
@@ -252,12 +269,20 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     }
   }
 
-  // 10. EPC / Execution
+  return null;
+};
+
+/** EPC / Execution */
+const checkEPCExecution = ({ epcExecution }: Pick<Step2ValidationState, "epcExecution">): string | null => {
   if (!epcExecution.contractType?.trim()) {
     return "Please select Execution Model / Contract Type.";
   }
 
-  // 11. Implementation Milestones
+  return null;
+};
+
+/** Implementation Milestones */
+const checkImplementationMilestones = ({ milestones }: Pick<Step2ValidationState, "milestones">): string | null => {
   if (!milestones || milestones.length === 0) {
     return "Please add at least one Implementation Milestone.";
   }
@@ -272,10 +297,33 @@ export const validateStep2 = (state: Step2ValidationState): string | null => {
     }
   }
 
-  // 12. Manpower
+  return null;
+};
+
+/** Manpower */
+const checkManpower = ({ manpower }: Pick<Step2ValidationState, "manpower">): string | null => {
   if (!manpower.totalEmployees?.trim()) {
     return "Please enter Total Manpower / Employees Required.";
   }
 
   return null;
+};
+
+export const validateStep2 = (state: Step2ValidationState): string | null => {
+  // Sections are checked in order; the first failure wins.
+  return (
+    checkProjectLocation(state) ??
+    checkLandDetails(state) ??
+    checkLandParcels(state) ??
+    checkRightOfWay(state) ??
+    checkUtilities(state) ??
+    checkTechnicalDetails(state) ??
+    checkCapacityProduction(state) ??
+    checkPlantMachinery(state) ??
+    checkRawMaterialInputs(state) ??
+    checkEPCExecution(state) ??
+    checkImplementationMilestones(state) ??
+    checkManpower(state) ??
+    null
+  );
 };

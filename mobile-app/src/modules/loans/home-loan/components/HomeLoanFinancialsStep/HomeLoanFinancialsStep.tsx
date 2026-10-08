@@ -15,7 +15,7 @@ import { styles } from "./HomeLoanFinancialsStep.styles";
 
 export interface HomeLoanFinancialsStepProps {
   data: LoanDetailsFormData;
-  onChange: (field: keyof LoanDetailsFormData, value: any) => void;
+  onChange: (field: keyof LoanDetailsFormData, value: LoanDetailsFormData[keyof LoanDetailsFormData]) => void;
   errors?: Record<string, string>;
 }
 

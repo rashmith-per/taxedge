@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { BackHandler } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { useUniversalDraftGuard } from "./useUniversalDraftGuard";
+import { logger } from "@/core/logging/logger";
+import { getErrorMessage } from "@/core/error-handling/errorMessage";
 
 export interface UseServiceDraftOptions<T> {
   /** Unique identifier for the service (e.g., 'gst-registration', 'itr-filing', 'tds-refund') */
@@ -94,7 +96,7 @@ export async function addDraftToIndex(cleanMobile: string, serviceKey: string): 
       await AsyncStorage.setItem(`@taxedge_draft_index_${cleanMobile}`, JSON.stringify(index));
     }
   } catch (error) {
-    if (__DEV__) console.warn("Failed to add draft to index:", error);
+    logger.warn("[useServiceDraft] Failed to add draft to index", { serviceKey, error: getErrorMessage(error) });
   }
 }
 
@@ -107,7 +109,7 @@ export async function removeDraftFromIndex(cleanMobile: string, serviceKey: stri
       await AsyncStorage.setItem(`@taxedge_draft_index_${cleanMobile}`, JSON.stringify(nextIndex));
     }
   } catch (error) {
-    if (__DEV__) console.warn("Failed to remove draft from index:", error);
+    logger.warn("[useServiceDraft] Failed to remove draft from index", { serviceKey, error: getErrorMessage(error) });
   }
 }
 
@@ -127,12 +129,12 @@ export async function getCustomerDrafts(cleanMobile: string): Promise<Record<str
           }
         }
       } catch (innerErr) {
-        if (__DEV__) console.warn(`Failed to read draft key ${key}:`, innerErr);
+        logger.warn(`[useServiceDraft] Failed to read draft key ${key}`, { error: getErrorMessage(innerErr) });
       }
     }
     return drafts;
   } catch (error) {
-    if (__DEV__) console.warn("Failed to read customer drafts index:", error);
+    logger.warn("[useServiceDraft] Failed to read customer drafts index", { error: getErrorMessage(error) });
     return [];
   }
 }
@@ -154,16 +156,16 @@ export function useServiceDraft<T extends Record<string, unknown>>({
   const storageKey = `@taxedge_draft_${cleanMobile}_${serviceKey}`;
 
   const formDataRef = useRef(formData);
-  formDataRef.current = formData;
-
   const onSaveRef = useRef(onSave);
-  onSaveRef.current = onSave;
-
   const onDiscardRef = useRef(onDiscard);
-  onDiscardRef.current = onDiscard;
-
   const isSubmittedRef = useRef(isSubmitted);
-  isSubmittedRef.current = isSubmitted;
+
+  useEffect(() => {
+    formDataRef.current = formData;
+    onSaveRef.current = onSave;
+    onDiscardRef.current = onDiscard;
+    isSubmittedRef.current = isSubmitted;
+  });
 
   // Restore saved draft on mount
   useEffect(() => {
@@ -178,7 +180,7 @@ export function useServiceDraft<T extends Record<string, unknown>>({
           }
         }
       } catch (e) {
-        console.warn(`Failed to restore draft for ${serviceKey}:`, e);
+        logger.warn(`Failed to restore draft for ${serviceKey}`, { error: getErrorMessage(e) });
       }
     }
     restoreDraft();
@@ -188,11 +190,13 @@ export function useServiceDraft<T extends Record<string, unknown>>({
   }, [storageKey, serviceKey, onRestore]);
 
   // Determine if form currently has user-entered data
-  const checkIsDirty = useCallback(() => {
-    if (isSubmittedRef.current) return false;
-    if (customIsDirty) return customIsDirty(formDataRef.current);
-    return hasEnteredAnyField(formDataRef.current, emptyState);
-  }, [customIsDirty, emptyState]);
+  const isDirty = useMemo(() => {
+    if (isSubmitted) return false;
+    if (customIsDirty) return customIsDirty(formData);
+    return hasEnteredAnyField(formData, emptyState);
+  }, [isSubmitted, customIsDirty, formData, emptyState]);
+
+  const checkIsDirty = useCallback(() => isDirty, [isDirty]);
 
   // Save to AsyncStorage and invoke callback
   const handleSaveDraft = useCallback(async () => {
@@ -203,7 +207,7 @@ export function useServiceDraft<T extends Record<string, unknown>>({
         await onSaveRef.current(formDataRef.current);
       }
     } catch (e) {
-      console.warn(`Failed to save draft for ${serviceKey}:`, e);
+      logger.warn(`Failed to save draft for ${serviceKey}`, { error: getErrorMessage(e) });
     }
   }, [storageKey, cleanMobile, serviceKey]);
 
@@ -216,7 +220,7 @@ export function useServiceDraft<T extends Record<string, unknown>>({
         await onDiscardRef.current();
       }
     } catch (e) {
-      console.warn(`Failed to discard draft for ${serviceKey}:`, e);
+      logger.warn(`Failed to discard draft for ${serviceKey}`, { error: getErrorMessage(e) });
     }
   }, [storageKey, cleanMobile, serviceKey]);
 
@@ -226,7 +230,7 @@ export function useServiceDraft<T extends Record<string, unknown>>({
       await AsyncStorage.removeItem(storageKey);
       await removeDraftFromIndex(cleanMobile, serviceKey);
     } catch (e) {
-      console.warn(`Failed to clear draft for ${serviceKey}:`, e);
+      logger.warn(`Failed to clear draft for ${serviceKey}`, { error: getErrorMessage(e) });
     }
   }, [storageKey, cleanMobile, serviceKey]);
 
@@ -255,7 +259,7 @@ export function useServiceDraft<T extends Record<string, unknown>>({
 
   return {
     ...guard,
-    isDirty: checkIsDirty(),
+    isDirty,
     clearDraft,
     saveDraftNow: handleSaveDraft,
   };

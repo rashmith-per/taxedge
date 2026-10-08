@@ -17,6 +17,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { logger } from "@/core/logging/logger";
 import { chatStyles as styles } from "@/styles/app/chat/chat.styles";
 
 export default function ChatScreen() {
@@ -40,7 +41,7 @@ export default function ChatScreen() {
       }, 100);
       return () => clearTimeout(timer);
     } catch (err) {
-      console.warn("Scroll to end error:", err);
+      logger.debug("[ChatScreen] Scroll to end fallback", { error: err });
     }
   }, [app?.chatHistory]);
 
@@ -50,7 +51,7 @@ export default function ChatScreen() {
       addChatMessage(app.id, "user", inputMessage.trim());
       setInputMessage("");
     } catch (err) {
-      console.error("Failed to send chat message:", err);
+      logger.warn("[ChatScreen] Failed to send chat message:", { appId: app.id, error: err });
     }
   }, [app, inputMessage, addChatMessage]);
 
