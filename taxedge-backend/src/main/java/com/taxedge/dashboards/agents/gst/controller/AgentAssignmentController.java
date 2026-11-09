@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.taxedge.dashboards.agents.companyregistration.service.CompanyRegistrationAgentAssignmentService;
 import com.taxedge.dashboards.agents.gst.dto.AssignAgentRequest;
 import com.taxedge.dashboards.agents.gst.service.AgentAssignmentService;
 import com.taxedge.dashboards.agents.itr.service.ItrAgentAssignmentService;
@@ -23,6 +24,7 @@ public class AgentAssignmentController {
 
     private final AgentAssignmentService agentAssignmentService;
     private final ItrAgentAssignmentService itrAgentAssignmentService;
+    private final CompanyRegistrationAgentAssignmentService companyRegistrationAgentAssignmentService;
 
     @PutMapping("/assign")
     public ResponseEntity<String> assignAgent(
@@ -38,6 +40,8 @@ public class AgentAssignmentController {
             case "GST" -> agentAssignmentService.assignGstApplication(
                     request.getApplicationId(), request.getAgentId(), request.getApplicationType());
             case "ITR" -> itrAgentAssignmentService.assignItrApplication(
+                    request.getApplicationId(), request.getAgentId(), request.getApplicationType());
+            case "COMPANY" -> companyRegistrationAgentAssignmentService.assignCompanyApplication(
                     request.getApplicationId(), request.getAgentId(), request.getApplicationType());
             default -> throw new IllegalArgumentException("Unsupported registration type: " + registrationType);
         };

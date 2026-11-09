@@ -1,5 +1,18 @@
 package com.taxedge.messaging.repository;
 
-/** MessageRepository — TODO: implement. */
-public interface MessageRepository {
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.taxedge.messaging.entity.Message;
+
+@Repository
+public interface MessageRepository extends JpaRepository<Message, Long> {
+
+    List<Message> findByManagerIdAndAgentIdOrderByIdDesc(String managerId, String agentId, Pageable pageable);
+
+    Optional<Message> findBySenderIdAndClientMessageId(String senderId, String clientMessageId);
 }

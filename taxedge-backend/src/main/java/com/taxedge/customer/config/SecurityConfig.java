@@ -44,6 +44,8 @@ public class SecurityConfig {
                     "/agent/**",
                     "/api/v1/agents/**",
                     "/agents/**",
+                    "/ws/**",
+                    "/api/v1/chat/**",
                     "/notifications/**",
                     "/v3/api-docs",
                     "/v3/api-docs/**",

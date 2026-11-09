@@ -19,6 +19,9 @@ public interface TdsRefundRepository extends JpaRepository<TdsRefund, String> {
 
     List<TdsRefund> findByCustId(String custId);
 
+    @Query("SELECT DISTINCT t FROM TdsRefund t LEFT JOIN FETCH t.customer WHERE t.custId = :custId AND t.status != 'DRAFT' ORDER BY t.createdAt DESC")
+    List<TdsRefund> findSubmittedByCustId(@Param("custId") String custId);
+
     boolean existsByIdAndCustId(String id, String custId);
 
     @Query("SELECT DISTINCT t FROM TdsRefund t LEFT JOIN FETCH t.customer ORDER BY t.createdAt DESC")

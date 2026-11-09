@@ -31,4 +31,9 @@ public interface GstFilingRepository extends JpaRepository<GstFiling, String> {
 
 	@Query("SELECT f FROM GstFiling f WHERE f.status = :status AND ((f.updatedAt IS NOT NULL AND f.updatedAt < :cutoff) OR (f.updatedAt IS NULL AND (f.createdAt < :cutoff OR f.createdAt IS NULL)))")
 	List<GstFiling> findByStatusAndUpdatedAtBefore(@Param("status") RegisterationStatus status, @Param("cutoff") LocalDateTime cutoff);
+
+	@Query("SELECT f FROM GstFiling f LEFT JOIN FETCH f.documents LEFT JOIN FETCH f.customer " +
+	       "WHERE f.customer.custId = :custId AND f.status != RegisterationStatus.DRAFT " +
+	       "ORDER BY f.createdAt DESC")
+	List<GstFiling> findSubmittedByCustId(@Param("custId") String custId);
 }

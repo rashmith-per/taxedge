@@ -59,6 +59,10 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:3600000}
 
+chat:
+  encryption:
+    secret: ${CHAT_ENCRYPTION_SECRET:${JWT_SECRET}}
+
 
 taxedge:
   mail:

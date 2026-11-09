@@ -25,4 +25,9 @@ public interface GstComplianceRepository extends JpaRepository<GstCompliance, St
 
 	@Query("SELECT c FROM GstCompliance c WHERE c.status = :status AND ((c.updatedAt IS NOT NULL AND c.updatedAt < :cutoff) OR (c.updatedAt IS NULL AND (c.createdAt < :cutoff OR c.createdAt IS NULL)))")
 	List<GstCompliance> findByStatusAndUpdatedAtBefore(@Param("status") RegisterationStatus status, @Param("cutoff") LocalDateTime cutoff);
+
+	@Query("SELECT c FROM GstCompliance c LEFT JOIN FETCH c.customer " +
+	       "WHERE c.customer.custId = :custId AND c.status != RegisterationStatus.DRAFT " +
+	       "ORDER BY c.createdAt DESC")
+	List<GstCompliance> findSubmittedByCustId(@Param("custId") String custId);
 }

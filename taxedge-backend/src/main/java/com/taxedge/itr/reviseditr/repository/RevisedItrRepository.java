@@ -31,6 +31,15 @@ public interface RevisedItrRepository extends JpaRepository<RevisedItr, String> 
 	       "ORDER BY r.createdAt DESC")
 	List<RevisedItr> findByAssignedAgentId(@Param("agentId") Long agentId);
 
+	@Query("SELECT DISTINCT r FROM RevisedItr r " +
+	       "LEFT JOIN FETCH r.customer " +
+	       "LEFT JOIN FETCH r.details " +
+	       "LEFT JOIN FETCH r.document " +
+	       "LEFT JOIN FETCH r.revisionReason " +
+	       "WHERE r.customer.custId = :custId AND r.status != 'DRAFT' " +
+	       "ORDER BY r.createdAt DESC")
+	List<RevisedItr> findSubmittedByCustId(@Param("custId") String custId);
+
 	@Query("SELECT r FROM RevisedItr r WHERE r.status = :status AND ((r.updatedAt IS NOT NULL AND r.updatedAt < :cutoff) OR (r.updatedAt IS NULL AND (r.createdAt < :cutoff OR r.createdAt IS NULL)))")
 	List<RevisedItr> findByStatusAndUpdatedAtBefore(@Param("status") RegisterationStatus status, @Param("cutoff") LocalDateTime cutoff);
 }

@@ -13,21 +13,10 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.taxedge.security.api.exception.ApiAuthenticationException;
 import com.taxedge.security.api.exception.ExternalServiceException;
 import com.taxedge.security.otps.exception.OtpDeliveryException;
-import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 @Component("globalExceptionHandler")
 public class GlobalExceptionHandler {
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException exception) {
-        ErrorResponse errorResponse = new ErrorResponse(
-                exception.getMessage() != null && !exception.getMessage().isBlank()
-                        ? exception.getMessage()
-                        : "Access denied. Valid customer authentication is required.",
-                HttpStatus.FORBIDDEN.value());
-        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
-    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException exception) {
