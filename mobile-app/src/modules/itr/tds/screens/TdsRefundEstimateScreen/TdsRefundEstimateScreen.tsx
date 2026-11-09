@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import { TaxCalculationBreakdown } from "../../types/estimate.types";
 import { formatCurrency } from "../../utils/tdsValidation";
 import { tdsDraftService, INITIAL_TDS_FORM_DATA } from "../../services/tdsDraftService";
 import { tdsApiService } from "../../services/tdsApiService";
-import { TaxCalculationBreakdownCard } from "../../components/estimate/TaxCalculationBreakdownCard";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
 import { loadTdsReviewData } from "./tdsEstimateHelpers";
 import { styles } from "./TdsRefundEstimateScreen.styles";
@@ -35,7 +34,9 @@ export const TdsRefundEstimateScreen: React.FC = () => {
   const [documents, setDocuments] = useState<TdsChecklistItem[]>([]);
   const [calculation, setCalculation] = useState<TaxCalculationBreakdown | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentAppId, setCurrentAppId] = useState<string | null>((routeId || routeAppId) as string | null);
+  const loadCountRef = useRef(0);
   const {
     showDraftModal,
     markSubmitted,
@@ -56,8 +57,11 @@ export const TdsRefundEstimateScreen: React.FC = () => {
   });
 
   const loadReviewData = useCallback(async () => {
+    const loadId = ++loadCountRef.current;
+    setIsLoading(true);
     try {
       const data = await loadTdsReviewData(routeId, routeAppId);
+      if (loadId !== loadCountRef.current) return;
       if (data.appId) {
         setCurrentAppId(data.appId);
       }
@@ -66,6 +70,10 @@ export const TdsRefundEstimateScreen: React.FC = () => {
       setCalculation(data.calculation);
     } catch (err) {
       console.error("[TDS Estimate] Error loading review data:", err);
+    } finally {
+      if (loadId === loadCountRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [routeId, routeAppId]);
 
@@ -237,6 +245,13 @@ export const TdsRefundEstimateScreen: React.FC = () => {
         <View style={styles.progressFill} />
       </View>
 
+      {/* Loading overlay while data fetches */}
+      {isLoading && (
+        <View style={{ position: "absolute", top: 80, left: 0, right: 0, bottom: 80, justifyContent: "center", alignItems: "center", zIndex: 10 }}>
+          <ActivityIndicator size="large" color={BrandColors.PRIMARY_BLUE} />
+        </View>
+      )}
+
       {/* Main Scroll Content */}
       <ScrollView
         contentContainerStyle={[
@@ -267,24 +282,24 @@ export const TdsRefundEstimateScreen: React.FC = () => {
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Full Name</Text>
-              <Text style={styles.infoValue}>{formData.personal.fullName || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.personal.fullName || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>PAN</Text>
-              <Text style={styles.infoValue}>{formData.personal.pan || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.personal.pan || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mobile Number</Text>
-              <Text style={styles.infoValue}>+91 {formData.personal.mobileNumber || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.personal.mobileNumber ? `+91 ${formData.personal.mobileNumber}` : "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{formData.personal.email || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.personal.email || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Address</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
-                {formData.personal.city}, {formData.personal.state} - {formData.personal.pinCode}
+                {[formData.personal.city, formData.personal.state, formData.personal.pinCode].filter(Boolean).join(", ") || "—"}
               </Text>
             </View>
           </View>
@@ -311,19 +326,19 @@ export const TdsRefundEstimateScreen: React.FC = () => {
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Legal Name</Text>
-              <Text style={styles.infoValue}>{formData.business?.legalName || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.business?.legalName || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>PAN</Text>
-              <Text style={styles.infoValue}>{formData.business?.pan || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.business?.pan || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Aadhaar</Text>
-              <Text style={styles.infoValue}>{formData.business?.aadhaar || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.business?.aadhaar || "—"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mobile Number</Text>
-              <Text style={styles.infoValue}>+91 {formData.business?.mobileNumber || "�"}</Text>
+              <Text style={styles.infoValue}>{formData.business?.mobileNumber ? `+91 ${formData.business.mobileNumber}` : "—"}</Text>
             </View>
           </View>
         </View>
@@ -403,10 +418,6 @@ export const TdsRefundEstimateScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ========================================================
-            SECTION 7: TAX CALCULATION
-        ======================================================== */}
-        {calculation && <TaxCalculationBreakdownCard breakdown={calculation} />}
       </ScrollView>
 
       {/* Sticky Bottom CTA */}

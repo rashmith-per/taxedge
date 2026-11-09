@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   TextInput,
   TextInputProps,
@@ -9,8 +9,7 @@ import {
 import {
   formatIndianAmount,
   parseIndianAmount,
-  computeCursorInCleanText,
-  mapFormattedToRawCursor,
+  calculateIndianAmountCursor,
 } from "@/shared/formatters/currencyFormatter";
 
 export interface AmountTextInputProps extends Omit<TextInputProps, "value" | "onChangeText"> {
@@ -35,95 +34,91 @@ export const AmountTextInput: React.FC<AmountTextInputProps> = ({
   const rawValue = parseIndianAmount(value, allowDecimals, allowNegative);
   const formattedValue = formatIndianAmount(rawValue, allowDecimals);
 
-  const [isFocused, setIsFocused] = useState<boolean>(false);
-  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
-  const lastFormattedRef = useRef<string>(formattedValue);
-  const lastSelectionRef = useRef<number>(formattedValue.length);
+  // Cursor position in the currently displayed (formatted) string.
+  // Tracks where the user's cursor is so we can compute the new position after each edit.
+  const cursorRef = useRef(formattedValue.length);
 
-  // Synchronize lastFormattedRef when formatted value updates externally without resetting active cursor
+  // One-time programmatic cursor override; set after each edit, cleared by onSelectionChange.
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  // True when we pushed a programmatic selection; cleared on the next onSelectionChange.
+  const pendingCursorRef = useRef(false);
+
+  // Tracks the previously displayed formatted value so calculateIndianAmountCursor has correct context.
+  const prevFormattedRef = useRef(formattedValue);
+
+  // Sync prevFormattedRef when the formatted value changes from an external prop update.
   useEffect(() => {
-    lastFormattedRef.current = formattedValue;
+    prevFormattedRef.current = formattedValue;
   }, [formattedValue]);
 
-  // While focused (active editing): display the raw comma-free numeric string so native cursor moves naturally.
-  // While blurred (display mode): display the formatted Indian currency string with lakh-crore commas.
-  const displayValue = isFocused ? rawValue : formattedValue;
+  const handleChangeText = (inputText: string) => {
+    const prevFormatted = prevFormattedRef.current;
+    const prevCursor = cursorRef.current;
 
-  const handleChangeText = (text: string) => {
-    let cleanText = text;
+    const raw = parseIndianAmount(inputText, allowDecimals, allowNegative);
+    const constrained = maxLength ? raw.slice(0, maxLength) : raw;
+    const newFormatted = formatIndianAmount(constrained, allowDecimals);
 
-    // Immediate rejection of '.' in integer-only mode (Bug 4 integrity)
-    if (!allowDecimals && text.includes(".")) {
-      const rawWithoutDots = text.replace(/\./g, "");
-      const digitsOnly = rawWithoutDots.replace(/[^0-9]/g, "");
-      const oldDigits = rawValue.replace(/[^0-9]/g, "");
-      if (digitsOnly === oldDigits) {
-        cleanText = rawWithoutDots;
-        onChangeText(rawValue);
-        return;
-      }
+    // If the raw value hasn't changed (e.g. user deleted a comma), just reposition the cursor.
+    if (constrained === rawValue) {
+      const cursorInInput = Math.min(
+        inputText.length,
+        Math.max(0, prevCursor + (inputText.length - prevFormatted.length))
+      );
+      const adjustedCursor = Math.max(0, cursorInInput);
+      cursorRef.current = adjustedCursor;
+      pendingCursorRef.current = true;
+      setSelection({ start: adjustedCursor, end: adjustedCursor });
+      return;
     }
 
-    const raw = parseIndianAmount(cleanText, allowDecimals, allowNegative);
-    const constrainedRaw = maxLength ? raw.slice(0, maxLength) : raw;
+    // Estimate cursor position in inputText: prevCursor ± delta of string lengths.
+    const cursorInInput = Math.min(
+      inputText.length,
+      Math.max(0, prevCursor + (inputText.length - prevFormatted.length))
+    );
 
-    // Clear one-time selection on typing so native TextInput handles cursor naturally without interference
-    if (selection !== undefined) {
-      setSelection(undefined);
-    }
+    const newCursor = calculateIndianAmountCursor(prevFormatted, inputText, newFormatted, cursorInInput);
 
-    // Keep computeCursorInCleanText reference active for tracking clean cursor positions
-    computeCursorInCleanText(lastFormattedRef.current, cleanText, lastSelectionRef.current);
+    cursorRef.current = newCursor;
+    prevFormattedRef.current = newFormatted;
+    pendingCursorRef.current = true;
+    setSelection({ start: newCursor, end: newCursor });
 
-    lastFormattedRef.current = formatIndianAmount(constrainedRaw, allowDecimals);
-    onChangeText(constrainedRaw);
+    onChangeText(constrained);
   };
 
   const handleSelectionChange = (e: TextInputSelectionChangeEvent) => {
     const { end } = e.nativeEvent.selection;
-    lastSelectionRef.current = end;
 
-    // Clear any one-time focus selection once native registers cursor
-    if (selection !== undefined) {
+    if (pendingCursorRef.current) {
+      // Acknowledge the programmatic cursor set and release control back to the native input.
+      pendingCursorRef.current = false;
       setSelection(undefined);
+    } else {
+      // User tapped to reposition cursor — track the new position.
+      cursorRef.current = end;
     }
 
-    if (onSelectionChange) {
-      onSelectionChange(e);
-    }
-  };
-
-  const handleFocus = (e: NativeSyntheticEvent<TargetedEvent>) => {
-    setIsFocused(true);
-
-    // Map the tapped position in the formatted string to the corresponding position in the raw string
-    const targetRawCursor = mapFormattedToRawCursor(formattedValue, lastSelectionRef.current);
-    setSelection({ start: targetRawCursor, end: targetRawCursor });
-
-    if (onFocus) {
-      onFocus(e);
-    }
+    onSelectionChange?.(e);
   };
 
   const handleBlur = (e: NativeSyntheticEvent<TargetedEvent>) => {
-    setIsFocused(false);
     setSelection(undefined);
-
-    if (onBlur) {
-      onBlur(e);
-    }
+    pendingCursorRef.current = false;
+    onBlur?.(e);
   };
 
   return (
     <TextInput
       {...restProps}
-      value={displayValue}
+      value={formattedValue}
       onChangeText={handleChangeText}
       onSelectionChange={handleSelectionChange}
-      onFocus={handleFocus}
+      onFocus={onFocus}
       onBlur={handleBlur}
-      selection={isFocused ? selection : undefined}
-      keyboardType={keyboardType || (allowDecimals ? "decimal-pad" : "numeric")}
+      selection={selection}
+      keyboardType={keyboardType ?? (allowDecimals ? "decimal-pad" : "numeric")}
     />
   );
 };

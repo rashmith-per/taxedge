@@ -33,6 +33,10 @@ export const ItrFilingScreen: React.FC = () => {
   const targetSectionRef = useRef<string | null>(null);
   const step1ContainerYRef = useRef<number | null>(null);
   const sectionRelativeYRef = useRef<Record<string, number | null>>({});
+  // Set to true only when the user explicitly taps a category card.
+  // Never set by auto-populated profile data, so it is safe to use as the sole
+  // dirty indicator for the category selection screen.
+  const categorySelectedRef = useRef(false);
   const scrollAnimFrameRef = useRef<number | null>(null);
 
   // Store bindings
@@ -66,6 +70,17 @@ export const ItrFilingScreen: React.FC = () => {
   const [isHydrating, setIsHydrating] = useState<boolean>(true);
   const [isCategoryConfirmed, setIsCategoryConfirmed] = useState<boolean>(false);
 
+  // Wrapper around setCategory that marks the selection as user-initiated.
+  // Only this handler (not auto-population) must call setCategory so that
+  // categorySelectedRef accurately reflects explicit user interaction.
+  const handleSelectCategory = useCallback(
+    (category: Parameters<typeof setCategory>[0]) => {
+      categorySelectedRef.current = true;
+      setCategory(category);
+    },
+    [setCategory]
+  );
+
   // Universal Draft Guard Hook
   const {
     showDraftModal,
@@ -76,6 +91,12 @@ export const ItrFilingScreen: React.FC = () => {
     handleCancel,
   } = useUniversalDraftGuard({
     isDirty: () => {
+      if (!isCategoryConfirmed) {
+        // Category selection screen: dirty only when the user explicitly tapped a card.
+        // Auto-populated personal info (name, PAN, etc.) must NOT trigger the guard.
+        return categorySelectedRef.current;
+      }
+      // Multi-step form: dirty when income entered, docs uploaded, or beyond step 0.
       const hasIncome = formData.calculation.grossTotalIncome > 0;
       const hasDocs = formData.documents.some((d) => Boolean(d.fileUri));
       const hasCategory = Boolean(formData.category);
@@ -221,6 +242,7 @@ export const ItrFilingScreen: React.FC = () => {
         if (!isMounted) return;
         if (restored) {
           setIsCategoryConfirmed(true);
+          setStep(0);
         } else {
           useITRStore.getState().resetForm();
           setIsCategoryConfirmed(false);
@@ -244,12 +266,9 @@ export const ItrFilingScreen: React.FC = () => {
 
   const handleBack = useCallback(() => {
     if (!isCategoryConfirmed) {
-      const hasData =
-        formData.calculation.grossTotalIncome > 0 ||
-        formData.documents.some((d) => Boolean(d.fileUri)) ||
-        Boolean(formData.category) ||
-        Boolean(formData.personalInfo.assessmentYear || formData.personalInfo.residentialStatus || formData.personalInfo.filingType);
-      if (hasData) {
+      // Show draft popup only if the user has explicitly selected a category card.
+      // categorySelectedRef is a ref, so it is always current even inside this callback.
+      if (categorySelectedRef.current) {
         openDraftModal();
       } else {
         router.back();
@@ -261,28 +280,28 @@ export const ItrFilingScreen: React.FC = () => {
     } else {
       setIsCategoryConfirmed(false);
     }
-  }, [isCategoryConfirmed, formData, openDraftModal, router, currentStep, setStep]);
+  }, [isCategoryConfirmed, openDraftModal, router, currentStep, setStep]);
 
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        const hasData =
-          currentStep > 0 ||
-          isCategoryConfirmed ||
-          Boolean(formData.category) ||
-          formData.calculation.grossTotalIncome > 0 ||
-          formData.documents.some((d) => Boolean(d.fileUri)) ||
-          Boolean(formData.personalInfo.pan || formData.personalInfo.assessmentYear);
-        if (hasData) {
-          openDraftModal();
-          return true;
+        if (!isCategoryConfirmed) {
+          // Category selection screen: show popup only if user selected a card.
+          // categorySelectedRef is a ref — always current inside this closure.
+          if (categorySelectedRef.current) {
+            openDraftModal();
+            return true;
+          }
+          return false;
         }
-        return false;
+        // Multi-step form: always prompt to save before leaving.
+        openDraftModal();
+        return true;
       };
 
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
       return () => subscription.remove();
-    }, [currentStep, isCategoryConfirmed, formData, openDraftModal])
+    }, [currentStep, isCategoryConfirmed, openDraftModal])
   );
 
   if (isHydrating) {
@@ -330,7 +349,7 @@ export const ItrFilingScreen: React.FC = () => {
         <Step0CategorySelect
           selectedCategory={formData.category}
           accountType={formData.accountType}
-          onSelectCategory={setCategory}
+          onSelectCategory={handleSelectCategory}
           onStartApplication={() => {
             setIsCategoryConfirmed(true);
             setStep(0);

@@ -66,11 +66,7 @@ export default function ApplicationDetailScreen() {
       : null);
 
   const handleBack = React.useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(main)/applications" as any);
-    }
+    router.replace("/(main)/home" as any);
   }, [router]);
 
   useEffect(() => {

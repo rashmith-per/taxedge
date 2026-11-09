@@ -93,6 +93,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
   const {
     showDraftModal,
     openDraftModal,
+    markSubmitted,
     handleSaveAndExit,
     handleDiscardAndExit: discardDraft,
     handleCancel: cancelExit,
@@ -285,6 +286,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
 
     // Navigate to next screen: return to estimate when editing, push when first-time
     if (isEditingFromEstimate) {
+      markSubmitted();
       router.back();
     } else {
       router.push("/service/tds-estimate" as any);
@@ -311,7 +313,7 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header with back guard */}
-      <TdsDocumentHeader onBack={handleBackPress} />
+      <TdsDocumentHeader onBack={handleBackPress} hideBack={isEditingFromEstimate} />
 
       {/* Main Scrollable Content */}
       <ScrollView
