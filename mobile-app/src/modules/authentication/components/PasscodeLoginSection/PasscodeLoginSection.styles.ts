@@ -29,6 +29,14 @@ export const styles = StyleSheet.create({
   },
   touchable: {
     width: "100%",
+    position: "relative",
+  },
+  overlayInput: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.01,
+    color: "transparent",
+    backgroundColor: "transparent",
+    zIndex: 10,
   },
   dotsRow: {
     flexDirection: "row",

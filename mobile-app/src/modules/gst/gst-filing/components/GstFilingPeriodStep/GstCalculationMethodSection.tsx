@@ -63,7 +63,7 @@ export const GstCalculationMethodSection: React.FC<GstCalculationMethodSectionPr
         />
         <View style={styles.methodContent}>
           <Text style={styles.methodTitle}>
-            Let TaxEdge CA calculate from documents
+            Let Finsolz CA calculate from documents
           </Text>
           <Text style={styles.methodSubtitle}>
             Upload your invoices & GSTR-2B; our CA computes sales, purchases & ITC

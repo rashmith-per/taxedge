@@ -16,7 +16,8 @@ import { logger } from "@/core/logging/logger";
 
 import {
   AmendmentStep, SupportingDoc, PickerModalState, SubmissionResult, AmendmentFormData, INITIAL_AMENDMENT_FORM_DATA,
-} from "../types/gstAmendmentTypes";
+
+} from "../types/gstAmendmentTypes";
 import { AMENDMENT_SECTIONS } from "../config/gstNonCoreAmendmentConfig";
 import {
   validateGstinInput, validateSectionForm, validateFieldRealtime, isFormDataDirty,
@@ -95,7 +96,7 @@ export function useGstAmendmentWorkflow() {
         let savedStep: AmendmentStep | undefined = gstAmendmentDraft?.step as AmendmentStep | undefined;
 
         if (!savedData.gstin && clean) {
-          const draftKey = `@taxedge_draft_${clean}_gst-amendment`;
+          const draftKey = `@finsolz_draft_${clean}_gst-amendment`;
           const raw = await AsyncStorage.getItem(draftKey);
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -411,7 +412,7 @@ export function useGstAmendmentWorkflow() {
     if (!declared) {
       Alert.alert(
         "Declaration Required",
-        "Please tick the declaration checkbox to authorise TaxEdge to file your amendment."
+        "Please tick the declaration checkbox to authorise Finsolz to file your amendment."
       );
       return;
     }
@@ -462,7 +463,7 @@ export function useGstAmendmentWorkflow() {
       const cleanMobile = customer?.mobile ? String(customer.mobile).replace(/\D/g, "") : "";
       if (cleanMobile) {
         removeDraftFromIndex(cleanMobile, "gst-amendment");
-        AsyncStorage.removeItem(`@taxedge_draft_${cleanMobile}_gst-amendment`).catch((e) => {
+        AsyncStorage.removeItem(`@finsolz_draft_${cleanMobile}_gst-amendment`).catch((e) => {
           logger.debug("[useGstAmendmentWorkflow] Failed to remove draft key", { error: e });
         });
       }

@@ -1,5 +1,5 @@
 /**
- * Strict Name Validator and Sanitizer for TaxEdge.
+ * Strict Name Validator and Sanitizer for Finsolz.
  *
  * Rules:
  * - Accept English letters A–Z and a–z only.

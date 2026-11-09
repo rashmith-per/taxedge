@@ -165,7 +165,7 @@ export const GstAmendmentReview: React.FC<GstAmendmentReviewProps> = ({
           </View>
           <Text style={styles.declarationText}>
             I hereby declare that the information provided above is true and correct to the best
-            of my knowledge, and I authorise TaxEdge to submit this amendment request on my behalf.
+            of my knowledge, and I authorise Finsolz to submit this amendment request on my behalf.
           </Text>
         </TouchableOpacity>
       </ScrollView>

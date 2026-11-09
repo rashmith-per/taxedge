@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // ===============================================================================================
-// TaxEdge GST Registration — Review Screen UI Fix Unit Tests
+// Finsolz GST Registration — Review Screen UI Fix Unit Tests
 // Tests the requirement:
 // 1. Remove Uploaded Documents horizontal progress bar.
 // 2. Preserve Uploaded Documents card, heading, edit button, document list, checkmarks, eye buttons.

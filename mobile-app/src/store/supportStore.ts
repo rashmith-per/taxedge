@@ -8,7 +8,7 @@ const stamp = (): string =>
 const OPENING: ChatMessage = {
   id: "support-welcome",
   sender: "staff",
-  text: "Hi! You're through to TaxEdge support. How can we help you today?",
+  text: "Hi! You're through to Finsolz support. How can we help you today?",
   timestamp: stamp(),
 };
 
@@ -23,7 +23,7 @@ function replyTo(text: string): string {
     return "I can see your dues under the Payments tab. Tell me which invoice looks wrong and I'll check it.";
   if (q.includes("expert") || q.includes("call") || q.includes("talk"))
     return "Sure - an expert will call you on your registered number within 30 minutes. Anything specific they should prepare?";
-  return "Thanks for reaching out. A TaxEdge executive will pick this up shortly. Meanwhile you can reach us on 1800-TAX-EDGE.";
+  return "Thanks for reaching out. A Finsolz executive will pick this up shortly. Meanwhile you can reach us on 1800-TAX-EDGE.";
 }
 
 export interface SupportState {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,17 +8,9 @@ import {
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
-import {
-  ItrPersonalInfo,
-  ItrBankDetails,
-  ItrSelectableBank,
-  ItrPriorFilingAndNotice,
-  ResidentialStatus,
-  FilingType,
-} from "../../types/itrFiling.types";
+import { ItrSelectableBank } from "../../types/itrFiling.types";
 import { getSupportedAssessmentYears } from "../../../taxRules";
 import { BankSelectorModal, isValidBankName } from "../../../components/BankSelectorModal";
-import { useITRStore } from "../../../store/itrStore";
 import { styles } from "./Step1PersonalInfo.styles";
 import { Step1PriorItrImport } from "./components/Step1PriorItrImport";
 import { Step1TaxpayerIdentityCard } from "./components/Step1TaxpayerIdentityCard";
@@ -42,6 +34,7 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
   onImportPriorItrData,
   onContinue,
   onUpdateAndContinue,
+  onSectionLayout,
 }) => {
   const [showBankModal, setShowBankModal] = useState(false);
   const [editingBank, setEditingBank] = useState<ItrSelectableBank | null>(null);
@@ -49,10 +42,6 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
   const [showCustomAy, setShowCustomAy] = useState(false);
   const [isCustomYearInputMode, setIsCustomYearInputMode] = useState(false);
   const [customYearText, setCustomYearText] = useState("");
-
-  useEffect(() => {
-    useITRStore.getState().fetchAndPopulateUserProfile();
-  }, []);
 
   const supportedAYs = getSupportedAssessmentYears();
 
@@ -164,8 +153,8 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
                 localAYs.push({
                   id: personalInfo.assessmentYear,
                   label: `AY ${personalInfo.assessmentYear}`,
-                  sub: `FY ${yr-1}-${String(yr).slice(-2)} (Custom)`,
-                  financialYear: `${yr-1}-${yr}`,
+                  sub: `FY ${yr - 1}-${String(yr).slice(-2)} (Custom)`,
+                  financialYear: `${yr - 1}-${yr}`,
                   isCurrent: false
                 });
               }
@@ -198,7 +187,7 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
                     >
                       FY {ay.financialYear}
                     </Text>
-                    
+
                     {ay.sub.includes("Custom") && (
                       <TouchableOpacity
                         style={styles.customAyDeleteBtn}
@@ -217,7 +206,7 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
         </View>
 
       </View>
-      
+
       {/* 3. Residential Status Confirmation */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
@@ -318,7 +307,10 @@ export const Step1PersonalInfo: React.FC<Step1PersonalInfoProps> = ({
       </View>
 
       {/* 5. Refund Bank Account */}
-      <View style={styles.card}>
+      <View
+        style={styles.card}
+        onLayout={(e) => onSectionLayout?.("bank", e.nativeEvent.layout.y)}
+      >
         <View style={styles.cardHeaderRow}>
           <View style={styles.cardHeaderLeft}>
             <Ionicons name="card-outline" size={18} color="#083B75" />

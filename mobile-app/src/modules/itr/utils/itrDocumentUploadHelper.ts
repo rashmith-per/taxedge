@@ -1,6 +1,6 @@
 /**
- * Authoritative file formats and MIME types supported by the TaxEdge ITR backend.
- * Backed by com.taxedge.validator.GstFileUploadValidator constraints:
+ * Authoritative file formats and MIME types supported by the Finsolz ITR backend.
+ * Backed by com.finsolz.validator.GstFileUploadValidator constraints:
  * - application/pdf
  * - image/jpeg
  * - image/png

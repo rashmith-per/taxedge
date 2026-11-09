@@ -123,7 +123,7 @@ export function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert(
       "Confirm Logout",
-      "Are you sure you want to log out of your TaxEdge account?",
+      "Are you sure you want to log out of your Finsolz account?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -242,7 +242,7 @@ export function SettingsScreen() {
             activeOpacity={0.7}
           >
             <Text style={[styles.appInfoText, { color: colors.textSecondary }]}>
-              TaxEdge Finsolz • v1.0.0
+              Finsolz Finsolz • v1.0.0
             </Text>
             <Text style={[styles.backendStatusText, { color: colors.primary }]}>
               Backend: {currentServerUrl}
@@ -251,7 +251,7 @@ export function SettingsScreen() {
         ) : (
           <View style={styles.appInfoContainer}>
             <Text style={[styles.appInfoText, { color: colors.textSecondary }]}>
-              TaxEdge Finsolz • v1.0.0
+              Finsolz Finsolz • v1.0.0
             </Text>
           </View>
         )}

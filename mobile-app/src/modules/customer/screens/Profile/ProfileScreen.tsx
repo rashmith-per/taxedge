@@ -177,7 +177,7 @@ export function ProfileScreen() {
               ? (personalDetails?.name || customer?.name || "Customer Profile")
               : (customer?.mobile
                 ? `User (+91 ${String(customer.mobile).replace(/\D/g, "").slice(-10)})`
-                : "TaxEdge Customer")}
+                : "Finsolz Customer")}
           </Text>
           <Text style={styles.heroId}>
             {isProfileComplete

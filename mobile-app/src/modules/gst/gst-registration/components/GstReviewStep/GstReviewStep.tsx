@@ -288,7 +288,7 @@ export const GstReviewStep: React.FC<GstReviewStepProps> = ({
         </View>
         <Text style={styles.declarationText}>
           I hereby declare that the information provided is true and accurate to
-          the best of my knowledge. I authorise TaxEdge Finsolz to file
+          the best of my knowledge. I authorise Finsolz Finsolz to file
           this application on my behalf.
         </Text>
       </TouchableOpacity>

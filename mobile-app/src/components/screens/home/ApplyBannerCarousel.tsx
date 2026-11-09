@@ -1,6 +1,6 @@
 /**
  * ApplyBannerCarousel
- * Paged promotional carousel matching the TaxEdge reference design.
+ * Paged promotional carousel matching the Finsolz reference design.
  * Features:
  *  - Deep navy to royal blue gradient cards with ambient abstract shapes.
  *  - "Ready to help" status pill badge.
@@ -125,7 +125,7 @@ export function ApplyBannerCarousel({
       >
         {banners.map((banner) => {
           const isLoanBanner = banner.id === "LOANS" || banner.key === "b-loans";
-          const badgeText = banner.tag || (isLoanBanner ? "Ready to help" : "TaxEdge Service");
+          const badgeText = banner.tag || (isLoanBanner ? "Ready to help" : "Finsolz Service");
 
           return (
             <View key={banner.key} style={[styles.bannerPage, getBannerPageStyle(pageWidth)]}>

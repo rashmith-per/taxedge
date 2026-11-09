@@ -166,7 +166,7 @@ describe("BUG-ITR-072: gallery handler wired in SharedItrDocumentCard default va
 // ── BUG-ITR-892: { uri, name, type } pattern avoids new Blob([rawBlob]) ─────────
 describe("BUG-ITR-892: file attachment uses { uri, name, type } pattern", () => {
   it("produces a valid RN file attachment object for a camera JPEG", () => {
-    const fileUri = "file:///data/user/0/com.taxedge/cache/doc-1_photo_1234567890.jpg";
+    const fileUri = "file:///data/user/0/com.finsolz/cache/doc-1_photo_1234567890.jpg";
     const fileName = "doc-1_photo_1234567890.jpg";
     const mimeType = inferMimeType(fileName, undefined);
     const attachment = { uri: fileUri, name: fileName, type: mimeType };

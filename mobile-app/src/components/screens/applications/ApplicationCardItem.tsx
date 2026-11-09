@@ -179,7 +179,7 @@ export function ApplicationCardItem({
         ? `GST Amendment — ${formattedSection}`
         : item.serviceId === "gst-compliance" && formattedCompliance
           ? `GST Compliance — ${formattedCompliance}`
-          : item.serviceName || "TaxEdge Service";
+          : item.serviceName || "Finsolz Service";
 
   const rawDate =
     item.formData?.submissionDate ||

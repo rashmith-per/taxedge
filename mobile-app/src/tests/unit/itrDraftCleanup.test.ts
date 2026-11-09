@@ -30,10 +30,10 @@ const mockAsyncStorage = {
 };
 
 function makeDraftKey(mobile: string): string {
-  return `@taxedge_draft_${mobile}_itr-filing`;
+  return `@finsolz_draft_${mobile}_itr-filing`;
 }
 function makeIndexKey(mobile: string): string {
-  return `@taxedge_draft_index_${mobile}`;
+  return `@finsolz_draft_index_${mobile}`;
 }
 
 // ── Store state model (mirrors itrStore.ts) ───────────────────────────────────
@@ -354,7 +354,7 @@ describe("ITR Draft Cleanup — fresh application creation after submit", () => 
     await saveItrDraft(state, mobile);
 
     const draftKeys = Object.keys(asyncStore).filter((k) =>
-      k.startsWith(`@taxedge_draft_${mobile}_itr`)
+      k.startsWith(`@finsolz_draft_${mobile}_itr`)
     );
     assert.equal(draftKeys.length, 1, "Only one draft key must exist for itr-filing");
     assert.equal(draftKeys[0], makeDraftKey(mobile), "Key pattern must be stable");

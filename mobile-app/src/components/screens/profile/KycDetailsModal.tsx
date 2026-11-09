@@ -76,7 +76,7 @@ export function KycDetailsModal({
                 Identity Verification (KYC)
               </Text>
               <Text style={[styles.incompleteSubtitle, { color: colors.textSecondary }]}>
-                Identity verification becomes available during profile setup. Complete your profile to verify your PAN & Aadhaar details and unlock all TaxEdge services.
+                Identity verification becomes available during profile setup. Complete your profile to verify your PAN & Aadhaar details and unlock all Finsolz services.
               </Text>
 
               <View

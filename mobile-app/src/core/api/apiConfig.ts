@@ -2,9 +2,9 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const SERVER_IP = "192.168.88.72";
+export const SERVER_IP = "192.168.88.36";
 export const SERVER_PORT = 8086;
-export const STORAGE_KEY_SERVER_URL = "@taxedge_server_url";
+export const STORAGE_KEY_SERVER_URL = "@finsolz_server_url";
 
 export function getDefaultBaseUrl(): string {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();

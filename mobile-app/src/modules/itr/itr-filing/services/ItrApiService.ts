@@ -282,7 +282,7 @@ const populateFormDataWithDocuments = async (
   let hasUploadedAny = false;
 
   for (const doc of documents) {
-    if (doc.fileUri && fieldMapping[doc.id]) {
+    if (doc.fileUri && fieldMapping[doc.id] && doc.tier !== "NOT_REQUIRED") {
       const paramName = fieldMapping[doc.id];
       try {
         const response = await fetch(doc.fileUri);

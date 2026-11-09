@@ -100,7 +100,7 @@ test("the register screen marks exactly the required fields with *", () => {
   const line2 = source.indexOf('label="Address Line 2 (Optional)"');
   assert.ok(line2 > -1);
   assert.equal(source.slice(line2, line2 + 60).includes("required"), false, "Address Line 2 is optional and unmarked");
-  assert.ok(source.includes("Please provide the required details to create your TaxEdge account."), "the legend explains required details");
+  assert.ok(source.includes("Please provide the required details to create your Finsolz account."), "the legend explains required details");
   assert.equal(source.includes('"Address Line 1 *"'), false, "no hand-typed asterisk labels remain");
 });
  

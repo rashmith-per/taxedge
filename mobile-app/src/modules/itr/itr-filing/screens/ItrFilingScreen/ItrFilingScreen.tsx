@@ -5,7 +5,9 @@ import {
   TouchableOpacity,
   Alert,
   BackHandler,
+  ActivityIndicator,
 } from "react-native";
+import { BrandColors } from "@/shared/theme";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -28,6 +30,10 @@ export const ItrFilingScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<any>(null);
+  const targetSectionRef = useRef<string | null>(null);
+  const step1ContainerYRef = useRef<number | null>(null);
+  const sectionRelativeYRef = useRef<Record<string, number | null>>({});
+  const scrollAnimFrameRef = useRef<number | null>(null);
 
   // Store bindings
   const currentStep = useITRStore((state) => state.currentStep);
@@ -57,7 +63,8 @@ export const ItrFilingScreen: React.FC = () => {
 
   const createApplication = useApplicationStore((state) => state.createApplication);
 
-  const [isCategoryConfirmed, setIsCategoryConfirmed] = useState<boolean>(() => currentStep > 0);
+  const [isHydrating, setIsHydrating] = useState<boolean>(true);
+  const [isCategoryConfirmed, setIsCategoryConfirmed] = useState<boolean>(false);
 
   // Universal Draft Guard Hook
   const {
@@ -79,8 +86,13 @@ export const ItrFilingScreen: React.FC = () => {
       );
       return hasIncome || hasDocs || currentStep > 0 || isCategoryConfirmed || hasCategory || hasPersonal;
     },
-    onSaveDraft: () => {
-      saveItrDraft();
+    onSaveDraft: async () => {
+      try {
+        await saveItrDraft();
+      } catch (error) {
+        Alert.alert("Save Failed", "Could not save your draft. Please try again.");
+        throw error;
+      }
     },
     onDiscardDraft: () => {
       clearItrDraft();
@@ -109,29 +121,125 @@ export const ItrFilingScreen: React.FC = () => {
     resetForm,
   });
 
-  // Scroll to top on step transition
+  // Single coordinator: only scrolls when BOTH container and target section are measured for this mount
+  const dispatchTargetedScrollIfReady = useCallback(() => {
+    // 1. Guard against stale step (must be on Step 1)
+    if (useITRStore.getState().currentStep !== 0) return;
+
+    // 2. Guard against missing or cancelled target
+    const target = targetSectionRef.current;
+    if (!target) return;
+
+    // 3. BOTH measurements must be available from the current mount
+    const containerY = step1ContainerYRef.current;
+    const relativeY = sectionRelativeYRef.current[target];
+    if (typeof containerY !== "number" || typeof relativeY !== "number") {
+      return; // Still waiting for the other layout measurement
+    }
+
+    // 4. Cancel any previous animation frame
+    if (scrollAnimFrameRef.current !== null) {
+      cancelAnimationFrame(scrollAnimFrameRef.current);
+      scrollAnimFrameRef.current = null;
+    }
+
+    // 5. Calculate final offset relative to KeyboardAwareScrollView content container
+    const finalY = containerY + relativeY;
+
+    // 6. Clear target BEFORE scheduling the animation frame to guarantee only ONE dispatch occurs
+    targetSectionRef.current = null;
+
+    scrollAnimFrameRef.current = requestAnimationFrame(() => {
+      if (useITRStore.getState().currentStep === 0) {
+        scrollViewRef.current?.scrollTo({
+          y: Math.max(0, finalY - 16),
+          animated: true,
+        });
+      }
+      scrollAnimFrameRef.current = null;
+    });
+  }, []);
+
+  const handleSectionLayout = useCallback(
+    (section: string, relativeY: number) => {
+      sectionRelativeYRef.current[section] = relativeY;
+      dispatchTargetedScrollIfReady();
+    },
+    [dispatchTargetedScrollIfReady]
+  );
+
+  const handleStep1ContainerLayout = useCallback(
+    (e: { nativeEvent: { layout: { y: number } } }) => {
+      step1ContainerYRef.current = e.nativeEvent.layout.y;
+      dispatchTargetedScrollIfReady();
+    },
+    [dispatchTargetedScrollIfReady]
+  );
+
+  const handleEditStep = useCallback(
+    (stepIdx: number, section?: string) => {
+      if (scrollAnimFrameRef.current !== null) {
+        cancelAnimationFrame(scrollAnimFrameRef.current);
+        scrollAnimFrameRef.current = null;
+      }
+      targetSectionRef.current = section || null;
+      // Invalidate measurements for the incoming mount so stale cached numbers cannot be used
+      if (stepIdx === 0 && section) {
+        step1ContainerYRef.current = null;
+        sectionRelativeYRef.current[section] = null;
+      }
+      setStep(stepIdx);
+    },
+    [setStep]
+  );
+
+  // Scroll to top on step transition unless a section-targeted navigation is pending
   useEffect(() => {
+    if (targetSectionRef.current) {
+      // Targeted navigation is pending: do not scroll to 0.
+      // Layout events (container + section) will coordinate the targeted scroll.
+      return;
+    }
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+
+    return () => {
+      if (scrollAnimFrameRef.current !== null) {
+        cancelAnimationFrame(scrollAnimFrameRef.current);
+        scrollAnimFrameRef.current = null;
+      }
+    };
   }, [currentStep]);
 
   // Restore saved draft on entry. For a fresh start, pre-fill personal info from auth profile.
   // fetchAndPopulateUserProfile is intentionally skipped when restoring a draft to avoid
   // overwriting the user's previously entered (and potentially corrected) personal details.
   useEffect(() => {
+    let isMounted = true;
     async function init() {
-      const restored = await useITRStore.getState().restoreItrDraft();
-      if (restored) {
-        const restoredStep = useITRStore.getState().currentStep;
-        if (restoredStep > 0) {
+      try {
+        const restored = await useITRStore.getState().restoreItrDraft();
+        if (!isMounted) return;
+        if (restored) {
           setIsCategoryConfirmed(true);
+        } else {
+          useITRStore.getState().resetForm();
+          setIsCategoryConfirmed(false);
+          await useITRStore.getState().fetchAndPopulateUserProfile();
         }
-      } else {
-        useITRStore.getState().resetForm();
-        setIsCategoryConfirmed(false);
-        await useITRStore.getState().fetchAndPopulateUserProfile();
+      } catch {
+        if (isMounted) {
+          setIsCategoryConfirmed(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsHydrating(false);
+        }
       }
     }
     init();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleBack = useCallback(() => {
@@ -177,6 +285,20 @@ export const ItrFilingScreen: React.FC = () => {
     }, [currentStep, isCategoryConfirmed, formData, openDraftModal])
   );
 
+  if (isHydrating) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top, justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <FocusAwareStatusBar barStyle="dark-content" />
+        <ActivityIndicator size="large" color={BrandColors.PRIMARY_BLUE} testID="itr-hydration-loader" />
+      </View>
+    );
+  }
+
   if (!isCategoryConfirmed) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -198,7 +320,7 @@ export const ItrFilingScreen: React.FC = () => {
             activeOpacity={0.7}
             style={styles.headerRightBtn}
             onPress={() =>
-              Alert.alert("TaxEdge Support", "Need help with your ITR? Contact support@taxedge.in")
+              Alert.alert("Finsolz Support", "Need help with your ITR? Contact support@finsolz.in")
             }
           >
             <Ionicons name="settings-outline" size={18} color="#64748B" />
@@ -236,7 +358,7 @@ export const ItrFilingScreen: React.FC = () => {
         stepTitle={formData.determinedForm.form}
         hideBackButton={maxStepReached >= 3 && currentStep < 3}
         onBack={handleBack}
-        onSettings={() => Alert.alert("TaxEdge Support", "Need help with your ITR? Contact support@taxedge.in")}
+        onSettings={() => Alert.alert("Finsolz Support", "Need help with your ITR? Contact support@finsolz.in")}
       />
 
       {/* Main Content Area */}
@@ -250,22 +372,25 @@ export const ItrFilingScreen: React.FC = () => {
       >
         {/* Step 1: Personal Information, AY & Bank (Pre-filled from DB/GST) */}
         {currentStep === 0 && (
-          <Step1PersonalInfo
-            isLoading={isSubmitting}
-            isEditing={maxStepReached >= 3}
-            personalInfo={formData.personalInfo}
-            onUpdatePersonalInfo={setPersonalInfo}
-            bankDetails={formData.bankDetails}
-            bankAccountsList={formData.bankAccountsList}
-            onSelectRefundBank={selectRefundBank}
-            onAddBankAccount={addBankAccount}
-            onUpdateBankAccount={updateBankAccount}
-            priorItrNotice={formData.priorItrNotice}
-            onUpdatePriorItrNotice={setPriorItrNotice}
-            onImportPriorItrData={importPriorItrData}
-            onContinue={handleStep1Continue}
-            onUpdateAndContinue={handleStep1Update}
-          />
+          <View onLayout={handleStep1ContainerLayout}>
+            <Step1PersonalInfo
+              isLoading={isSubmitting}
+              isEditing={maxStepReached >= 3}
+              personalInfo={formData.personalInfo}
+              onUpdatePersonalInfo={setPersonalInfo}
+              bankDetails={formData.bankDetails}
+              bankAccountsList={formData.bankAccountsList}
+              onSelectRefundBank={selectRefundBank}
+              onAddBankAccount={addBankAccount}
+              onUpdateBankAccount={updateBankAccount}
+              priorItrNotice={formData.priorItrNotice}
+              onUpdatePriorItrNotice={setPriorItrNotice}
+              onImportPriorItrData={importPriorItrData}
+              onContinue={handleStep1Continue}
+              onUpdateAndContinue={handleStep1Update}
+              onSectionLayout={handleSectionLayout}
+            />
+          </View>
         )}
 
         {/* Step 2: Income Sources & Smart ITR Form Determination */}
@@ -305,7 +430,7 @@ export const ItrFilingScreen: React.FC = () => {
           <Step5TaxSummaryReview
             formData={formData}
             isSubmitting={isSubmitting}
-            onEditStep={(stepIdx) => setStep(stepIdx)}
+            onEditStep={handleEditStep}
             onToggleDeclaration={setDeclarationAccepted}
             onSubmit={handleSubmitApplication}
           />

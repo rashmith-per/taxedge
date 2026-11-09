@@ -140,8 +140,8 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
           <Text style={styles.readyHeading}>Ready for Review</Text>
           <Text style={styles.readySub}>
             {isNilReturn
-              ? "TaxEdge has prepared your Nil Return filing for submission"
-              : "TaxEdge CA has prepared return computation based on your verified business records"}
+              ? "Finsolz has prepared your Nil Return filing for submission"
+              : "Finsolz CA has prepared return computation based on your verified business records"}
           </Text>
         </View>
       </View>
@@ -194,7 +194,7 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
           <Text style={styles.value}>
             {calculationMethod === "manual_estimates"
               ? "Self-estimated figures"
-              : "Let TaxEdge CA calculate from documents"}
+              : "Let Finsolz CA calculate from documents"}
           </Text>
         </View>
 
@@ -230,7 +230,7 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
             {renderEditButton(onEditTaxComputation || onEditFilingDetails)}
           </View>
           <Text style={styles.caBannerText}>
-            TaxEdge CA will calculate your liabilities, ITC, and net payable tax directly from your uploaded invoices.
+            Finsolz CA will calculate your liabilities, ITC, and net payable tax directly from your uploaded invoices.
           </Text>
         </View>
       )}

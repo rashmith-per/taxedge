@@ -16,7 +16,7 @@ import { ProfileModalHeader, formatProfileCode, formatProfileDate } from "./Prof
 
 const isMockEmail = (email?: string | null): boolean => {
   if (!email || email.trim() === "") return true;
-  return /^\d{10}@taxedge\.in$/i.test(email.trim()) || email.toLowerCase().endsWith("@taxedge.in");
+  return /^\d{10}@finsolz\.in$/i.test(email.trim()) || email.toLowerCase().endsWith("@finsolz.in");
 };
 
 interface PersonalDetailsModalProps {

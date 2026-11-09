@@ -2,7 +2,7 @@
  * HomeHeader
  * Single unified fixed header matching Image 3 reference & Image 4 gradient styling.
  * Contains:
- *  - TAXEDGE FIN SOLUTIONS brand logo
+ *  - FINSOLZ FIN SOLUTIONS brand logo
  *  - Notification bell with unread badge
  *  - Greeting row ("Hello, Anu 👋" + "What can we help you with today?")
  *  - Deep navy-blue gradient with ambient amber flare & abstract curved wave lines.
@@ -49,7 +49,7 @@ export function HomeHeader({
             />
           </View>
           <View>
-            <Text style={styles.brandText}>TAXEDGE</Text>
+            <Text style={styles.brandText}>FINSOLZ</Text>
             <Text style={styles.brandSubText}>FIN SOLUTIONS</Text>
           </View>
         </View>

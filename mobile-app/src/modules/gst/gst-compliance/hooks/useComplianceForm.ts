@@ -41,7 +41,7 @@ const initialFormData: ComplianceFormData = {
 };
 
 function getDraftKey(mobile: string): string {
-  return `@taxedge_draft_${mobile}_gst-compliance`;
+  return `@finsolz_draft_${mobile}_gst-compliance`;
 }
 
 function getCleanMobile(): string {

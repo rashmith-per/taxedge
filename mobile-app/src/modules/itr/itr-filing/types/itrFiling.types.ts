@@ -35,7 +35,7 @@ export type ItrJourneyStage =
   | "COMPLETED";
 
 export type DataSourceOrigin =
-  | "TAXEDGE_PROFILE"
+  | "FINSOLZ_PROFILE"
   | "FORM_16"
   | "AIS_TIS"
   | "FORM_26AS"

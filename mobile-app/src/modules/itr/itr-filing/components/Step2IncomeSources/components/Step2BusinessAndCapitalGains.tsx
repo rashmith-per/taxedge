@@ -135,7 +135,7 @@ export const BusinessIncomeForm: React.FC<BusinessFormProps> = ({
             />
             <View style={styles.schemeRadioTextCol}>
               <Text style={styles.schemeRadioTitle}>{"I'm Not Sure"}</Text>
-              <Text style={styles.schemeRadioSub}>TaxEdge CA will review and select the best option</Text>
+              <Text style={styles.schemeRadioSub}>Finsolz CA will review and select the best option</Text>
             </View>
           </TouchableOpacity>
         </View>

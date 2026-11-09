@@ -313,3 +313,39 @@ export function calculateIndianAmountCursor(
 
   return newFormatted.length;
 }
+
+/**
+ * Maps a cursor index in an Indian-formatted currency string (with commas)
+ * to the corresponding index in the clean unformatted numeric string.
+ * Example: in "1,25,000", cursor at 3 (after '2') maps to 2 in "125000".
+ */
+export function mapFormattedToRawCursor(formattedText: string, formattedCursor: number): number {
+  if (formattedCursor <= 0 || !formattedText) return 0;
+  let rawChars = 0;
+  for (let i = 0; i < formattedCursor && i < formattedText.length; i++) {
+    if (formattedText[i] !== ",") {
+      rawChars++;
+    }
+  }
+  return rawChars;
+}
+
+/**
+ * Maps a cursor index in a raw numeric string to the corresponding index in an
+ * Indian-formatted currency string (with commas).
+ * Example: in "125000", cursor at 2 maps to 3 in "1,25,000".
+ */
+export function mapRawToFormattedCursor(rawText: string, rawCursor: number): number {
+  if (rawCursor <= 0 || !rawText) return 0;
+  const formatted = formatIndianAmount(rawText);
+  let rawCount = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (formatted[i] !== ",") {
+      rawCount++;
+      if (rawCount === rawCursor) {
+        return i + 1;
+      }
+    }
+  }
+  return formatted.length;
+}

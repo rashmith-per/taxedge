@@ -1,6 +1,6 @@
 /**
  * Bank Name validation and sanitization helpers for ITR Filing Bank Account modal.
- * Delegated to the canonical TaxEdge nameValidator utility.
+ * Delegated to the canonical Finsolz nameValidator utility.
  */
 
 import {

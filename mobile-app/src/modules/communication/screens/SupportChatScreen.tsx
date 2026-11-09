@@ -113,7 +113,7 @@ export function SupportChatScreen() {
           </View>
 
           <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>TaxEdge Support</Text>
+            <Text style={styles.headerTitle}>Finsolz Support</Text>
             <Text style={styles.headerSubtitle}>Online · replies in a few minutes</Text>
           </View>
 

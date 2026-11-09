@@ -68,7 +68,7 @@ export function useGstRegistrationDraftGuard({
         void (async () => {
           const clean = getActiveCustomerMobile();
           try {
-            const raw = await AsyncStorage.getItem(`@taxedge_draft_${clean}_gst-registration`);
+            const raw = await AsyncStorage.getItem(`@finsolz_draft_${clean}_gst-registration`);
             if (!raw) return;
             const parsed = JSON.parse(raw) as { formData?: Partial<GstBusinessFormData>; documents?: DocumentItem[]; step?: number };
             if (parsed.formData) {

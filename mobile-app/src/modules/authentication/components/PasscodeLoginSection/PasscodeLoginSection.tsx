@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Platform } from "react-native";
+import { View, Text, TextInput, type TextInputInstance, TouchableOpacity, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "../../../../hooks/use-theme";
 import { PrimaryButton } from "../../../../shared/components/Button/PrimaryButton";
@@ -39,7 +39,7 @@ export function PasscodeLoginSection({
   const colors = useTheme();
   const lockRemaining = useCountdown(lockoutUntil);
   const locked = lockRemaining > 0;
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const themed = getThemedStyles(colors);
   const [showPasscode, setShowPasscode] = useState(false);
 
@@ -110,24 +110,20 @@ export function PasscodeLoginSection({
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={() => inputRef.current?.focus()}
-        style={styles.touchable}
-      >
-        <View style={styles.dotsRow}>{renderDots()}</View>
-      </TouchableOpacity>
-
-      <TextInput
-        ref={inputRef}
-        value={passcode}
-        onChangeText={handleChangeText}
-        keyboardType="number-pad"
-        maxLength={6}
-        secureTextEntry={!showPasscode}
-        editable={!locked}
-        style={styles.hiddenInput}
-      />
+      <View style={styles.touchable}>
+        <TextInput
+          ref={inputRef}
+          value={passcode}
+          onChangeText={handleChangeText}
+          keyboardType="number-pad"
+          maxLength={6}
+          editable={!locked}
+          caretHidden={true}
+          style={styles.overlayInput}
+          accessibilityLabel="6-digit Passcode"
+        />
+        <View style={styles.dotsRow} pointerEvents="none">{renderDots()}</View>
+      </View>
 
       <View style={styles.forgotRow}>
         <TouchableOpacity onPress={onForgotPasscode} activeOpacity={0.7} style={styles.forgotBtn}>

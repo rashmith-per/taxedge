@@ -60,9 +60,13 @@ export const useTdsRefundForm = () => {
     saveDestination: "/service/itr",
     discardDestination: "/service/itr",
     isDirty: () => {
+      // hasUserEdited must be checked first — before the snapshot null-guard.
+      // If the user edits before the async loadData() sets initialSnapshotRef,
+      // returning false here would silently swallow the guard.
+      if (hasUserEdited) return true;
       if (!initialSnapshotRef.current) return false;
       const currentSnapshot = JSON.stringify({ bank: formData.bank, income: formData.income });
-      return hasUserEdited || currentSnapshot !== initialSnapshotRef.current;
+      return currentSnapshot !== initialSnapshotRef.current;
     },
     onSaveDraft: async () => {
       await tdsDraftService.saveFormDraft(formData);
@@ -423,6 +427,22 @@ export const useTdsRefundForm = () => {
     }
   };
 
+  // Explicit back handler used by the custom header back button.
+  // Checks dirty state directly so the draft modal fires even if
+  // usePreventRemove hasn't yet had a chance to react to the latest render.
+  const handleBack = () => {
+    const dirty =
+      hasUserEdited ||
+      (initialSnapshotRef.current !== null &&
+        JSON.stringify({ bank: formData.bank, income: formData.income }) !==
+          initialSnapshotRef.current);
+    if (dirty) {
+      draftGuard.openDraftModal();
+    } else {
+      router.back();
+    }
+  };
+
   return {
     formData,
     errors,
@@ -436,6 +456,7 @@ export const useTdsRefundForm = () => {
     handleIfscChange,
     handleBlurField,
     handleContinue,
+    handleBack,
     isSaving,
     draftGuard,
     documents,

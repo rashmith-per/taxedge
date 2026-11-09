@@ -33,6 +33,7 @@ export const TdsRefundFormScreen: React.FC = () => {
     handleIfscChange,
     handleBlurField,
     handleContinue,
+    handleBack,
     draftGuard,
     documents,
     handleUploadSuccess,
@@ -44,6 +45,7 @@ export const TdsRefundFormScreen: React.FC = () => {
 
   const {
     showDraftModal,
+    openDraftModal: _openDraftModal,
     handleSaveAndExit,
     handleDiscardAndExit,
     handleCancel,
@@ -75,7 +77,7 @@ export const TdsRefundFormScreen: React.FC = () => {
         {!isEditing ? (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={20} color={BrandColors.PRIMARY_BLUE_DARK} />

@@ -1,7 +1,7 @@
 /**
  * ServicesGrid
  * Redesigned Services section displaying 2-column alternating pastel 3D cards
- * matching the TaxEdge reference design (Incorporation, GST, ITR, Projects, Loans, Insurance).
+ * matching the Finsolz reference design (Incorporation, GST, ITR, Projects, Loans, Insurance).
  */
 
 import React from "react";

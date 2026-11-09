@@ -26,11 +26,11 @@ const TRANSPORT_FILE = path.join(
 );
 const CONTROLLER_FILE = path.join(
   ROOT,
-  "../taxedge-backend/src/main/java/com/taxedge/gst/amendment/controller/GstAmendmentController.java"
+  "../finsolz-backend/src/main/java/com/finsolz/gst/amendment/controller/GstAmendmentController.java"
 );
 const BACKEND_SERVICE_DIR = path.join(
   ROOT,
-  "../taxedge-backend/src/main/java/com/taxedge/gst/amendment/service"
+  "../finsolz-backend/src/main/java/com/finsolz/gst/amendment/service"
 );
 
 test("Test 1: useGstAmendmentWorkflow fixes Expo SDK 54 FileSystem runtime crash and document persistence", () => {

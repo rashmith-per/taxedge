@@ -266,7 +266,7 @@ export function PaymentOverviewScreen() {
               <View key={app.id} style={styles.activityCard}>
                 <View style={styles.activityLeft}>
                   <Text style={styles.activityTitle}>
-                    {app.serviceName || "TaxEdge Service"}
+                    {app.serviceName || "Finsolz Service"}
                   </Text>
                   <Text style={styles.activityDate}>
                     App #{app.id} • {app.createdAt || "Paid"}

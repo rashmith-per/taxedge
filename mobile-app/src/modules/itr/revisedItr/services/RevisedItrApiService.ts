@@ -379,7 +379,7 @@ export const RevisedItrApiService = {
               assessmentYear: ayVal,
               filingDate: itrData.submittedAt
                 ? new Date(itrData.submittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                : "Filed via TaxEdge",
+                : "Filed via Finsolz",
               itrForm: itrData.filingType || "ITR-1 (Sahaj)",
               filingStatus: itrData.status || "Successfully Filed",
               grossTotalIncome: rawIncome !== undefined && rawIncome !== null
@@ -404,7 +404,7 @@ export const RevisedItrApiService = {
         assessmentYear: formattedAy,
         filingDate: submittedDate
           ? new Date(submittedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-          : "Filed via TaxEdge",
+          : "Filed via Finsolz",
         itrForm: fd.formTitle || fd.formType || matched.serviceName || "ITR-1 (Sahaj)",
         filingStatus: matched.status || "Successfully Filed",
         grossTotalIncome: rawIncome !== undefined && rawIncome !== null && rawIncome !== ""

@@ -6,7 +6,7 @@ export function HeroSection() {
   return (
     <View style={landingStyles.heroContainer}>
       <Image
-        source={require("../../../assets/images/taxedge-hero.png")}
+        source={require("../../../assets/images/finsolz-hero.png")}
         style={landingStyles.heroImage}
         resizeMode="cover"
       />

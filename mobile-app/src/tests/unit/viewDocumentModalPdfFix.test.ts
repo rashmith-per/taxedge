@@ -200,7 +200,7 @@ describe("PDF preview — resolves correctly after fix", () => {
   });
 
   it("PDF from file system (.pdf extension)", () => {
-    const uri = "file:///data/user/0/com.taxedge/cache/AIS_Statement.pdf";
+    const uri = "file:///data/user/0/com.finsolz/cache/AIS_Statement.pdf";
     assert.equal(resolveIsImage(uri, undefined, undefined), false);
     assert.equal(resolveIsPdf(uri, undefined, undefined), true);
   });

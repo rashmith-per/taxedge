@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // ===============================================================================================
-// TaxEdge GST Filing — Edit Mode Navigation & Back Button Visibility Unit Tests
+// Finsolz GST Filing — Edit Mode Navigation & Back Button Visibility Unit Tests
 // - Normal filing: Back button is visible on Step 0 and Step 1.
 // - Step 2 (Review): Review screen already has showBack={false} (currentStep !== 2).
 // - Clicking Edit from Review (Filing Details or Tax Computation -> Step 0): Back button is hidden.

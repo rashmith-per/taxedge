@@ -26,5 +26,6 @@ export interface Step1PersonalInfoProps {
   }) => void;
   onContinue: () => void;
   onUpdateAndContinue?: () => void;
+  onSectionLayout?: (section: string, y: number) => void;
 }
 

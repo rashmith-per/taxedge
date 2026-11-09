@@ -1,5 +1,5 @@
 /**
- * Supported file extensions accepted by TaxEdge Revised ITR backend.
+ * Supported file extensions accepted by Finsolz Revised ITR backend.
  * Matches backend GstFileUploadValidator constraints.
  */
 export const REVISED_ITR_ALLOWED_EXTENSIONS = [

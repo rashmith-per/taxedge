@@ -94,7 +94,7 @@ export const GstApplicationStatusStep: React.FC<GstApplicationStatusStepProps> =
         <View style={styles.successTextContainer}>
           <Text style={styles.successTitle}>Application Submitted!</Text>
           <Text style={styles.successSubtitle}>
-            Your GST application has been successfully filed with TaxEdge.
+            Your GST application has been successfully filed with Finsolz.
           </Text>
         </View>
       </View>

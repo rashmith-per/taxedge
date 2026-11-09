@@ -2,7 +2,7 @@
  * Bug 5 — ITR Document Upload: Support All Backend-Supported Formats
  *
  * Tests frontend validation and MIME/extension handling against
- * backend constraints defined in com.taxedge.validator.GstFileUploadValidator:
+ * backend constraints defined in com.finsolz.validator.GstFileUploadValidator:
  * - Allowed content types:
  *     application/pdf
  *     image/jpeg

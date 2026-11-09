@@ -134,6 +134,19 @@ export function useItrFilingWorkflow({
 
   const handleSubmitApplication = async () => {
     if (isSubmitting) return;
+
+    const missingRequired = formData.documents.filter(
+      (d) => d.tier === "REQUIRED" && d.required && !d.fileUri && !d.isProfileVerified
+    );
+    if (missingRequired.length > 0) {
+      const missingNames = missingRequired.map((d) => `• ${d.name}`).join("\n");
+      Alert.alert(
+        "Required Documents Missing",
+        `Please upload the following required documents before submitting:\n\n${missingNames}`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let itrId = formData.itrId;
@@ -186,7 +199,7 @@ export function useItrFilingWorkflow({
       }
 
       const uploadedDocItems = formData.documents
-        .filter((d) => Boolean(d.fileUri) || d.isProfileVerified)
+        .filter((d) => (Boolean(d.fileUri) || d.isProfileVerified) && d.tier !== "NOT_REQUIRED")
         .map((d) => ({
           id: d.id,
           name: d.name,
@@ -244,9 +257,9 @@ export function useItrFilingWorkflow({
 
       const incomeSourcesSummary = activeIncomeLabels.join(" • ") || "Declared Income";
       const verifiedOrUploadedCount = formData.documents.filter(
-        (d) => Boolean(d.fileUri) || d.isProfileVerified
+        (d) => (Boolean(d.fileUri) || d.isProfileVerified) && d.tier !== "NOT_REQUIRED"
       ).length;
-      const totalDocsCount = formData.documents.length;
+      const totalDocsCount = formData.documents.filter((d) => d.tier !== "NOT_REQUIRED").length;
       const maskedBank = formData.bankDetails.bankName
         ? `${formData.bankDetails.bankName} •••• ${formData.bankDetails.accountNumber.slice(-4)}`
         : "Primary Refund Bank";
@@ -263,7 +276,7 @@ export function useItrFilingWorkflow({
         pathname: "/service/itr-success" as any,
         params: {
           applicationId: generatedAppId,
-          customerName: formData.personalInfo.fullName || "",
+          customerName: formData.personalInfo.name || "",
           serviceTitle,
           assessmentYear: submittedAy,
           formType: submittedForm,

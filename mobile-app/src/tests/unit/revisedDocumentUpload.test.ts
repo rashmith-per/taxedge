@@ -151,7 +151,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
     it("copies Android content:// URIs into local cache directory via FileSystem", async () => {
       const copiedCalls: { from: string; to: string }[] = [];
       const mockFs = {
-        cacheDirectory: "file:///data/user/0/com.taxedge/cache/",
+        cacheDirectory: "file:///data/user/0/com.finsolz/cache/",
         copyAsync: async (opts: { from: string; to: string }) => {
           copiedCalls.push(opts);
         },
@@ -167,7 +167,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
 
       assert.equal(copiedCalls.length, 1);
       assert.equal(copiedCalls[0].from, contentUri);
-      assert.ok(copiedCalls[0].to.startsWith("file:///data/user/0/com.taxedge/cache/revised_doc_"));
+      assert.ok(copiedCalls[0].to.startsWith("file:///data/user/0/com.finsolz/cache/revised_doc_"));
       assert.ok(copiedCalls[0].to.endsWith("pan_card__v1_.pdf"));
       assert.equal(result.localUri, copiedCalls[0].to);
       assert.equal(result.size, 2048576);
@@ -176,7 +176,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
     it("copies iOS ph:// URIs into sandbox cache directory", async () => {
       const copiedCalls: { from: string; to: string }[] = [];
       const mockFs = {
-        cacheDirectory: "file:///var/mobile/Containers/Data/Application/TaxEdge/Library/Caches/",
+        cacheDirectory: "file:///var/mobile/Containers/Data/Application/Finsolz/Library/Caches/",
         copyAsync: async (opts: { from: string; to: string }) => {
           copiedCalls.push(opts);
         },
@@ -198,7 +198,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
     it("preserves files that are already inside cache directory", async () => {
       let copyCalled = false;
       const mockFs = {
-        cacheDirectory: "file:///data/user/0/com.taxedge/cache/",
+        cacheDirectory: "file:///data/user/0/com.finsolz/cache/",
         copyAsync: async () => {
           copyCalled = true;
         },
@@ -209,7 +209,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
         }),
       };
 
-      const existingCacheUri = "file:///data/user/0/com.taxedge/cache/existing_statement.pdf";
+      const existingCacheUri = "file:///data/user/0/com.finsolz/cache/existing_statement.pdf";
       const result = await prepareLocalFileForUpload(existingCacheUri, "statement.pdf", mockFs);
 
       assert.equal(copyCalled, false);
@@ -219,7 +219,7 @@ describe("Stage 2: Revised ITR Document Upload Hardening", () => {
 
     it("handles copy failure gracefully by falling back to original URI", async () => {
       const mockFs = {
-        cacheDirectory: "file:///data/user/0/com.taxedge/cache/",
+        cacheDirectory: "file:///data/user/0/com.finsolz/cache/",
         copyAsync: async () => {
           throw new Error("Disk full or permission revoked");
         },

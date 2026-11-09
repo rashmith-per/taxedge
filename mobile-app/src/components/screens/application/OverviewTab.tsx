@@ -37,7 +37,7 @@ export function OverviewTab({
   const resolvedServiceName =
     (isGstAmendment && formData.section
       ? `GST Amendment — ${formData.section}`
-      : app.serviceName) || "TaxEdge Service";
+      : app.serviceName) || "Finsolz Service";
 
   const resolvedAppliedDate =
     appliedDate ||

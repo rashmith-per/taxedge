@@ -64,7 +64,7 @@ export const TdsRefundStatusScreen: React.FC<TdsRefundStatusScreenProps> = ({
     headerTitle: "TDS Refund",
     headerSubtitle: "Application Status",
     title: "Application Submitted!",
-    description: "Your TDS Refund application has been successfully filed with TaxEdge.",
+    description: "Your TDS Refund application has been successfully filed with Finsolz.",
     assessmentYear: params.assessmentYear || "AY 2025–26",
     appliedDate:
       params.appliedDate ||

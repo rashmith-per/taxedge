@@ -1,7 +1,7 @@
-export const APP_NAME = "TaxEdge";
+export const APP_NAME = "Finsolz";
 export const APP_VERSION = "1.0.0";
-export const SUPPORT_EMAIL = "support@taxedge.in";
-export const SUPPORT_PHONE = "+91 1800-TAX-EDGE";
+export const SUPPORT_EMAIL = "support@finsolz.in";
+export const SUPPORT_PHONE = "+91 1800-FINSOLZ";
 
 export const GST_RATES = [0, 5, 12, 18, 28];
 

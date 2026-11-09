@@ -140,7 +140,7 @@ async function simulateLookupOriginalReturn(
     return {
       acknowledgementNumber: cleanAck,
       assessmentYear: formattedAy,
-      filingDate: matched.submittedAt || matched.createdAt || "Filed via TaxEdge",
+      filingDate: matched.submittedAt || matched.createdAt || "Filed via Finsolz",
       itrForm: fd.formTitle || fd.formType || matched.serviceName || "ITR-1 (Sahaj)",
       filingStatus: matched.status || "Successfully Filed",
       grossTotalIncome:

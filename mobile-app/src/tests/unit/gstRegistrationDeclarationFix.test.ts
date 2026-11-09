@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // ===============================================================================================
-// TaxEdge GST Registration — Declaration Checkbox Auto-Selection Bug Fix Unit Tests
+// Finsolz GST Registration — Declaration Checkbox Auto-Selection Bug Fix Unit Tests
 // Tests the requirement:
 // 1. Declaration checkbox is unchecked by default (state initialized to false).
 // 2. No defaultChecked={true} or automatic selection logic.

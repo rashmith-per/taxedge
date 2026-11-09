@@ -10,7 +10,7 @@ import { getErrorMessage } from "@/core/error-handling/errorMessage";
 export type ThemeMode = "light" | "dark";
 
 /** Where earlier versions saved the light/dark choice; cleared so a stored "dark" can never come back. */
-export const THEME_STORAGE_KEY = "@taxedge_theme_mode";
+export const THEME_STORAGE_KEY = "@finsolz_theme_mode";
 
 export interface ThemeStoreState {
   theme: ThemeMode;
