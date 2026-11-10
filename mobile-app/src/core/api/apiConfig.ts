@@ -2,7 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const SERVER_IP = "192.168.88.26";
+export const SERVER_IP = "192.168.88.23";
 export const SERVER_PORT = 8086;
 export const STORAGE_KEY_SERVER_URL = "@finsolz_server_url";
 

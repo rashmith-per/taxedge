@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -11,26 +12,20 @@ import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useRevisedProgressStore } from "../../store/revisedProgressStore";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
 import { RevisedItrHeader } from "../../components/common";
 import { RevisionReasonCard } from "../../components/reason";
 import { REVISION_REASONS } from "../../mock/revisedItrData";
 import { RevisionReasonId } from "../../types/revisedItr.types";
-import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
-import { useKeyboard } from "@/shared/hooks/useKeyboard";
 import {
   styles,
   getContainerInsetsStyle,
   getScrollContentInsetsStyle,
-  getBottomBarInsetsStyle,
 } from "./RevisionReasonScreen.styles";
 
 export const RevisionReasonScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { keyboardShown, keyboardHeight } = useKeyboard();
-  const maxStepReached = useRevisedProgressStore((s) => s.maxStepReached);
   const storedReason = useRevisedProgressStore((s) => s.revisionReason);
   const setRevisionReason = useRevisedProgressStore((s) => s.setRevisionReason);
   const setDocuments = useRevisedProgressStore((s) => s.setDocuments);
@@ -47,8 +42,6 @@ export const RevisionReasonScreen: React.FC = () => {
     useState<RevisionReasonId>((storedReason as RevisionReasonId) || "missed_income");
   const [otherReasonText, setOtherReasonText] = useState("");
   const [otherError, setOtherError] = useState<string | null>(null);
-
-  const selectedReasonObj = REVISION_REASONS.find((r) => r.id === selectedReason);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const { revisedItrId, revisionReasonId, setBackendIds, setMaxStepReached } = useRevisedProgressStore();
@@ -163,10 +156,10 @@ export const RevisionReasonScreen: React.FC = () => {
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
-      <RevisedItrHeader subtitle="Reason for Revision" />
+      <RevisedItrHeader subtitle="Reason for Revision" currentStep={2} totalSteps={5} />
 
       {/* Main Content */}
-      <KeyboardAwareScrollView
+      <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -176,7 +169,10 @@ export const RevisionReasonScreen: React.FC = () => {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.pageTitle}>Why are you revising your ITR?</Text>
+          <Text style={styles.pageTitle}>Choose Reason for Revision</Text>
+          <Text style={styles.pageSubtitle}>
+            Select the primary reason for revising your filed return.
+          </Text>
         </View>
 
         {/* Reason Cards List */}
@@ -218,46 +214,40 @@ export const RevisionReasonScreen: React.FC = () => {
             ) : null}
           </View>
         )}
-      </KeyboardAwareScrollView>
 
-      {/* Sticky Bottom Action Button */}
-      <View
-        style={[
-          styles.bottomBar,
-          getBottomBarInsetsStyle(insets.bottom),
-          { bottom: keyboardShown ? keyboardHeight : 0 },
-        ]}
-      >
-        {params.isEditing === "true" ? (
-          /* Separate Button 1: Update & Continue (PUT Method) */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleUpdateAndContinue}
-            style={styles.continueButton}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.continueButtonText}>Update & Continue</Text>
-            )}
-          </TouchableOpacity>
-        ) : (
-          /* Separate Button 2: Continue (POST Method) */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleContinue}
-            style={styles.continueButton}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.continueButtonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
+        {/* Action Button — In Scroll Flow */}
+        <View style={styles.buttonWrapper}>
+          {params.isEditing === "true" ? (
+            /* Separate Button 1: Update & Continue (PUT Method) */
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleUpdateAndContinue}
+              style={styles.continueButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Update & Continue</Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            /* Separate Button 2: Continue (POST Method) */
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleContinue}
+              style={styles.continueButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Continue</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 };

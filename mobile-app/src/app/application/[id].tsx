@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   BackHandler,
+  Alert,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -26,6 +27,7 @@ import { StatusTab } from "@/components/screens/application/StatusTab";
 import { DocumentsTab } from "@/components/screens/application/DocumentsTab";
 import { PaymentsTab } from "@/components/screens/application/PaymentsTab";
 import { ChatTab } from "@/components/screens/application/ChatTab";
+import { useApplicationChat } from "@/modules/communication/hooks/useApplicationChat";
 import {
   formatDisplayDate,
   getServiceSpecificTimeline,
@@ -35,16 +37,14 @@ import { formatAmendmentSubmissionDate } from "@/modules/gst/gst-amendment/utils
 export default function ApplicationDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
 
   const applications = useApplicationStore((state) => state.applications);
-  const addChatMessage = useApplicationStore((state) => state.addChatMessage);
 
   const [remoteApp, setRemoteApp] = useState<Application | null>(null);
   const [isLoadingRemote, setIsLoadingRemote] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [isSendingChat, setIsSendingChat] = useState(false);
-  const [activeTab, setActiveTab] = useState<DetailTab>("OVERVIEW");
+  const [activeTab, setActiveTab] = useState<DetailTab>(tab === "CHAT" ? "CHAT" : "OVERVIEW");
 
   const cleanId = id ? String(id).trim() : "";
 
@@ -77,39 +77,25 @@ export default function ApplicationDetailScreen() {
     return () => sub.remove();
   }, [handleBack]);
 
+  // The Chat tab talks to the manager who took the application, through the backend chat.
+  const chat = useApplicationChat(app, activeTab === "CHAT");
+
   const handleSendMessage = async (
     attachment?: { uri: string; fileName: string; fileSize?: number; mimeType: string } | null,
   ) => {
     const text = chatInput.trim();
     if (!text && !attachment) return;
     if (!app) return;
-    setIsSendingChat(true);
+    if (attachment) {
+      Alert.alert("Attachments not available", "Photos can't be sent in this chat yet. Send your message as text.");
+      return;
+    }
     try {
-      let remoteUrl: string | undefined;
-      if (attachment) {
-        const uploaded = await applicationService.uploadChatAttachment(app.id, {
-          uri: attachment.uri,
-          name: attachment.fileName,
-          type: attachment.mimeType,
-          size: attachment.fileSize,
-        });
-        if (uploaded) {
-          remoteUrl = uploaded;
-        }
-      }
-      addChatMessage(app.id, "user", text, attachment ? {
-        uri: attachment.uri,
-        url: remoteUrl,
-        fileName: attachment.fileName,
-        fileSize: attachment.fileSize,
-        mimeType: attachment.mimeType,
-      } : undefined);
+      await chat.send(text);
       setChatInput("");
     } catch (err) {
       logger.warn("[ApplicationDetails] Failed to send chat message", { error: err });
       throw err;
-    } finally {
-      setIsSendingChat(false);
     }
   };
 
@@ -266,13 +252,16 @@ export default function ApplicationDetailScreen() {
       {activeTab === "CHAT" ? (
         <ChatTab
           app={app}
-          chatHistory={app.chatHistory}
-          assignedCA={assignedCA}
+          chatHistory={chat.messages}
+          assignedCA={chat.manager?.name ?? assignedCA}
           isLoans={isLoans}
           appliedDate={appliedDate}
           chatInput={chatInput}
           setChatInput={setChatInput}
-          isSendingChat={isSendingChat}
+          isSendingChat={chat.sending}
+          managerName={chat.manager?.name ?? null}
+          chatStatus={chat.loading && !chat.manager ? "loading" : chat.error ? "error" : !chat.manager ? "no-manager" : "ready"}
+          chatError={chat.error}
           onSendMessage={handleSendMessage}
           formatDisplayDate={formatDisplayDate}
           bottomInset={insets.bottom}
