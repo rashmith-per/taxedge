@@ -26,19 +26,25 @@ export const itrApi = {
   getMyItrFilingApplications: async (custId?: string): Promise<ItrFilingBackendDto[]> => {
     const id = (custId || getEffectiveCustId()).trim();
     if (!id) return [];
-    return apiClient.get<ItrFilingBackendDto[]>(`/api/v1/my-applications/itr-filing/${encodeURIComponent(id)}`);
+    return apiClient.get<ItrFilingBackendDto[]>(`/api/v1/itr/my-applications/${encodeURIComponent(id)}`, {
+      headers: { "X-Customer-Id": id },
+    });
   },
 
   getMyRevisedItrApplications: async (custId?: string): Promise<RevisedItrBackendDto[]> => {
     const id = (custId || getEffectiveCustId()).trim();
     if (!id) return [];
-    return apiClient.get<RevisedItrBackendDto[]>(`/api/v1/my-applications/revised-itr/${encodeURIComponent(id)}`);
+    return apiClient.get<RevisedItrBackendDto[]>(`/api/v1/itr/my-applications/revised/${encodeURIComponent(id)}`, {
+      headers: { "X-Customer-Id": id },
+    });
   },
 
   getMyTdsRefundApplications: async (custId?: string): Promise<TdsRefundBackendDto[]> => {
     const id = (custId || getEffectiveCustId()).trim();
     if (!id) return [];
-    return apiClient.get<TdsRefundBackendDto[]>(`/api/v1/my-applications/tds-refund/${encodeURIComponent(id)}`);
+    return apiClient.get<TdsRefundBackendDto[]>(`/api/v1/itr/my-applications/tds-refund/${encodeURIComponent(id)}`, {
+      headers: { "X-Customer-Id": id },
+    });
   },
 };
 

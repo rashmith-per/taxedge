@@ -310,7 +310,7 @@ export const gstApi = {
     const resolvedCustId = custId || (await resolveCustomerId());
     if (!resolvedCustId) return [];
     return apiClient.get<import("./gstApplicationMapper").GstBackendApplicationDto[]>(
-      `/api/v1/my-applications/gst-registration/${encodeURIComponent(resolvedCustId)}`,
+      `/api/v1/my-applications/${encodeURIComponent(resolvedCustId)}`,
       { headers }
     );
   },
@@ -322,7 +322,7 @@ export const gstApi = {
     const resolvedCustId = custId || (await resolveCustomerId());
     if (!resolvedCustId) return [];
     return apiClient.get<import("./gstFilingApplicationMapper").GstFilingBackendDto[]>(
-      `/api/v1/my-applications/gst-filing/${encodeURIComponent(resolvedCustId)}`,
+      `/api/v1/my-applications/filing/${encodeURIComponent(resolvedCustId)}`,
       { headers }
     );
   },
@@ -334,7 +334,7 @@ export const gstApi = {
     const resolvedCustId = custId || (await resolveCustomerId());
     if (!resolvedCustId) return [];
     return apiClient.get<import("./gstComplianceApplicationMapper").GstComplianceBackendDto[]>(
-      `/api/v1/my-applications/gst-compliance/${encodeURIComponent(resolvedCustId)}`,
+      `/api/v1/my-applications/compliance/${encodeURIComponent(resolvedCustId)}`,
       { headers }
     );
   },
@@ -346,7 +346,7 @@ export const gstApi = {
     const resolvedCustId = custId || (await resolveCustomerId());
     if (!resolvedCustId) return [];
     return apiClient.get<import("./gstAmendmentApplicationMapper").GstAmendmentBackendDto[]>(
-      `/api/v1/my-applications/gst-amendment/${encodeURIComponent(resolvedCustId)}`,
+      `/api/v1/my-applications/amendment/${encodeURIComponent(resolvedCustId)}`,
       { headers }
     );
   },

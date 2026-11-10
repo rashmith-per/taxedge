@@ -75,7 +75,7 @@ export interface ApplicationState extends DraftSliceState {
 const timeStamp = (): string =>
   new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-export const useApplicationStore = create<ApplicationState>((set) => ({
+export const useApplicationStore = create<ApplicationState>((set, get) => ({
   applications: [],
   isLoading: false,
   error: null,
@@ -102,12 +102,14 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
     set({ isLoading: true, error: null });
     const cleanMobile = getActiveCustomerMobile();
     try {
-      const [remoteResult, draftsResult] = await Promise.allSettled([
+      const [remoteResult, draftsResult, persistedResult] = await Promise.allSettled([
         applicationService.getApplications(),
         getCustomerDrafts(cleanMobile),
+        getPersistedApplications(cleanMobile),
       ]);
 
       const customerDrafts = draftsResult.status === "fulfilled" ? draftsResult.value : [];
+      const localPersistedApps = persistedResult.status === "fulfilled" ? persistedResult.value : [];
       let remoteApps: Application[] = [];
       let remoteError: string | null = null;
 
@@ -132,10 +134,33 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
         }
       }
 
-      // Pure backend for submitted cards
+      // Reconcile applications: Keep local submitted applications so freshly submitted
+      // or offline applications are never wiped out while backend applications load.
       const submittedMap = new Map<string, Application>();
+
+      // 1. Seed with locally persisted submitted applications
+      localPersistedApps.forEach((app) => {
+        if (app && app.id && app.status !== "Draft") {
+          submittedMap.set(app.id, app);
+        }
+      });
+
+      // 2. Preserve in-memory applications that were just submitted
+      const currentApps = get().applications || [];
+      currentApps.forEach((app) => {
+        if (app && app.id && app.status !== "Draft") {
+          submittedMap.set(app.id, app);
+        }
+      });
+
+      // 3. Overwrite with fresh remote applications from backend (backend is authoritative)
       remoteApps.forEach((app) => {
-        submittedMap.set(app.id, app);
+        if (app && app.id) {
+          submittedMap.set(app.id, app);
+          if (app.formData?.applicationId && app.formData.applicationId !== app.id) {
+            submittedMap.delete(app.formData.applicationId);
+          }
+        }
       });
 
       const submittedServiceIds = new Set(
@@ -153,7 +178,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
         documents: extractAllApplicationDocuments(app, app.documents),
       }));
 
-      // Update in-memory store with pure backend applications
+      // Update in-memory store
       set({ applications: combinedApps, isLoading: false, error: combinedApps.length > 0 ? null : remoteError });
       savePersistedApplications(cleanMobile, Array.from(submittedMap.values()));
     } catch (err: unknown) {
