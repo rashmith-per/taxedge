@@ -1,13 +1,14 @@
 package com.taxedge.dashboards.agents.itr.service;
 
+import com.taxedge.dashboards.agents.gst.dto.AssignAgentRequest;
+
 public interface ItrAgentAssignmentService {
 
-    String assignItrApplication(String id, Long agentId, String applicationType);
+    String assignItrApplication(AssignAgentRequest request);
 
-    void assignTdsRefund(String refundId, Long agentId);
+    void assignTdsRefund(AssignAgentRequest request);
 
-    void assignItrFiling(String itrId, Long agentId);
+    void assignItrFiling(AssignAgentRequest request);
 
-    void assignRevisedItr(String revisedItrId, Long agentId);
+    void assignRevisedItr(AssignAgentRequest request);
 }
-

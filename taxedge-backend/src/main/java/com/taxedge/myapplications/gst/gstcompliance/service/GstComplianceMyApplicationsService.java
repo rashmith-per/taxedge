@@ -6,5 +6,5 @@ import com.taxedge.myapplications.gst.gstcompliance.dto.GstComplianceMyApplicati
 
 public interface GstComplianceMyApplicationsService {
 
-    List<GstComplianceMyApplicationResponseDto> getMyComplianceApplications(String custId);
+    List<GstComplianceMyApplicationResponseDto> getMyGstComplianceApplications(String custId);
 }

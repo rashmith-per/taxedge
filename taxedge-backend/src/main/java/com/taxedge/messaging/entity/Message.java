@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 
 import com.taxedge.messaging.converter.MessageEncryptionConverter;
+import com.taxedge.messaging.enums.ChannelType;
 import com.taxedge.messaging.enums.MessageType;
 
 import jakarta.persistence.Column;
@@ -30,8 +31,10 @@ import lombok.Setter;
 @Table(
     name = "chat_messages",
     indexes = {
+        @Index(name = "idx_msg_cust_mgr_id", columnList = "cust_id, manager_id, id"),
         @Index(name = "idx_msg_mgr_agent_id", columnList = "manager_id, agent_id, id"),
-        @Index(name = "idx_msg_agent_mgr_id", columnList = "agent_id, manager_id, id")
+        @Index(name = "idx_msg_admin_mgr_id", columnList = "admin_id, manager_id, id"),
+        @Index(name = "idx_msg_admin_agent_id", columnList = "admin_id, agent_id, id")
     },
     uniqueConstraints = {
         @UniqueConstraint(name = "uq_msg_sender_client_id", columnNames = {"sender_id", "client_message_id"})
@@ -50,11 +53,22 @@ public class Message {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "manager_id", length = 50, nullable = false, updatable = false)
+    @Column(name = "admin_id", length = 50, updatable = false)
+    private String adminId;
+
+    @Column(name = "cust_id", length = 50, updatable = false)
+    private String custId;
+
+    @Column(name = "manager_id", length = 50, updatable = false)
     private String managerId;
 
-    @Column(name = "agent_id", length = 50, nullable = false, updatable = false)
+    @Column(name = "agent_id", length = 50, updatable = false)
     private String agentId;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel_type", length = 30, nullable = false, updatable = false)
+    private ChannelType channelType = ChannelType.CUSTOMER_MANAGER;
 
     @Column(name = "recipient_id", length = 50, nullable = false, updatable = false)
     private String recipientId;

@@ -1,8 +1,10 @@
 package com.taxedge.dashboards.agents.companyregistration.service;
 
+import com.taxedge.dashboards.agents.gst.dto.AssignAgentRequest;
+
 public interface CompanyRegistrationAgentAssignmentService {
 
-    String assignCompanyApplication(String id, Long agentId, String applicationType);
+    String assignCompanyApplication(AssignAgentRequest request);
 
-    void assignCompanyRegistration(String companyRegistrationId, Long agentId);
+    void assignCompanyRegistration(AssignAgentRequest request);
 }

@@ -76,12 +76,40 @@ public class MsmeLoanApplicationController {
     }
 
     @PostMapping(value = "application/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<MsmeLoanDocumentItemResponse> uploadDocument(
+    public ResponseEntity<?> uploadDocuments(
             @PathVariable String id,
-            @RequestParam("documentType") MsmeDocumentType documentType,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam(value = "documentType", required = false) MsmeDocumentType documentType,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            org.springframework.web.multipart.MultipartHttpServletRequest request) {
+
+        if (documentType != null) {
+            MultipartFile targetFile = file;
+            if (targetFile == null || targetFile.isEmpty()) {
+                targetFile = request.getFile(documentType.name());
+                if (targetFile == null || targetFile.isEmpty()) {
+                    targetFile = request.getFile(documentType.getKey());
+                }
+                if ((targetFile == null || targetFile.isEmpty()) && request.getFileMap().size() == 1) {
+                    targetFile = request.getFileMap().values().iterator().next();
+                }
+            }
+            if (targetFile != null && !targetFile.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(documentService.uploadDocument(id, documentType, targetFile));
+            }
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(documentService.uploadDocument(id, documentType, file));
+                .body(documentService.uploadDocuments(id, request.getFileMap()));
+    }
+
+    @PutMapping(value = "application/{id}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateDocuments(
+            @PathVariable String id,
+            @RequestParam(value = "documentType", required = false) MsmeDocumentType documentType,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            org.springframework.web.multipart.MultipartHttpServletRequest request) {
+        return uploadDocuments(id, documentType, file, request);
     }
 
     @GetMapping("application/{id}/documents")

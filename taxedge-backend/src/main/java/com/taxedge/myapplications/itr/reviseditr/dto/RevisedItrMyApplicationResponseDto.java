@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RevisedItrMyApplicationResponseDto {
+
+    // Essential identification, status, and dates
     private String revisedItrId;
     private String applicationType;
     private RegisterationStatus status;
@@ -22,24 +24,11 @@ public class RevisedItrMyApplicationResponseDto {
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
 
-    // Step 1: Base & Assessment info
+    // Display identifiers
     private String assessmentYear;
     private String itrAcknowledgementNumber;
 
-    // Step 2: Revised Details
-    private String salaryBusinessIncome;
-    private String otherIncome;
-    private String deduction80C;
-    private String deduction80D;
-    private String homeLoanInterest;
-    private String taxableIncome;
-    private String bankAccountForRefund;
-
-    // Step 3: Revision Reason
-    private String reason;
-    private String otherReason;
-
-    // Step 4: Documents flags
+    // Document flags from documents table
     private boolean panCardUploaded;
     private boolean aadhaarCardUploaded;
     private boolean form16Uploaded;

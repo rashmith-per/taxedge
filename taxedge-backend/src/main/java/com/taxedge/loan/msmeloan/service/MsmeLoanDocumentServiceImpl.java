@@ -71,6 +71,51 @@ public class MsmeLoanDocumentServiceImpl implements MsmeLoanDocumentService {
     }
 
     @Override
+    @Transactional
+    public List<MsmeLoanDocumentItemResponse> uploadDocuments(String loanApplicationId, java.util.Map<String, MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("At least one document file is required");
+        }
+
+        MsmeLoanApplication application = findApplicationForCurrentCustomer(loanApplicationId);
+        if (application.getStatus() == LoanApplicationStatus.SUBMITTED || application.getStatus() == LoanApplicationStatus.APPROVED) {
+            throw new IllegalStateException("Submitted or approved applications cannot be modified");
+        }
+
+        MsmeLoanDocument document = documentRepository.findByLoanApplication_Id(loanApplicationId)
+                .orElseGet(() -> MsmeLoanDocument.builder().loanApplication(application).build());
+
+        boolean anyUploaded = false;
+        for (java.util.Map.Entry<String, MultipartFile> entry : files.entrySet()) {
+            String key = entry.getKey();
+            MultipartFile file = entry.getValue();
+
+            if (file == null || file.isEmpty() || "file".equalsIgnoreCase(key) || "documentType".equalsIgnoreCase(key)) {
+                continue;
+            }
+
+            MsmeDocumentType type = MsmeDocumentType.fromKey(key).orElse(null);
+            if (type != null) {
+                try {
+                    setFileContent(document, type, file.getBytes());
+                    anyUploaded = true;
+                    log.info("Document {} uploaded for MSME loan {}", type, loanApplicationId);
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to read file contents for " + key + ": " + e.getMessage(), e);
+                }
+            } else {
+                log.warn("Unrecognized MSME document type key: {}", key);
+            }
+        }
+
+        if (anyUploaded) {
+            documentRepository.save(document);
+        }
+
+        return getDocuments(loanApplicationId);
+    }
+
+    @Override
     public List<MsmeLoanDocumentItemResponse> getDocuments(String loanApplicationId) {
         findApplicationForCurrentCustomer(loanApplicationId);
         MsmeLoanDocument doc = documentRepository.findByLoanApplication_Id(loanApplicationId).orElse(null);

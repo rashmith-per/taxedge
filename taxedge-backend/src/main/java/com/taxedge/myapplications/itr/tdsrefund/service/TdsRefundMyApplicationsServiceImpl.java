@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 import com.taxedge.itr.tdsrefund.entity.TdsRefund;
 import com.taxedge.itr.tdsrefund.repository.TdsRefundRepository;
 import com.taxedge.myapplications.itr.tdsrefund.dto.TdsRefundMyApplicationResponseDto;
+import com.taxedge.myapplications.itr.tdsrefund.mapper.TdsRefundMyApplicationsMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 public class TdsRefundMyApplicationsServiceImpl implements TdsRefundMyApplicationsService {
 
     private final TdsRefundRepository tdsRefundRepository;
+    private final TdsRefundMyApplicationsMapper tdsRefundMyApplicationsMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -31,31 +33,7 @@ public class TdsRefundMyApplicationsServiceImpl implements TdsRefundMyApplicatio
 
         List<TdsRefund> refunds = tdsRefundRepository.findSubmittedByCustId(custId);
         return refunds.stream()
-                .map(this::toResponseDto)
+                .map(tdsRefundMyApplicationsMapper::toDto)
                 .toList();
-    }
-
-    private TdsRefundMyApplicationResponseDto toResponseDto(TdsRefund refund) {
-        return TdsRefundMyApplicationResponseDto.builder()
-                .tdsRefundId(refund.getId())
-                .applicationType("TDS_REFUND")
-                .status(refund.getStatus())
-                .assignedAgentId(refund.getAssignedAgent() != null ? refund.getAssignedAgent().getId() : null)
-                .createdAt(refund.getCreatedAt())
-                .updatedAt(refund.getUpdatedAt())
-                .submittedAt(refund.getSubmittedAt())
-                .accountHolderName(refund.getAccountHolderName())
-                .accountNumber(refund.getAccountNumber())
-                .ifscCode(refund.getIfscCode())
-                .bankName(refund.getBankName())
-                .branchName(refund.getBranchName())
-                .accountType(refund.getAccountType())
-                .legalBusinessName(refund.getLegalBusinessName())
-                .businessPan(refund.getBusinessPan())
-                .aadhaarNumber(refund.getAadhaarNumber())
-                .mobileNumber(refund.getMobileNumber())
-                .businessPanDocumentUploaded(refund.getBusinessPanDocument() != null && refund.getBusinessPanDocument().length > 0)
-                .aadhaarDocumentUploaded(refund.getAadhaarDocument() != null && refund.getAadhaarDocument().length > 0)
-                .build();
     }
 }

@@ -1,5 +1,7 @@
 package com.taxedge.dashboards.agents.gst.dto;
 
+import java.time.LocalDate;
+
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -25,5 +27,11 @@ public class AssignAgentRequest {
     private Long agentId;
 
     private String applicationType;
+
+    private String priority;
+
+    private LocalDate dueDate;
+
+    private String notes;
 }
 

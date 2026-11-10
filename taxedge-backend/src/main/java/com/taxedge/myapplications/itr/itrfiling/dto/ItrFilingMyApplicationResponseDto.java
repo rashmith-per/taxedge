@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItrFilingMyApplicationResponseDto {
+
+    // Essential identification, status, and dates
     private String itrId;
     private String applicationType;
     private RegisterationStatus status;
@@ -22,22 +24,10 @@ public class ItrFilingMyApplicationResponseDto {
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
 
-    // Step 1: Personal / Return Info
+    // Display identifier
     private String assessmentYear;
-    private String residentialStatus;
-    private String filingType;
-    private String bankName;
-    private String accountNumber;
-    private String ifscCode;
 
-    // Step 2: Salary Income Info
-    private String incomeSource;
-    private String employerLegalName;
-    private String grossSalary;
-    private String exemptAllowances;
-    private String tdsDeductedByEmployer;
-
-    // Step 3: Documents flags
+    // Document flags from documents table
     private boolean form16Uploaded;
     private boolean form26asUploaded;
     private boolean aisTisUploaded;

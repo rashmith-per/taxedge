@@ -2,6 +2,7 @@ package com.taxedge.messaging.dto;
 
 import java.time.LocalDateTime;
 
+import com.taxedge.messaging.enums.ChannelType;
 import com.taxedge.messaging.enums.MessageType;
 
 import lombok.AllArgsConstructor;
@@ -19,8 +20,11 @@ public class MessageDto {
 
     private Long id;
 
+    private String adminId;
+    private String custId;
     private String managerId;
     private String agentId;
+    private ChannelType channelType;
     private String recipientId;
     private String clientMessageId;
     private String senderId;
