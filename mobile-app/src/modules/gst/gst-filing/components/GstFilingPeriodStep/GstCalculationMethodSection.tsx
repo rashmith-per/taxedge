@@ -109,12 +109,14 @@ export const GstCalculationMethodSection: React.FC<GstCalculationMethodSectionPr
               maxLength={20}
               value={getDisplayValue(taxableSales)}
               onBlur={() => onBlurField?.("taxableSales")}
-              onChangeText={(val) =>
+              onChangeText={(val) => {
+                const cleaned = toRawNumericString(removeEmoji(val));
                 onChange({
-                  taxableSales: toRawNumericString(removeEmoji(val)),
+                  taxableSales: cleaned,
                   calculationMethod: "manual_estimates",
-                })
-              }
+                });
+                onBlurField?.("taxableSales");
+              }}
             />
             {errors.taxableSales ? (
               <Text style={styles.errorText}>{errors.taxableSales}</Text>
@@ -133,12 +135,14 @@ export const GstCalculationMethodSection: React.FC<GstCalculationMethodSectionPr
               maxLength={20}
               value={getDisplayValue(taxablePurchases)}
               onBlur={() => onBlurField?.("taxablePurchases")}
-              onChangeText={(val) =>
+              onChangeText={(val) => {
+                const cleaned = toRawNumericString(removeEmoji(val));
                 onChange({
-                  taxablePurchases: toRawNumericString(removeEmoji(val)),
+                  taxablePurchases: cleaned,
                   calculationMethod: "manual_estimates",
-                })
-              }
+                });
+                onBlurField?.("taxablePurchases");
+              }}
             />
             {errors.taxablePurchases ? (
               <Text style={styles.errorText}>{errors.taxablePurchases}</Text>
@@ -157,12 +161,14 @@ export const GstCalculationMethodSection: React.FC<GstCalculationMethodSectionPr
               maxLength={20}
               value={getDisplayValue(eligibleItc)}
               onBlur={() => onBlurField?.("eligibleItc")}
-              onChangeText={(val) =>
+              onChangeText={(val) => {
+                const cleaned = toRawNumericString(removeEmoji(val));
                 onChange({
-                  eligibleItc: toRawNumericString(removeEmoji(val)),
+                  eligibleItc: cleaned,
                   calculationMethod: "manual_estimates",
-                })
-              }
+                });
+                onBlurField?.("eligibleItc");
+              }}
             />
             {errors.eligibleItc ? (
               <Text style={styles.errorText}>{errors.eligibleItc}</Text>

@@ -21,6 +21,7 @@ import { CORE_AMENDMENT_SECTIONS } from "../../config/gstCoreAmendmentConfig";
 import { NON_CORE_AMENDMENT_SECTIONS } from "../../config/gstNonCoreAmendmentConfig";
 import { GstinInfoIcon } from "@/modules/gst/components/common";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
+import { normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
 
 interface GstAmendmentLandingProps {
   gstin: string;
@@ -94,7 +95,7 @@ export const GstAmendmentLanding: React.FC<GstAmendmentLandingProps> = ({
             placeholder="Enter GSTIN"
             placeholderTextColor="#94A3B8"
             value={gstin}
-            onChangeText={(text) => onGstinChange(removeEmoji(text))}
+            onChangeText={(text) => onGstinChange(normalizeStructuredCode(text))}
             autoCapitalize="characters"
             maxLength={15}
           />

@@ -12,6 +12,11 @@ import { useTheme } from "@/shared/hooks/useTheme";
 import { BrandColors } from "@/shared/theme";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
 import {
+  normalizeLiveInput,
+  normalizeLiveMultilineInput,
+  finalizeTrim,
+} from "@/modules/gst/utils/gstSpaceValidation";
+import {
   styles,
   getInputContainerDynamicStyle,
   getTextInputDynamicStyle,
@@ -63,7 +68,7 @@ export const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   const inputRef = useRef<TextInput>(null);
 
   const handleChangeText = (text: string) => {
-    const cleaned = removeEmoji(text);
+    const cleaned = multiline ? normalizeLiveMultilineInput(text) : normalizeLiveInput(text);
     if (onChangeText) onChangeText(cleaned);
   };
 
@@ -92,6 +97,12 @@ export const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
 
   const handleBlur = (e: any) => {
     setIsFocused(false);
+    if (typeof value === "string") {
+      const trimmed = finalizeTrim(value);
+      if (trimmed !== value && onChangeText) {
+        onChangeText(trimmed);
+      }
+    }
     if (onBlur) onBlur(e);
   };
 

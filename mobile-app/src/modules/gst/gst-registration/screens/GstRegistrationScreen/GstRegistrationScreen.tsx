@@ -92,8 +92,8 @@ export const GstRegistrationScreen: React.FC = () => {
           currentStep={screenIndex + 1}
           totalSteps={3}
           stepLabel={STEP_LABELS[screenIndex]}
-          onBack={isEditMode ? undefined : handleBack}
-          showBack={!isEditMode}
+          onBack={isEditMode || screenIndex === 2 ? undefined : handleBack}
+          showBack={!isEditMode && screenIndex !== 2}
         />
       ) : (
         <View style={[styles.headerBar, getHeaderBarStyle(insets.top)]}>

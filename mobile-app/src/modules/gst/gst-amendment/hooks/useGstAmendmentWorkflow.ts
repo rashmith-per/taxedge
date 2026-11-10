@@ -1,37 +1,30 @@
 import { useState, useRef, useEffect, useCallback, ElementRef } from "react";
 import { ScrollView, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { File as ExpoFile } from "expo-file-system";
-import * as FileSystemLegacy from "expo-file-system/legacy";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { useApplicationStore } from "@/store/applicationStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useAuthStore } from "@/store/authStore";
-import { pickImageFromCamera } from "@/modules/gst/utils/imageUploadHelper";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
-import { pickDocumentFromDrive } from "@/shared/utils/driveDocumentUploader";
 import { logger } from "@/core/logging/logger";
 
 import {
   AmendmentStep, SupportingDoc, PickerModalState, SubmissionResult, AmendmentFormData, INITIAL_AMENDMENT_FORM_DATA,
-
 } from "../types/gstAmendmentTypes";
 import { AMENDMENT_SECTIONS } from "../config/gstNonCoreAmendmentConfig";
 import {
-  validateGstinInput, validateSectionForm, validateFieldRealtime, isFormDataDirty,
+  validateGstinInput, validateFieldRealtime, isFormDataDirty,
 } from "../utils/gstAmendmentValidation";
+import { persistSupportingDocument } from "../utils/gstDocumentPersistence";
+import { finalizeTrim, normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
 import { validateGstinLive } from "@/modules/gst/utils/gstValidation";
 import { resolveTargetGstId } from "../utils/gstAmendmentHelpers";
 import { useGstAmendmentDetails } from "./useGstAmendmentDetails";
-import { submitAmendmentService } from "../services/submitAmendmentService";
-import { persistAmendmentForReview } from "../services/persistAmendmentForReview";
-import { getErrorMessage } from "@/core/error-handling/errorMessage";
-import {
-  persistSupportingDocument,
-  verifyFileAccessible,
-} from "../utils/gstDocumentPersistence";
+import { restoreAmendmentDraftFromStorage } from "./useGstAmendmentDraftRestore";
+import { executeAmendmentSubmission } from "./useGstAmendmentSubmissionAction";
+import { browseDocumentForSection, scanDocumentForSection } from "./useGstAmendmentDocHandlers";
+import { processAmendmentReview } from "./useGstAmendmentReviewAction";
 
 const stripImageData = (data: any): any => {
   if (!data || typeof data !== "object") return data;
@@ -83,7 +76,6 @@ export function useGstAmendmentWorkflow() {
   const registeredDetails = useGstAmendmentDetails(targetGstId, selectedSectionId);
 
   // Initial Draft Restoration on mount
-  // Initial Draft Restoration on mount (aligned with GST Registration lifecycle)
   const hasRestoredDraftRef = useRef(false);
   useEffect(() => {
     if (hasRestoredDraftRef.current) return;
@@ -91,58 +83,30 @@ export function useGstAmendmentWorkflow() {
 
     const restoreDraft = async () => {
       try {
-        const clean = customer?.mobile ? String(customer.mobile).replace(/\D/g, "") : "";
-        let savedData: any = gstAmendmentDraft?.formData || {};
-        let savedStep: AmendmentStep | undefined = gstAmendmentDraft?.step as AmendmentStep | undefined;
+        const res = await restoreAmendmentDraftFromStorage({
+          customerMobile: customer?.mobile,
+          gstAmendmentDraft,
+          paramsGstin: params.gstin,
+          paramsSection: params.section,
+          paramsStep: params.step,
+          paramsResume: params.resume,
+        });
 
-        if (!savedData.gstin && clean) {
-          const draftKey = `@finsolz_draft_${clean}_gst-amendment`;
-          const raw = await AsyncStorage.getItem(draftKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            savedData = parsed.formData || {};
-            savedStep = parsed.step;
-          }
+        savedDraftStepRef.current = res.savedStep;
+        savedDraftSectionIdRef.current = res.savedSectionId;
+
+        if (res.restoredGstin) setGstin(res.restoredGstin);
+        if (res.restoredSectionId) setSelectedSectionId(res.restoredSectionId);
+        if (res.restoredFormData && Object.keys(res.restoredFormData).length > 0) {
+          setFormData((prev) => ({ ...prev, ...res.restoredFormData }));
         }
-
-        savedDraftStepRef.current = (savedStep as AmendmentStep) || null;
-        savedDraftSectionIdRef.current = savedData.selectedSectionId || null;
-
-        const isExplicitResume = Boolean(params.resume === "true" || params.step);
-
-        if (params.gstin) {
-          setGstin(params.gstin);
-        } else if (savedData.gstin) {
-          setGstin(savedData.gstin);
+        if (res.restoredSectionDocs && Object.keys(res.restoredSectionDocs).length > 0) {
+          setSectionDocs(res.restoredSectionDocs);
         }
+        if (res.restoredAmendmentId) setAmendmentId(res.restoredAmendmentId);
+        if (res.restoredDbReviewData) setDbReviewData(res.restoredDbReviewData);
 
-        if (params.section) {
-          setSelectedSectionId(params.section);
-        } else if (savedData.selectedSectionId) {
-          setSelectedSectionId(savedData.selectedSectionId);
-        }
-
-        if (savedData && Object.keys(savedData).length > 0) {
-          setFormData((prev) => ({ ...prev, ...savedData }));
-          if (savedData._sectionDocs) {
-            setSectionDocs(savedData._sectionDocs);
-          }
-          if (savedData.amendmentId) {
-            setAmendmentId(savedData.amendmentId);
-          }
-          if (savedData.dbReviewData) {
-            setDbReviewData(savedData.dbReviewData);
-          }
-        }
-
-        if (isExplicitResume) {
-          const targetStep = (params.step as AmendmentStep) || savedStep || "EDIT";
-          if (targetStep !== "SUCCESS") {
-            setCurrentStep(targetStep);
-          }
-        } else {
-          setCurrentStep("LANDING");
-        }
+        setCurrentStep(res.initialStep);
       } catch (err) {
         logger.warn("[useGstAmendmentWorkflow] Error restoring draft:", { error: err });
       }
@@ -189,6 +153,14 @@ export function useGstAmendmentWorkflow() {
     });
   }, []);
 
+  const validateFieldOnBlur = useCallback((field: keyof AmendmentFormData) => {
+    setFormData((currentData) => {
+      const err = validateFieldRealtime(field, currentData[field], currentData);
+      setErrors((prev) => (err ? { ...prev, [field]: err } : prev[field] ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== field)) : prev));
+      return currentData;
+    });
+  }, []);
+
   const updateFormField = useCallback((field: keyof AmendmentFormData, value: string) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
@@ -211,7 +183,7 @@ export function useGstAmendmentWorkflow() {
   }, []);
 
   const handleGstinChange = useCallback((text: string) => {
-    const cleaned = text.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const cleaned = normalizeStructuredCode(text);
     setGstin(cleaned);
     setFormData(INITIAL_AMENDMENT_FORM_DATA);
     setSectionDocs({});
@@ -234,7 +206,6 @@ export function useGstAmendmentWorkflow() {
   }, [clearError]);
 
   const handleUploadSuccess = useCallback(async (doc: SupportingDoc) => {
-    // Persist document immediately into internal storage so it remains accessible
     const persisted = await persistSupportingDocument(doc);
     setSectionDocs((prev) => ({
       ...prev,
@@ -255,39 +226,11 @@ export function useGstAmendmentWorkflow() {
   }, [amendmentId, currentStep, dbReviewData, formData, gstin, router, saveGstAmendmentDraft, sectionDocs, selectedSectionId]);
 
   const handleBrowseFiles = useCallback(async () => {
-    const doc = await pickDocumentFromDrive({
-      maxSizeBytes: 10 * 1024 * 1024,
-    });
-    if (doc) {
-      const persisted = await persistSupportingDocument({
-        uri: doc.uri,
-        name: doc.name,
-        size: doc.size,
-        mimeType: doc.mimeType,
-      });
-      setSectionDocs((prev) => ({
-        ...prev,
-        [selectedSectionId]: persisted,
-      }));
-      clearError("supportingDoc");
-    }
+    await browseDocumentForSection(selectedSectionId, setSectionDocs, clearError);
   }, [clearError, selectedSectionId]);
 
   const handleScanFile = useCallback(async () => {
-    const uri = await pickImageFromCamera(false);
-    if (uri) {
-      const persisted = await persistSupportingDocument({
-        uri,
-        name: `Scan_${Date.now().toString().slice(-4)}.jpg`,
-        size: "1.4 MB",
-        mimeType: "image/jpeg",
-      });
-      setSectionDocs((prev) => ({
-        ...prev,
-        [selectedSectionId]: persisted,
-      }));
-      clearError("supportingDoc");
-    }
+    await scanDocumentForSection(selectedSectionId, setSectionDocs, clearError);
   }, [clearError, selectedSectionId]);
 
   const handleDeleteDoc = useCallback(() => {
@@ -334,54 +277,45 @@ export function useGstAmendmentWorkflow() {
   }, []);
 
   const handleReviewChanges = useCallback(async () => {
-    const { isValid, errors: validationErrs } = validateSectionForm(
-      selectedSectionId,
-      formData,
-      supportingDoc
-    );
+    // Normalize and trim text fields across formData before validation & review
+    const normalizedFormData: AmendmentFormData = Object.fromEntries(
+      Object.entries(formData).map(([k, v]) => [k, typeof v === "string" ? finalizeTrim(v) : v])
+    ) as unknown as AmendmentFormData;
+    setFormData(normalizedFormData);
 
-    if (!isValid) {
-      setErrors(validationErrs);
-      Alert.alert(
-        "Required Information",
-        "Please fill in the required amendment details and attach supporting proof."
-      );
-      return;
-    }
-
-    setErrors({});
     setIsSavingRecord(true);
-
     try {
-      await persistAmendmentForReview(
-        {
-          isEditMode,
-          amendmentId,
-          sectionId: selectedSectionId,
-          targetGstId,
-          formData,
-          supportingDoc,
-        },
-        { onSaved: setAmendmentId, onReviewData: setDbReviewData }
-      );
+      const res = await processAmendmentReview({
+        selectedSectionId,
+        formData: normalizedFormData,
+        supportingDoc,
+        isEditMode,
+        amendmentId,
+        targetGstId,
+        setAmendmentId,
+        setDbReviewData,
+      });
+
+      if (!res.success) {
+        if (res.validationErrors) setErrors(res.validationErrors);
+        return;
+      }
+
+      setErrors({});
       if (isEditMode) {
         setIsEditMode(false);
       }
       savedDraftStepRef.current = "REVIEW";
       savedDraftSectionIdRef.current = selectedSectionId;
       saveGstAmendmentDraft({
-        formData: { gstin, selectedSectionId, ...formData, _sectionDocs: sectionDocs, amendmentId, dbReviewData: stripImageData(dbReviewData) },
+        formData: { gstin, selectedSectionId, ...normalizedFormData, _sectionDocs: sectionDocs, amendmentId, dbReviewData: stripImageData(dbReviewData) },
         step: "REVIEW",
         updatedAt: new Date().toISOString().split("T")[0],
       });
       setCurrentStep("REVIEW");
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } catch (err) {
-      logger.error("[useGstAmendmentWorkflow] Error saving/updating amendment record:", { error: err });
-      Alert.alert(
-        "Save Failed",
-        getErrorMessage(err) || "Failed to save amendment record. Please try again."
-      );
+    } catch {
+      // Alerted in processAmendmentReview
     } finally {
       setIsSavingRecord(false);
     }
@@ -408,78 +342,36 @@ export function useGstAmendmentWorkflow() {
 
   const handleSubmitAmendment = useCallback(async () => {
     if (isSubmitting) return;
-
-    if (!declared) {
-      Alert.alert(
-        "Declaration Required",
-        "Please tick the declaration checkbox to authorise Finsolz to file your amendment."
-      );
-      return;
-    }
-
-    if (!supportingDoc || !supportingDoc.uri) {
-      Alert.alert(
-        "Supporting Proof Required",
-        "Please attach a supporting proof document before submitting your amendment."
-      );
-      return;
-    }
-
-    // Live FileSystem accessibility check immediately before submission
-    try {
-      const isAccessible = await verifyFileAccessible(supportingDoc.uri);
-      if (!isAccessible) {
-        // Critical: Do NOT clear sectionDocs. Preserve the selected document so the user doesn't lose it.
-        Alert.alert(
-          "Document Unavailable",
-          "The attached proof file is no longer accessible on this device. Please re-attach the document before submitting."
-        );
-        return;
-      }
-    } catch (fsErr) {
-      logger.warn("[useGstAmendmentWorkflow] FileSystem check error, proceeding with cautious submission:", { error: fsErr });
-    }
-
     setIsSubmitting(true);
-
     try {
-      const result = await submitAmendmentService({
+      const result = await executeAmendmentSubmission({
+        declared,
+        supportingDoc,
         selectedSectionId,
         targetGstId,
         formData,
-        supportingDoc,
         selectedSection,
         registeredDetails,
         createApplication,
         addNotification,
         markSubmitted: draftGuard.markSubmitted,
         amendmentId,
+        clearGstAmendmentDraft,
+        customerMobile: customer?.mobile,
       });
 
-      savedDraftStepRef.current = null;
-      savedDraftSectionIdRef.current = null;
-      clearGstAmendmentDraft();
-
-      const cleanMobile = customer?.mobile ? String(customer.mobile).replace(/\D/g, "") : "";
-      if (cleanMobile) {
-        removeDraftFromIndex(cleanMobile, "gst-amendment");
-        AsyncStorage.removeItem(`@finsolz_draft_${cleanMobile}_gst-amendment`).catch((e) => {
-          logger.debug("[useGstAmendmentWorkflow] Failed to remove draft key", { error: e });
-        });
+      if (result) {
+        savedDraftStepRef.current = null;
+        savedDraftSectionIdRef.current = null;
+        setSubmissionResult(result);
+        setCurrentStep("SUCCESS");
       }
-
-      setSubmissionResult(result);
-      setCurrentStep("SUCCESS");
-    } catch (error) {
-      logger.error("[useGstAmendmentWorkflow] Amendment Submission Error:", { error });
-      Alert.alert(
-        "Submission Failed",
-        getErrorMessage(error) || "Failed to submit amendment. Please check your network connection and try again."
-      );
+    } catch {
+      // Error is caught & alerted in executeAmendmentSubmission
     } finally {
       setIsSubmitting(false);
     }
-  }, [addNotification, amendmentId, clearGstAmendmentDraft, createApplication, customer, declared, draftGuard.markSubmitted, formData, isSubmitting, registeredDetails, selectedSection, selectedSectionId, supportingDoc, targetGstId]);
+  }, [addNotification, amendmentId, clearGstAmendmentDraft, createApplication, customer?.mobile, declared, draftGuard.markSubmitted, formData, isSubmitting, registeredDetails, selectedSection, selectedSectionId, supportingDoc, targetGstId]);
 
   return {
     router, scrollViewRef, currentStep, setCurrentStep, gstin, selectedSection,
@@ -490,6 +382,6 @@ export function useGstAmendmentWorkflow() {
     clearError, handleGstinChange, handleUploadSuccess, handleExplicitSaveDraft,
     handleBrowseFiles, handleScanFile, handleSelectSection, openPickerModal,
     closePickerModal, handleReviewChanges, handleEditFromReview, handleBackFromEdit,
-    handleSubmitAmendment,
+    handleSubmitAmendment, validateFieldOnBlur,
   };
 }

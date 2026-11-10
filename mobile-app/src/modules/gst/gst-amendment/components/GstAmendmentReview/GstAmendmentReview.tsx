@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
+import { GstReviewUploadedDocsCard, GstReviewUploadedDocItem } from "@/modules/gst/components/common";
+import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
 import {
   styles,
   getHeaderBarStyle,
@@ -59,6 +61,7 @@ export const GstAmendmentReview: React.FC<GstAmendmentReviewProps> = ({
   amendmentId,
   dbReviewData,
 }) => {
+  const [previewDoc, setPreviewDoc] = useState<GstReviewUploadedDocItem | null>(null);
   const sectionId = selectedSection.id;
   let requestedValDict: Record<string, string> = {};
   switch (Boolean(dbReviewData)) {
@@ -141,17 +144,22 @@ export const GstAmendmentReview: React.FC<GstAmendmentReviewProps> = ({
           ))}
         </View>
 
-        {/* Attached Proofs Card */}
+        {/* Uploaded Documents Card */}
         {supportingDoc && (
-          <View style={styles.reviewDocsCard}>
-            <Text style={styles.reviewDocsTitle}>Attached Proof</Text>
-            <View style={styles.reviewDocRow}>
-              <Text style={styles.reviewDocName} numberOfLines={1}>
-                {supportingDoc.name}
-              </Text>
-              <Text style={styles.reviewDocSize}>{supportingDoc.size}</Text>
-            </View>
-          </View>
+          <GstReviewUploadedDocsCard
+            documents={[
+              {
+                id: "amendment-proof",
+                name: supportingDoc.name,
+                subtitle: supportingDoc.size,
+                fileUri: supportingDoc.uri,
+                fileName: supportingDoc.name,
+                fileSize: supportingDoc.size,
+              },
+            ]}
+            onEdit={onEdit}
+            onPreviewDoc={(doc) => setPreviewDoc(doc)}
+          />
         )}
 
         {/* Declaration Checkbox */}
@@ -183,6 +191,21 @@ export const GstAmendmentReview: React.FC<GstAmendmentReviewProps> = ({
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Full-Screen Document Preview Modal */}
+      <GstViewDocumentModal
+        visible={Boolean(previewDoc)}
+        title={previewDoc?.name || "Document Preview"}
+        fileUri={previewDoc?.fileUri}
+        fileName={previewDoc?.fileName || previewDoc?.name}
+        fileSize={previewDoc?.fileSize}
+        fileTypeLabel={
+          previewDoc?.fileTypeLabel ||
+          previewDoc?.fileName?.split(".").pop()?.toUpperCase()
+        }
+        mimeType={previewDoc?.mimeType}
+        onClose={() => setPreviewDoc(null)}
+      />
     </View>
   );
 };

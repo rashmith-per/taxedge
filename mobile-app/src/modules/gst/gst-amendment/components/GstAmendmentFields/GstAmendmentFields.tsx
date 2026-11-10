@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardTypeOptions } from "re
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { UniversalDatePicker } from "@/shared/components/UniversalDatePicker";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
+import { normalizeLiveInput, finalizeTrim } from "@/modules/gst/utils/gstSpaceValidation";
 import { styles } from "./GstAmendmentFields.styles";
 
 interface InputFieldProps {
@@ -10,6 +11,7 @@ interface InputFieldProps {
   required?: boolean;
   value: string;
   onChangeText: (text: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   error?: string;
   keyboardType?: KeyboardTypeOptions;
@@ -23,6 +25,7 @@ export const InputField: React.FC<InputFieldProps> = ({
   required = true,
   value,
   onChangeText,
+  onBlur,
   placeholder,
   error,
   keyboardType,
@@ -39,7 +42,14 @@ export const InputField: React.FC<InputFieldProps> = ({
       placeholder={placeholder}
       placeholderTextColor="#94A3B8"
       value={value}
-      onChangeText={(text) => onChangeText(removeEmoji(text))}
+      onChangeText={(text) => onChangeText(normalizeLiveInput(text))}
+      onBlur={() => {
+        if (value) {
+          const trimmed = finalizeTrim(value);
+          if (trimmed !== value) onChangeText(trimmed);
+        }
+        onBlur?.();
+      }}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
       maxLength={maxLength}
@@ -152,7 +162,7 @@ export const PhoneField: React.FC<PhoneFieldProps> = ({
         placeholder={placeholder}
         placeholderTextColor="#94A3B8"
         value={value}
-        onChangeText={(text) => onChangeText(removeEmoji(text))}
+        onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, "").slice(0, 10))}
         keyboardType="phone-pad"
         maxLength={10}
       />

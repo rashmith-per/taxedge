@@ -107,6 +107,7 @@ export function GstAmendmentScreen() {
           onDeleteDoc={workflow.handleDeleteDoc}
           onToggleExpandProofs={() => workflow.setIsProofsExpanded((prev) => !prev)}
           onReviewChanges={workflow.handleReviewChanges}
+          onBlurField={workflow.validateFieldOnBlur}
           isEditMode={workflow.isEditMode}
           isSaving={workflow.isSavingRecord}
         />

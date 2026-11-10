@@ -62,11 +62,13 @@ test("validateEstimatedAmount function implementation supports isRequired flag",
     "validateEstimatedAmount must return `Enter ${fieldName}` when required and empty"
   );
   assert.ok(
-    valCode.includes('return "Amount cannot be negative";'),
+    valCode.includes("Negative amounts are not allowed.") ||
+      valCode.includes('return "Amount cannot be negative";'),
     "validateEstimatedAmount must reject negative amounts"
   );
   assert.ok(
-    valCode.includes('return "Enter a valid amount";'),
+    valCode.includes("Please enter a valid amount.") ||
+      valCode.includes('return "Enter a valid amount";'),
     "validateEstimatedAmount must reject invalid characters"
   );
 });

@@ -41,6 +41,24 @@ export function getDraftResumeRoute(serviceKey: string, step: unknown): string {
     return routeMap[String(step || "").toUpperCase()] || "/service/tds-form";
   }
 
+  if (serviceKey === "gst-registration") {
+    const s = typeof step === "number" ? step : typeof step === "string" ? parseInt(step, 10) : undefined;
+    return typeof s === "number" && !isNaN(s) ? `/service/gst-registration?step=${s}` : "/service/gst-registration";
+  }
+  if (serviceKey === "gst-filing") {
+    const s = typeof step === "number" ? step : typeof step === "string" ? parseInt(step, 10) : undefined;
+    return typeof s === "number" && !isNaN(s) ? `/service/gst-filing?step=${s}` : "/service/gst-filing";
+  }
+  if (serviceKey === "gst-compliance") {
+    const s = typeof step === "number" ? step : typeof step === "string" ? parseInt(step, 10) : undefined;
+    return typeof s === "number" && !isNaN(s) ? `/service/gst-compliance?step=${s}` : "/service/gst-compliance";
+  }
+  if (serviceKey === "gst-amendment") {
+    const s = String(step || "").toUpperCase();
+    return s ? `/service/gst-amendment?step=${encodeURIComponent(s)}&resume=true` : "/service/gst-amendment?resume=true";
+  }
+  if (serviceKey === "gst-certificate") return "/service/gst-certificate";
+
   const routeMap: Record<string, string> = {
     "tax-notice": "/service/tax-notice-assistance",
     "previous-year-itr": "/service/previous-year-itr",

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Alert, Keyboard } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ComplianceFormData,
@@ -11,26 +11,27 @@ import {
   cleanGstinInput,
   validateGstinLive,
 } from "@/modules/gst/utils/gstValidation";
-import {
-  submitComplianceRequest,
-  SubmissionResult,
-} from "@/modules/gst/services/gstComplianceService";
+import { finalizeTrim } from "@/modules/gst/utils/gstSpaceValidation";
 import { gstComplianceApi } from "@/modules/gst/services/gstComplianceApi";
+import { executeComplianceSubmission } from "./useComplianceSubmissionAction";
 import { useAuthStore } from "@/store/authStore";
-import { addDraftToIndex, removeDraftFromIndex } from "@/shared/hooks/useServiceDraft";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { parseCreatedComplianceId, sanitizeComplianceSaveError } from "../utils/complianceResponse";
 import { logger } from "@/core/logging/logger";
+import {
+  getComplianceDraftKey,
+  readComplianceDraft,
+  saveComplianceDraft,
+  clearComplianceDraft,
+} from "./useComplianceDraftStorage";
 
 export interface UseComplianceFormOptions {
   onValidationError?: (firstField: string) => void;
 }
 
 const FIELD_ORDER: (keyof ValidationErrors)[] = [
-  "gstin", "financialYear", "requestType",
-  "noticeNumber", "noticeIssueDate", "replyDueDate",
-  "purchaseDoc", "salesDoc", "noticeDoc",
-  "gstr2bRef", "reconciliationRemarks", "noticeRemarks",
+  "gstin", "financialYear", "requestType", "noticeNumber", "noticeIssueDate", "replyDueDate",
+  "purchaseDoc", "salesDoc", "noticeDoc", "gstr2bRef", "reconciliationRemarks", "noticeRemarks",
 ];
 
 const initialFormData: ComplianceFormData = {
@@ -39,10 +40,6 @@ const initialFormData: ComplianceFormData = {
   gstr2bRef: "", reconciliationRemarks: "",
   noticeNumber: "", noticeIssueDate: "", replyDueDate: "", noticeRemarks: "",
 };
-
-function getDraftKey(mobile: string): string {
-  return `@finsolz_draft_${mobile}_gst-compliance`;
-}
 
 function getCleanMobile(): string {
   const authState = useAuthStore.getState();
@@ -55,6 +52,7 @@ function getCleanMobile(): string {
 
 export function useComplianceForm(options?: UseComplianceFormOptions) {
   const router = useRouter();
+  const params = useLocalSearchParams<{ step?: string; resume?: string }>();
 
   const [currentStep, setCurrentStep] = useState<number>(0); // 0 = Form, 1 = Review
   const [hasEnteredReview, setHasEnteredReview] = useState<boolean>(false);
@@ -84,28 +82,32 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
   useEffect(() => {
     if (!hasCheckedDraft) {
       const checkDraft = async () => {
-        try {
-          const mobile = getCleanMobile();
-          if (!mobile) return;
-          const raw = await AsyncStorage.getItem(getDraftKey(mobile));
-          if (raw) {
-            const draft = JSON.parse(raw);
-            const saved: ComplianceFormData = draft.formData || {};
-            if (
-              saved.gstin || saved.financialYear || saved.requestType ||
-              saved.purchaseDoc || saved.salesDoc || saved.noticeDoc || saved.noticeNumber
-            ) {
-              setFormData((prev) => ({ ...prev, ...saved }));
-            }
+        const mobile = getCleanMobile();
+        const saved = await readComplianceDraft(mobile);
+        if (saved?.formData) {
+          const fData = saved.formData;
+          if (
+            fData.gstin || fData.financialYear || fData.requestType ||
+            fData.purchaseDoc || fData.salesDoc || fData.noticeDoc || fData.noticeNumber
+          ) {
+            setFormData((prev) => ({ ...prev, ...fData }));
           }
-        } catch (err) {
-          logger.debug("[useComplianceForm] Draft read fallback", { error: err });
+        }
+        if (params.step) {
+          const parsedStep = parseInt(params.step, 10);
+          if (!isNaN(parsedStep) && (parsedStep === 0 || parsedStep === 1)) {
+            setCurrentStep(parsedStep);
+            if (parsedStep === 1) setHasEnteredReview(true);
+          }
+        } else if (saved && typeof saved.step === "number" && (saved.step === 0 || saved.step === 1)) {
+          setCurrentStep(saved.step);
+          if (saved.step === 1) setHasEnteredReview(true);
         }
         setHasCheckedDraft(true);
       };
       checkDraft();
     }
-  }, [hasCheckedDraft]);
+  }, [hasCheckedDraft, params.step]);
 
   // Universal Draft Guard Integration
   const isDirty = useCallback((): boolean => {
@@ -118,28 +120,12 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
 
   const saveCurrentDraft = useCallback(async () => {
     const mobile = getCleanMobile();
-    if (mobile) {
-      addDraftToIndex(mobile, "gst-compliance");
-      await AsyncStorage.setItem(
-        getDraftKey(mobile),
-        JSON.stringify({
-          serviceKey: "gst-compliance",
-          serviceName: "GST Compliance",
-          category: "GST",
-          step: currentStep,
-          formData,
-          updatedAt: new Date().toISOString().split("T")[0],
-        })
-      );
-    }
+    await saveComplianceDraft(mobile, currentStep, formData);
   }, [formData, currentStep]);
 
   const clearCurrentDraft = useCallback(async () => {
     const mobile = getCleanMobile();
-    if (mobile) {
-      removeDraftFromIndex(mobile, "gst-compliance");
-      await AsyncStorage.removeItem(getDraftKey(mobile));
-    }
+    await clearComplianceDraft(mobile);
     setFormData(initialFormData);
     setErrors({});
     setCurrentStep(0);
@@ -214,10 +200,56 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
     setCurrentStep(1);
   }, [isSaving, isSubmitting]);
 
-  // Continue or Save & Review action: Saves to DB (POST or PUT) and fetches back from DB
+
+  const confirmSubmitRef = useRef<() => Promise<void>>(async () => {});
+
+  // Execute backend submission
+  const handleConfirmSubmit = useCallback(async () => {
+    setShowConfirmModal(false);
+    setIsSubmitting(true);
+
+    try {
+      const success = await executeComplianceSubmission({
+        formData,
+        complianceId,
+        router,
+        cleanMobile: getCleanMobile(),
+        getDraftKey: getComplianceDraftKey,
+        markSubmitted: () => {
+          setIsSubmittedSuccess(true);
+          setHasEnteredReview(false);
+          draftGuard.markSubmitted();
+        },
+        onRetry: () => {
+          void confirmSubmitRef.current?.();
+        },
+      });
+      if (success) {
+        // Form submitted and routed
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, complianceId, router, draftGuard]);
+
+  useEffect(() => {
+    confirmSubmitRef.current = handleConfirmSubmit;
+  }, [handleConfirmSubmit]);
+
   const handleContinue = useCallback(async () => {
+    Keyboard.dismiss();
+
     if (currentStep === 0) {
-      const { isValid, errors: validationErrors } = validateComplianceForm(formData);
+      const normalizedData: ComplianceFormData = {
+        ...formData,
+        gstin: finalizeTrim(formData.gstin),
+        gstr2bRef: finalizeTrim(formData.gstr2bRef),
+        reconciliationRemarks: finalizeTrim(formData.reconciliationRemarks),
+        noticeNumber: finalizeTrim(formData.noticeNumber),
+        noticeRemarks: finalizeTrim(formData.noticeRemarks),
+      };
+      setFormData(normalizedData);
+      const { isValid, errors: validationErrors } = validateComplianceForm(normalizedData);
       const activeErrors = { ...errors, ...validationErrors };
       const hasErrors = !isValid || Object.keys(activeErrors).length > 0;
       if (hasErrors) {
@@ -265,17 +297,14 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
                 activeId = parsedId;
                 setComplianceId(parsedId);
               }
-              modifiedDocsRef.current.clear();
             } else {
               throw updateErr;
             }
           }
         } else {
-          // 1. POST create new record in database
-          logger.debug("[Compliance Review] Saving new compliance record in DB");
+          // POST fresh record directly into DB table
+          logger.debug("[Compliance Review] Creating fresh record in DB", { gstin: formData.gstin });
           const res: any = await gstComplianceApi.createCompliance(formData);
-          logger.debug("[Compliance Review] Create response received", { success: !!res });
-
           const parsedId = parseCreatedComplianceId(res);
 
           if (parsedId) {
@@ -329,7 +358,7 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
     } else {
       void handleConfirmSubmit();
     }
-  }, [currentStep, isEditMode, formData, complianceId, errors, isSaving, options, handleConfirmSubmit]);
+  }, [currentStep, isEditMode, formData, complianceId, errors, isSaving, options, handleConfirmSubmit, handleReturnToReview]);
 
   const handleBack = useCallback(() => {
     if (isEditMode && currentStep === 0) {
@@ -340,78 +369,6 @@ export function useComplianceForm(options?: UseComplianceFormOptions) {
       router.back();
     }
   }, [isEditMode, currentStep, handleReturnToReview, router]);
-
-  const confirmSubmitRef = useRef<() => Promise<void>>(async () => {});
-
-  // Execute backend submission
-  const handleConfirmSubmit = useCallback(async () => {
-    setShowConfirmModal(false);
-    setIsSubmitting(true);
-
-    try {
-      const result: SubmissionResult = await submitComplianceRequest(formData, complianceId);
-
-      if (result.success) {
-        setIsSubmittedSuccess(true);
-        setHasEnteredReview(false);
-        draftGuard.markSubmitted();
-
-        const mobile = getCleanMobile();
-        if (mobile) {
-          removeDraftFromIndex(mobile, "gst-compliance");
-          AsyncStorage.removeItem(getDraftKey(mobile)).catch((e) => {
-            logger.debug("[useComplianceForm] Failed to remove draft key", { error: e });
-          });
-        }
-
-        router.replace({
-          pathname: "/service/gst-compliance-success",
-          params: {
-            referenceId: result.referenceId,
-            requestType: formData.requestType,
-            gstin: formData.gstin,
-            submittedAt: result.submittedAt,
-            estimatedResponse: result.estimatedResponse,
-          },
-        });
-      } else {
-        Alert.alert(
-          "Submission Failed",
-          result.error || "Unable to submit your request. Please check your connection and retry.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Retry",
-              onPress: () => {
-                void confirmSubmitRef.current?.();
-              },
-            },
-          ]
-        );
-      }
-    } catch (err) {
-      logger.warn("[useComplianceForm] Network/submission failure", { error: err });
-      Alert.alert(
-        "Network Error",
-        "Could not communicate with the server. Please verify your internet connection.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Retry",
-            onPress: () => {
-              void confirmSubmitRef.current?.();
-            },
-          },
-        ]
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [formData, complianceId, router, draftGuard]);
-
-  useEffect(() => {
-    confirmSubmitRef.current = handleConfirmSubmit;
-  }, [handleConfirmSubmit]);
 
   const getButtonText = useCallback((): string => {
     if (isEditMode && currentStep === 0) {

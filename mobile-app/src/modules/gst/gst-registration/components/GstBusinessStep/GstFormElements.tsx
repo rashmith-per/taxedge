@@ -12,6 +12,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
+import { normalizeLiveInput, finalizeTrim } from "@/modules/gst/utils/gstSpaceValidation";
 import { styles } from "./GstBusinessStep.styles";
  
 interface InputProps {
@@ -52,11 +53,16 @@ export const FormInput: React.FC<InputProps> = React.memo(({
   infoIcon,
 }) => {
   const handleChangeText = (text: string) => {
-    const cleaned = removeEmoji(text);
+    const cleaned = normalizeLiveInput(text);
     if (onChangeField && field) onChangeField(field, cleaned);
     else onChange?.(cleaned);
   };
   const handleBlur = () => {
+    const trimmed = finalizeTrim(value);
+    if (trimmed !== value) {
+      if (onChangeField && field) onChangeField(field, trimmed);
+      else onChange?.(trimmed);
+    }
     if (onBlurField && field) onBlurField(field);
     else onBlur?.();
   };
@@ -205,7 +211,7 @@ export const FormSelect: React.FC<SelectProps> = React.memo(({
                   placeholder={searchPlaceholder}
                   placeholderTextColor="#94A3B8"
                   value={searchQuery}
-                  onChangeText={(val) => setSearchQuery(removeEmoji(val))}
+                  onChangeText={(val) => setSearchQuery(normalizeLiveInput(val))}
                   autoCapitalize="words"
                   autoCorrect={false}
                   clearButtonMode="while-editing"
@@ -319,82 +325,6 @@ export const FormDatePicker: React.FC<DatePickerProps> = React.memo(({
 ));
 FormDatePicker.displayName = "FormDatePicker";
 
-interface SectionCardProps {
-  iconName: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}
-
-export const SectionCard: React.FC<SectionCardProps> = React.memo(({ iconName, title, subtitle, children }) => (
-  <View style={styles.sectionCard}>
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionIconBox}>
-        <Ionicons name={iconName} size={18} color={BrandColors.PRIMARY_ORANGE} />
-      </View>
-      <View style={styles.sectionTitleWrap}>
-        <Text style={styles.sectionMainTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-      </View>
-    </View>
-    {children}
-  </View>
-));
-SectionCard.displayName = "SectionCard";
-
-interface AccordionSectionProps {
-  title: string;
-  subtitle?: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  isExpanded: boolean;
-  onToggle: () => void;
-  errorCount?: number;
-  children: React.ReactNode;
-}
-
-export const AccordionSection: React.FC<AccordionSectionProps> = React.memo(
-  ({ title, subtitle, iconName, isExpanded, onToggle, errorCount = 0, children }) => (
-    <View style={[styles.accordionCard, isExpanded && styles.accordionCardExpanded]}>
-      <TouchableOpacity
-        style={styles.accordionCardHeader}
-        activeOpacity={0.7}
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}, ${isExpanded ? "expanded" : "collapsed"}${errorCount > 0 ? `, ${errorCount} error${errorCount > 1 ? "s" : ""}` : ""}`}
-        accessibilityState={{ expanded: isExpanded }}
-      >
-        <View style={styles.sectionHeaderWrap}>
-          <View style={styles.sectionIconBox}>
-            <Ionicons name={iconName} size={18} color={BrandColors.PRIMARY_ORANGE} />
-          </View>
-          <View style={styles.sectionTitleWrap}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={styles.sectionMainTitle}>{title}</Text>
-              {!isExpanded && errorCount > 0 && (
-                <View style={{ backgroundColor: "#FEE2E2", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: "#FCA5A5" }}>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#DC2626" }}>
-                    {errorCount} {errorCount === 1 ? "error" : "errors"}
-                  </Text>
-                </View>
-              )}
-            </View>
-            {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
-          </View>
-        </View>
-        <View style={styles.accordionChevronBox}>
-          <Ionicons
-            name={isExpanded ? "chevron-up" : "chevron-down"}
-            size={20}
-            color="#64748B"
-          />
-        </View>
-      </TouchableOpacity>
-      {isExpanded && <View style={styles.accordionCardContent}>{children}</View>}
-    </View>
-  )
-);
-AccordionSection.displayName = "AccordionSection";
-
 export function safeTransform(value: unknown, transformer: (val: string) => string): string {
   try {
     if (value === null || value === undefined) return "";
@@ -406,3 +336,4 @@ export function safeTransform(value: unknown, transformer: (val: string) => stri
 
 export const sanitizeDigits = (val: string): string => safeTransform(val, (s) => s.replace(/\D/g, ""));
 export const sanitizeAlphanumericUpper = (val: string): string => safeTransform(val, (s) => s.replace(/[^a-zA-Z0-9]/g, "").toUpperCase());
+export { SectionCard, AccordionSection } from "./GstSectionComponents";

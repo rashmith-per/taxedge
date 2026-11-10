@@ -100,10 +100,6 @@ export const GstUnifiedDocumentStep: React.FC<Props> = ({
   const [addressUploadTrigger, setAddressUploadTrigger] = useState(0);
   const [pendingAddressProofType, setPendingAddressProofType] = useState<string | null>(null);
 
-  const uploadedCount = documents.reduce(
-    (c, d) => (isDocumentUploaded(d) ? c + 1 : c),
-    0,
-  );
   const selectedCount = documents.reduce((c, d) => (d.fileUri ? c + 1 : c), 0);
   const totalCount = documents.length;
 
@@ -125,12 +121,6 @@ export const GstUnifiedDocumentStep: React.FC<Props> = ({
             </Text>
           </View>
         </View>
-        {selectedCount > 0 && (
-          <Text style={styles.progressSubtitle}>
-            {uploadedCount} of {selectedCount} sent to Finsolz. Remaining
-            documents upload when you tap Continue.
-          </Text>
-        )}
       </View>
 
       {DOCUMENT_CATEGORIES.map((category) => {

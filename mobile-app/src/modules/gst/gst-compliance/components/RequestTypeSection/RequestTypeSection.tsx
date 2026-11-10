@@ -17,6 +17,7 @@ import {
 import { FileUploadCard } from "@/modules/gst/gst-compliance/components/FileUploadCard/FileUploadCard";
 import { NativeDatePickerInput } from "@/modules/gst/gst-compliance/components/NativeDatePickerInput/NativeDatePickerInput";
 import { FloatingLabelInput } from "@/modules/gst/gst-compliance/components/FloatingLabelInput/FloatingLabelInput";
+import { normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
 import { GstinInfoIcon } from "@/modules/gst/components/common";
 import { styles } from "@/modules/gst/gst-compliance/components/RequestTypeSection/RequestTypeSection.styles";
 
@@ -125,7 +126,8 @@ export const RequestTypeSection: React.FC<RequestTypeSectionProps> = ({
             placeholder="Enter GSTR-2B reference or ARN"
             value={formData.gstr2bRef}
             onChangeText={(text) => {
-              onUpdateField("gstr2bRef", text);
+              const cleaned = normalizeStructuredCode(text, true);
+              onUpdateField("gstr2bRef", cleaned);
               if (errors.gstr2bRef) onClearError("gstr2bRef");
             }}
             autoCapitalize="characters"
@@ -191,7 +193,7 @@ export const RequestTypeSection: React.FC<RequestTypeSectionProps> = ({
             labelAbove
             value={formData.noticeNumber}
             onChangeText={(text) => {
-              const formatted = text.replace(/[^a-zA-Z0-9\/-]/g, "").toUpperCase();
+              const formatted = normalizeStructuredCode(text, true);
               onUpdateField("noticeNumber", formatted);
               if (formatted) onClearError("noticeNumber");
             }}
