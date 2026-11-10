@@ -9,41 +9,7 @@ export interface GstBackendApplicationDto {
   updatedAt?: string;
   submittedAt?: string;
 
-  // Step 1: Business Details
-  legalName?: string;
-  tradeName?: string;
-  constitutionOfBusiness?: string;
-  natureOfBusiness?: string;
-  dateOfCommencement?: string;
-  businessPan?: string;
-  reasonForRegistration?: string;
-  compositionScheme?: string;
-  placeOfBusiness?: string;
-  businessAddress?: string;
-  city?: string;
-  district?: string;
-  state?: string;
-  pinCode?: string;
-  hsnSac?: string;
-
-  // Bank Details
-  accountHolderName?: string;
-  bankAccountNumber?: string;
-  ifscCode?: string;
-  bankName?: string;
-  branchName?: string;
-  accountType?: string;
-
-  // Signatory Details
-  authorisedSignatory?: string;
-  signatoryName?: string;
-  signatoryPan?: string;
-  signatoryDob?: string;
-  designation?: string;
-  signatoryMobile?: string;
-  signatoryEmail?: string;
-
-  // Step 2: Documents Details
+  // Documents Details
   documentId?: string;
   principalPlaceAddressType?: string;
   panCardUploaded?: boolean;
@@ -55,8 +21,6 @@ export interface GstBackendApplicationDto {
 }
 
 export function mapGstBackendToApplication(dto: GstBackendApplicationDto): Application {
-  const applicantName = dto.tradeName?.trim() || dto.legalName?.trim() || "GST Registration";
-
   const documents: ApplicationDocument[] = [
     { name: "PAN Card", status: dto.panCardUploaded ? "Uploaded" : "Pending" },
     { name: "Aadhaar Card", status: dto.aadhaarCardUploaded ? "Uploaded" : "Pending" },
@@ -75,7 +39,7 @@ export function mapGstBackendToApplication(dto: GstBackendApplicationDto): Appli
     },
     {
       title: "Under Verification",
-      description: "Your documents and business details are being verified.",
+      description: "Your documents are being verified.",
       status: dto.status === "SUBMITTED" ? "current" : "pending",
     },
     {
@@ -98,8 +62,8 @@ export function mapGstBackendToApplication(dto: GstBackendApplicationDto): Appli
     createdAt: dto.createdAt || new Date().toISOString(),
     formData: {
       ...dto,
-      applicantName,
-      businessName: applicantName,
+      applicantName: "GST Registration",
+      businessName: "GST Registration",
       submissionDate: dto.submittedAt || dto.createdAt,
       appliedDate: dto.submittedAt || dto.createdAt,
       arn: dto.gstId,

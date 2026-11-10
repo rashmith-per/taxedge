@@ -286,6 +286,137 @@ export const applicationService = {
       return false;
     }
   },
+
+  /**
+   * Fetches the document base64 payload from existing module endpoints on-demand for preview.
+   */
+  fetchDocumentDataUri: async (
+    serviceId: string | undefined,
+    formData: Record<string, any> | undefined,
+    docName: string
+  ): Promise<string | null> => {
+    const fd = formData || {};
+    const normalized = docName.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // 1. Determine field name
+    let fieldName: string | null = null;
+    if (normalized.includes("pancard") || normalized === "pan") fieldName = "panCard";
+    else if (normalized.includes("aadhaar") || normalized.includes("aadhar")) fieldName = "aadhaarCard";
+    else if (normalized.includes("businessregistration") || normalized.includes("registrationproof")) fieldName = "businessRegistrationProof";
+    else if (normalized.includes("principalplace") || normalized.includes("addressproof")) fieldName = "principalPlaceAddressProof";
+    else if (normalized.includes("bankpassbook") || normalized.includes("cheque") || normalized.includes("passbook")) fieldName = "bankPassbookOrCancelledCheque";
+    else if (normalized.includes("photograph") || normalized.includes("passport") || normalized.includes("photo")) fieldName = "passportSizePhotograph";
+    else if (normalized.includes("salesinvoice")) fieldName = "salesInvoice";
+    else if (normalized.includes("purchaseinvoice")) fieldName = "purchaseInvoices";
+    else if (normalized.includes("gstr2b") || normalized.includes("itc")) fieldName = "gstr2bItcStatement";
+    else if (normalized.includes("creditnote")) fieldName = "creditNotes";
+    else if (normalized.includes("debitnote")) fieldName = "debitNotes";
+    else if (normalized.includes("bankstatement") || normalized.includes("bankaccountstatement")) fieldName = "bankStatement";
+    else if (normalized.includes("form16") || normalized.includes("form16a")) fieldName = "form16PartAPartB";
+    else if (normalized.includes("form26as")) fieldName = "form26as";
+    else if (normalized.includes("aistis") || normalized.includes("ais")) fieldName = "aisTis";
+    else if (normalized.includes("businesspan")) fieldName = "businessPanDocument";
+    else if (normalized.includes("salarypayslip") || normalized.includes("payslip")) fieldName = "salaryPayslips";
+
+    try {
+      // GST Registration
+      if (serviceId === "gst-registration" || fd.gstId || fd.documentId) {
+        const docId = fd.documentId || fd.gstId;
+        if (docId) {
+          const res = await apiClient.get<Record<string, any>>(`/api/v1/gst/documents/${docId}`);
+          if (res && fieldName && res[fieldName]) {
+            const raw = String(res[fieldName]);
+            const mime = raw.startsWith("JVBERi0") ? "application/pdf" : "image/jpeg";
+            return `data:${mime};base64,${raw}`;
+          }
+        }
+      }
+
+      // GST Filing
+      if (serviceId === "gst-filing" || fd.filingId || fd.gstfilingId) {
+        const filingId = fd.filingId || fd.gstfilingId || fd.id;
+        if (filingId) {
+          const res = await apiClient.get<Record<string, any>>(`/api/v1/gst/filing/documents/${filingId}`);
+          if (res) {
+            const target = fieldName ? res[fieldName] : null;
+            if (target) {
+              const raw = String(target);
+              const mime = raw.startsWith("JVBERi0") ? "application/pdf" : "image/jpeg";
+              return `data:${mime};base64,${raw}`;
+            }
+          }
+        }
+      }
+
+      // ITR Filing
+      if (serviceId === "itr-filing" || serviceId === "itr" || fd.itrId) {
+        const docId = fd.documentId || fd.itrId || fd.id;
+        if (docId) {
+          const res = await apiClient.get<Record<string, any>>(`/api/v1/itr/documents/${docId}`);
+          if (res) {
+            const target =
+              fieldName === "bankStatement"
+                ? res.bankAccountStatement || res.bankStatement
+                : fieldName
+                ? res[fieldName]
+                : null;
+            if (target) {
+              const raw = String(target);
+              const mime = raw.startsWith("JVBERi0") ? "application/pdf" : "image/jpeg";
+              return `data:${mime};base64,${raw}`;
+            }
+          }
+        }
+      }
+
+      // Revised ITR
+      if (serviceId === "revised-itr" || fd.revisedItrId) {
+        const docId = fd.documentId || fd.revisedItrId || fd.id;
+        if (docId) {
+          const res = await apiClient.get<Record<string, any>>(`/api/v1/itr/revised/document/${docId}`);
+          if (res) {
+            const target =
+              fieldName === "bankStatement"
+                ? res.bankStatements || res.bankStatement
+                : fieldName === "aisTis"
+                ? res.aisTisStatement || res.aisTis
+                : fieldName === "form16PartAPartB"
+                ? res.form16Form16A || res.form16PartAPartB
+                : fieldName
+                ? res[fieldName]
+                : null;
+            if (target) {
+              const raw = String(target);
+              const mime = raw.startsWith("JVBERi0") ? "application/pdf" : "image/jpeg";
+              return `data:${mime};base64,${raw}`;
+            }
+          }
+        }
+      }
+
+      // TDS Refund
+      if (serviceId === "tds-refund" || fd.tdsRefundId) {
+        const tdsId = fd.tdsRefundId || fd.id;
+        if (tdsId) {
+          const res = await apiClient.get<Record<string, any>>(`/tds-refund/get/${tdsId}`);
+          if (res) {
+            const target =
+              fieldName === "businessPanDocument" || normalized.includes("pan")
+                ? res.businessPanDocument
+                : res.aadhaarDocument;
+            if (target) {
+              const raw = String(target);
+              const mime = raw.startsWith("JVBERi0") ? "application/pdf" : "image/jpeg";
+              return `data:${mime};base64,${raw}`;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logger.debug("[applicationService] fetchDocumentDataUri error:", { error: getErrorMessage(err) });
+    }
+    return null;
+  },
 };
 
 export default applicationService;

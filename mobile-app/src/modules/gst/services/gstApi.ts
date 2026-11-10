@@ -308,10 +308,11 @@ export const gstApi = {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const resolvedCustId = custId || (await resolveCustomerId());
-    const path = resolvedCustId
-      ? `/api/v1/gst/my-applications/${encodeURIComponent(resolvedCustId)}`
-      : "/api/v1/gst/my-applications";
-    return apiClient.get<import("./gstApplicationMapper").GstBackendApplicationDto[]>(path, { headers });
+    if (!resolvedCustId) return [];
+    return apiClient.get<import("./gstApplicationMapper").GstBackendApplicationDto[]>(
+      `/api/v1/my-applications/gst-registration/${encodeURIComponent(resolvedCustId)}`,
+      { headers }
+    );
   },
 
   getMyFilingApplications: async (custId?: string) => {
@@ -319,10 +320,11 @@ export const gstApi = {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const resolvedCustId = custId || (await resolveCustomerId());
-    const path = resolvedCustId
-      ? `/api/v1/gst/my-applications/filing/${encodeURIComponent(resolvedCustId)}`
-      : "/api/v1/gst/my-applications/filing";
-    return apiClient.get<import("./gstFilingApplicationMapper").GstFilingBackendDto[]>(path, { headers });
+    if (!resolvedCustId) return [];
+    return apiClient.get<import("./gstFilingApplicationMapper").GstFilingBackendDto[]>(
+      `/api/v1/my-applications/gst-filing/${encodeURIComponent(resolvedCustId)}`,
+      { headers }
+    );
   },
 
   getMyComplianceApplications: async (custId?: string) => {
@@ -330,10 +332,11 @@ export const gstApi = {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const resolvedCustId = custId || (await resolveCustomerId());
-    const path = resolvedCustId
-      ? `/api/v1/gst/my-applications/compliance/${encodeURIComponent(resolvedCustId)}`
-      : "/api/v1/gst/my-applications/compliance";
-    return apiClient.get<import("./gstComplianceApplicationMapper").GstComplianceBackendDto[]>(path, { headers });
+    if (!resolvedCustId) return [];
+    return apiClient.get<import("./gstComplianceApplicationMapper").GstComplianceBackendDto[]>(
+      `/api/v1/my-applications/gst-compliance/${encodeURIComponent(resolvedCustId)}`,
+      { headers }
+    );
   },
 
   getMyAmendmentApplications: async (custId?: string) => {
@@ -341,10 +344,11 @@ export const gstApi = {
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const resolvedCustId = custId || (await resolveCustomerId());
-    const path = resolvedCustId
-      ? `/api/v1/gst/my-applications/amendment/${encodeURIComponent(resolvedCustId)}`
-      : "/api/v1/gst/my-applications/amendment";
-    return apiClient.get<import("./gstAmendmentApplicationMapper").GstAmendmentBackendDto[]>(path, { headers });
+    if (!resolvedCustId) return [];
+    return apiClient.get<import("./gstAmendmentApplicationMapper").GstAmendmentBackendDto[]>(
+      `/api/v1/my-applications/gst-amendment/${encodeURIComponent(resolvedCustId)}`,
+      { headers }
+    );
   },
 };
 

@@ -9,22 +9,10 @@ export interface ItrFilingBackendDto {
   updatedAt?: string;
   submittedAt?: string;
 
-  // Step 1: Personal / Return Info
+  // Display identifier
   assessmentYear?: string;
-  residentialStatus?: string;
-  filingType?: string;
-  bankName?: string;
-  accountNumber?: string;
-  ifscCode?: string;
 
-  // Step 2: Salary Income Info
-  incomeSource?: string;
-  employerLegalName?: string;
-  grossSalary?: string;
-  exemptAllowances?: string;
-  tdsDeductedByEmployer?: string;
-
-  // Step 3: Documents flags
+  // Documents flags
   form16Uploaded?: boolean;
   form26asUploaded?: boolean;
   aisTisUploaded?: boolean;
@@ -76,8 +64,8 @@ export function mapItrFilingBackendToApplication(dto: ItrFilingBackendDto): Appl
     createdAt: dto.createdAt || new Date().toISOString(),
     formData: {
       ...dto,
-      applicantName: dto.employerLegalName || "Income Tax Return",
-      businessName: dto.employerLegalName || "Income Tax Return",
+      applicantName: "Income Tax Return",
+      businessName: "Income Tax Return",
       assessmentYear: dto.assessmentYear,
       submissionDate: dto.submittedAt || dto.createdAt,
       appliedDate: dto.submittedAt || dto.createdAt,

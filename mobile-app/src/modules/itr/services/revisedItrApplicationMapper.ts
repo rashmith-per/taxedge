@@ -9,24 +9,11 @@ export interface RevisedItrBackendDto {
   updatedAt?: string;
   submittedAt?: string;
 
-  // Step 1: Base & Assessment info
+  // Display identifiers
   assessmentYear?: string;
   itrAcknowledgementNumber?: string;
 
-  // Step 2: Revised Details
-  salaryBusinessIncome?: string;
-  otherIncome?: string;
-  deduction80C?: string;
-  deduction80D?: string;
-  homeLoanInterest?: string;
-  taxableIncome?: string;
-  bankAccountForRefund?: string;
-
-  // Step 3: Revision Reason
-  reason?: string;
-  otherReason?: string;
-
-  // Step 4: Documents flags
+  // Documents flags
   panCardUploaded?: boolean;
   aadhaarCardUploaded?: boolean;
   form16Uploaded?: boolean;

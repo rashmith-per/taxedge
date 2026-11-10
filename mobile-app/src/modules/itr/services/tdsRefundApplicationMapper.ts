@@ -9,17 +9,8 @@ export interface TdsRefundBackendDto {
   updatedAt?: string;
   submittedAt?: string;
 
-  // Banking & Personal Details
-  accountHolderName?: string;
-  accountNumber?: string;
-  ifscCode?: string;
-  bankName?: string;
-  branchName?: string;
-  accountType?: string;
-  legalBusinessName?: string;
+  // Display identifier
   businessPan?: string;
-  aadhaarNumber?: string;
-  mobileNumber?: string;
 
   // Documents flags
   businessPanDocumentUploaded?: boolean;
@@ -27,7 +18,7 @@ export interface TdsRefundBackendDto {
 }
 
 export function mapTdsRefundBackendToApplication(dto: TdsRefundBackendDto): Application {
-  const applicantName = dto.legalBusinessName || dto.accountHolderName || "TDS Refund Claim";
+  const applicantName = dto.businessPan ? `PAN: ${dto.businessPan}` : "TDS Refund Claim";
   const serviceName = "TDS Refund Claim";
 
   const documents: ApplicationDocument[] = [
