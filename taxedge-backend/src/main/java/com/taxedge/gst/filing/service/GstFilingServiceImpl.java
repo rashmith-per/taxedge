@@ -104,24 +104,24 @@ public class GstFilingServiceImpl implements GstFilingService {
 
 		if (dto.getTaxCalculationMethod() != null) {
 			switch (dto.getTaxCalculationMethod()) {
-			case ESTIMATION_FIGURES:
-				if (dto.getEstimatedTaxableSales() != null) {
-					filing.setEstimatedTaxableSales(dto.getEstimatedTaxableSales());
-				}
-				if (dto.getEstimatedTaxablePurchases() != null) {
-					filing.setEstimatedTaxablePurchases(dto.getEstimatedTaxablePurchases());
-				}
-				if (dto.getEstimatedEligibleItc() != null) {
-					filing.setEstimatedEligibleItc(dto.getEstimatedEligibleItc());
-				}
-				break;
-			case TAXEDGE_CA_CALCULATION:
-				filing.setEstimatedTaxableSales(null);
-				filing.setEstimatedTaxablePurchases(null);
-				filing.setEstimatedEligibleItc(null);
-				break;
-			default:
-				break;
+				case ESTIMATION_FIGURES:
+					if (dto.getEstimatedTaxableSales() != null) {
+						filing.setEstimatedTaxableSales(dto.getEstimatedTaxableSales());
+					}
+					if (dto.getEstimatedTaxablePurchases() != null) {
+						filing.setEstimatedTaxablePurchases(dto.getEstimatedTaxablePurchases());
+					}
+					if (dto.getEstimatedEligibleItc() != null) {
+						filing.setEstimatedEligibleItc(dto.getEstimatedEligibleItc());
+					}
+					break;
+				case FINSOLZ_CA_CALCULATION:
+					filing.setEstimatedTaxableSales(null);
+					filing.setEstimatedTaxablePurchases(null);
+					filing.setEstimatedEligibleItc(null);
+					break;
+				default:
+					break;
 			}
 		}
 
@@ -177,27 +177,27 @@ public class GstFilingServiceImpl implements GstFilingService {
 
 		if (dto.getFilingType() != null) {
 			switch (dto.getFilingType()) {
-			case NIL_RETURN:
-				return;
-			case REGULAR:
-				if (dto.getTaxCalculationMethod() == null) {
-					throw new IllegalArgumentException("Tax calculation method is required for regular filing");
-				}
-				switch (dto.getTaxCalculationMethod()) {
-				case ESTIMATION_FIGURES:
-					if (dto.getEstimatedTaxableSales() == null || dto.getEstimatedTaxablePurchases() == null
-							|| dto.getEstimatedEligibleItc() == null) {
-						throw new IllegalArgumentException(
-								"Estimated taxable sales, estimated taxable purchases and estimated eligible ITC are required");
+				case NIL_RETURN:
+					return;
+				case REGULAR:
+					if (dto.getTaxCalculationMethod() == null) {
+						throw new IllegalArgumentException("Tax calculation method is required for regular filing");
+					}
+					switch (dto.getTaxCalculationMethod()) {
+						case ESTIMATION_FIGURES:
+							if (dto.getEstimatedTaxableSales() == null || dto.getEstimatedTaxablePurchases() == null
+									|| dto.getEstimatedEligibleItc() == null) {
+								throw new IllegalArgumentException(
+										"Estimated taxable sales, estimated taxable purchases and estimated eligible ITC are required");
+							}
+							break;
+						case FINSOLZ_CA_CALCULATION:
+						default:
+							break;
 					}
 					break;
-				case TAXEDGE_CA_CALCULATION:
 				default:
 					break;
-				}
-				break;
-			default:
-				break;
 			}
 		}
 	}
@@ -214,7 +214,8 @@ public class GstFilingServiceImpl implements GstFilingService {
 				.orElseThrow(() -> new ResourceNotFoundException("GST filing not found with id: " + filingId));
 
 		RegisterationStatus currentStatus = filing.getStatus();
-		if (currentStatus != null && currentStatus != RegisterationStatus.DRAFT && currentStatus != RegisterationStatus.REJECTED) {
+		if (currentStatus != null && currentStatus != RegisterationStatus.DRAFT
+				&& currentStatus != RegisterationStatus.REJECTED) {
 			throw new IllegalStateException(
 					"GST filing " + filingId + " cannot be submitted. Current status: " + currentStatus);
 		}
@@ -226,7 +227,8 @@ public class GstFilingServiceImpl implements GstFilingService {
 		Customer customer = filing.getCustomer();
 
 		// Save token if new or changed
-		if (pushToken != null && !pushToken.isBlank() && customer != null && !pushToken.equals(customer.getPushToken())) {
+		if (pushToken != null && !pushToken.isBlank() && customer != null
+				&& !pushToken.equals(customer.getPushToken())) {
 			customer.setPushToken(pushToken);
 			customerRepository.save(customer);
 		}
@@ -249,9 +251,12 @@ public class GstFilingServiceImpl implements GstFilingService {
 
 		// Confirmation email
 		try {
-			if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank() && emailService != null) {
+			if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()
+					&& emailService != null) {
 				String recipientEmail = customer.getEmail();
-				String recipientName = (customer.getName() != null && !customer.getName().isBlank()) ? customer.getName() : "Valued Customer";
+				String recipientName = (customer.getName() != null && !customer.getName().isBlank())
+						? customer.getName()
+						: "Valued Customer";
 				emailService.sendRegistrationEmail(recipientEmail, recipientName);
 			}
 		} catch (Exception ex) {

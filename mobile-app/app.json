@@ -7,6 +7,14 @@
     "icon": "./assets/images/logo.png",
     "scheme": "finsolzmobile",
     "userInterfaceStyle": "light",
+    "updates": {
+      "url": "https://u.expo.dev/903596d2-48e5-4d35-ae72-3f34cba67b4a",
+      "checkAutomatically": "NEVER",
+      "enabled": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "icon": "./assets/images/logo.png",
       "bundleIdentifier": "com.finsolz.mobile",
@@ -87,7 +95,8 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -100,7 +109,7 @@
         }
       },
       "eas": {
-        "projectId": "007a5353-78e2-492b-8dcc-d0c3a9491ddb"
+        "projectId": "903596d2-48e5-4d35-ae72-3f34cba67b4a"
       }
     },
     "owner": "shashiprakash833"
