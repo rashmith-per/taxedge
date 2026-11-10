@@ -34,15 +34,6 @@ import { DEFAULT_REVISED_FORM_FIELDS } from "../../mock/revisedItrData";
 import { RevisedFormFields } from "../../types/revisedItr.types";
 import { buildComparisonRows, computeRevisedRefund } from "../../services/revisedItrCalculations";
 
-// BUG_B25_001: backend returns dob as YYYY-MM-DD; convert to DD/MM/YYYY for display
-const formatCustomerDob = (dob?: string): string => {
-  if (!dob || !dob.trim()) return "Not provided";
-  const clean = dob.trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean);
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-  return clean.replace(/-/g, "/");
-};
-
 export const ReviewRevisedComputationScreen: React.FC = () => {
   React.useEffect(() => {
     useRevisedProgressStore.getState().setMaxStepReached(3);
@@ -102,15 +93,6 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
       formDetails = JSON.parse(params.revisedDetails);
     } catch { }
   }
-
-  const maskPan = (pan?: string): string => {
-    if (!pan || !pan.trim()) return "XXXXX1234F";
-    const clean = pan.trim().toUpperCase();
-    if (clean.length === 10) {
-      return `XXXXX${clean.slice(5)}`;
-    }
-    return clean;
-  };
 
   const getReasonLabel = (id?: string): string => {
     switch (id) {
@@ -428,49 +410,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 2. Personal Information Section */}
-        <View style={styles.reviewCard}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Personal Information</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditOriginal}
-              style={styles.editBtn}
-            >
-              <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Full Name</Text>
-              <Text style={styles.infoVal}>{customer?.name || "Customer"}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>PAN</Text>
-              <Text style={styles.infoVal}>{maskPan(customer?.pan)}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Date of Birth</Text>
-              <Text style={styles.infoVal}>{formatCustomerDob(customer?.dob)}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Mobile</Text>
-              <Text style={styles.infoVal}>{(customer as any)?.mobile || "+91 98765 43210"}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoVal}>{customer?.email || "customer@example.com"}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Address</Text>
-              <Text style={styles.infoVal}>
-                {customer?.address || (customer?.city ? `${customer.city}, ${customer.state || ""}` : "Bengaluru, Karnataka")}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 3. Changes Section */}
+        {/* 2. Changes Section */}
         <View style={styles.reviewCard}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Changes</Text>
