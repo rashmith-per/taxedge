@@ -44,7 +44,7 @@ export const TRADE_NAME_TOOLTIP_TEXT = GST_FIELD_MESSAGES.tradeName.text;
 export const SAC_CODE_TOOLTIP_TEXT = GST_FIELD_MESSAGES.sacCode.text;
 export const NOTICE_NUMBER_TOOLTIP_TEXT = GST_FIELD_MESSAGES.noticeNumber.text;
 
-const AUTO_DISMISS_DELAY_MS = 10000;
+const AUTO_DISMISS_DELAY_MS = 4000;
 
 export interface GstinInfoIconProps {
   /** Field type identifier to select predefined title and text (defaults to "gstin") */

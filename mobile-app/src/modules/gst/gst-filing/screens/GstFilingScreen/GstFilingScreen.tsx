@@ -219,7 +219,6 @@ export const GstFilingScreen: React.FC = () => {
             uploadedDocsCount={uploadedDocsCount}
             totalRequiredDocsCount={requiredDocs.length}
             missingDocsCount={missingDocsCount}
-            documents={documents}
             grossTaxableTurnover={
               periodData.taxableSales || periodData.turnover || 0
             }

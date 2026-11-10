@@ -15,9 +15,8 @@ export {
   extractPanFromGstin,
 };
 
-/** Permitted upper monetary ceiling for estimated figures: ₹999 Crore (9,990,000,000.00) */
-export const MAX_ESTIMATED_AMOUNT = 9990000000;
-export const ESTIMATED_AMOUNT_REGEX = /^\d{1,10}(\.\d{1,2})?$/;
+/** Permitted upper monetary ceiling for estimated figures: ₹999 Crore (9,99,99,99,999) */
+export const MAX_ESTIMATED_AMOUNT = 9999999999;
 
 /**
  * Validates a GSTIN string with real-time feedback.
@@ -35,7 +34,7 @@ export function validateGstin(gstin: string, isTouched = true): string | null {
 
 /**
  * Validates monetary amounts for estimated sales, purchases, and ITC.
- * Enforces 10-digit integer limit, max 2 decimals, non-negative, and <= 9990000000 (₹999 Crore).
+ * Prevents overflow, JSON parsing failures, negative numbers, and malformed decimals.
  */
 export function validateEstimatedAmount(
   value: string | number | undefined | null,
@@ -53,54 +52,26 @@ export function validateEstimatedAmount(
   }
 
   if (rawStr.startsWith("-")) {
-    return "Negative amounts are not allowed.";
+    return "Amount cannot be negative";
   }
 
-  // Check for negative numbers anywhere
-  if (rawStr.includes("-")) {
-    return "Negative amounts are not allowed.";
+  // Decimal check: allow up to 2 decimal places: /^\d+(\.\d{0,2})?$/
+  if (!/^\d+(\.\d{0,2})?$/.test(rawStr)) {
+    return "Enter a valid amount";
   }
 
-  // Check for invalid non-numeric/non-decimal characters (alphabets, symbols)
-  if (/[^\d.]/.test(rawStr)) {
-    return "Please enter a valid amount.";
-  }
-
-  // Multiple decimal points
-  const dotCount = (rawStr.match(/\./g) || []).length;
-  if (dotCount > 1) {
-    return "Please enter a valid amount.";
-  }
-
-  const [intPart = "", decPart] = rawStr.split(".");
-
-  // Check decimal places
-  if (decPart !== undefined && decPart.length > 2) {
-    return "Maximum 2 decimal places allowed.";
-  }
-
-  // Check maximum digits before decimal (10 digits)
-  if (intPart.length > 10) {
-    return "Maximum 10 digits allowed before decimal.";
-  }
-
-  // Strict regex check: ^\d{1,10}(\.\d{1,2})?$
-  if (!ESTIMATED_AMOUNT_REGEX.test(rawStr)) {
-    return "Please enter a valid amount.";
-  }
-
-  const num = Number(rawStr);
+  const num = parseFloat(rawStr);
 
   if (!Number.isFinite(num) || isNaN(num)) {
-    return "Please enter a valid amount.";
+    return "Enter a valid amount";
   }
 
   if (num < 0) {
-    return "Negative amounts are not allowed.";
+    return "Amount cannot be negative";
   }
 
   if (num > MAX_ESTIMATED_AMOUNT) {
-    return "Amount exceeds the permitted limit (Max: ₹999 Cr).";
+    return "Amount exceeds the permitted limit (Max: ₹999 Cr)";
   }
 
   return null;

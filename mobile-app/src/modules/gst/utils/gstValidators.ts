@@ -6,15 +6,6 @@ import { isNotEmpty, PaymentValidators } from "@/shared/validators/paymentValida
 import { isIanaDelegatedTld } from "./ianaTldData";
 import { hsnSacPolicy } from "./hsnSacPolicy";
 import { validateGstinFull } from "./gstValidation";
-import { isValidGstEmail } from "./gstEmailValidator";
-import {
-  validateGstDob,
-  isGstDobValid,
-  getMaxDobForEighteen,
-  parseDobDate,
-} from "@/modules/gst/validators/dobValidators";
-
-export { isValidGstEmail };
 
 /**
  * GST & Tax Validation Utilities
@@ -35,6 +26,45 @@ export const parseAnyDate = (value?: string | null): Date | null => {
   return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d ? dt : null;
 };
 
+/**
+ * RFC 5322-compliant local part pattern (no spaces, no consecutive dots, max 64 chars).
+ */
+const EMAIL_LOCAL_REGEX = /^[a-zA-Z0-9]+(?:[._+-][a-zA-Z0-9]+)*$/;
+
+/**
+ * Domain label pattern: 1-63 alphanumeric chars or internal hyphens.
+ */
+const DOMAIN_LABEL_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+
+/**
+ * Strict email validation for GST Registration & Compliance modules.
+ * Ensures:
+ * 1. Single '@' separating local part and domain.
+ * 2. Local part: <= 64 chars, no spaces, no consecutive/leading/trailing dots (RFC 5322).
+ * 3. Domain: <= 253 chars, at least one dot, valid DNS labels (1-63 chars, alphanumeric with internal hyphens).
+ * 4. TLD: Must be an active delegated Top-Level Domain in the official IANA Root Zone Database.
+ *    Strictly verifies 2-letter ccTLDs, generic TLDs, and IDN Punycode TLDs against delegated data.
+ *    Strictly rejects appended suffixes such as .comabc, .com123, or .orgxyz.
+ *
+ * Note: Validating IANA delegation verifies syntax and root-level delegation; it does not query live
+ * DNS records, verify full-domain registration, or confirm mailbox existence.
+ */
+export function isValidGstEmail(raw?: string | null): boolean {
+  if (!raw) return false;
+  const email = raw.trim();
+  if (!email || email.length > 150 || /\s/.test(email)) return false;
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex !== email.lastIndexOf("@")) return false;
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex + 1);
+  if (!local || local.length > 64 || local.startsWith(".") || local.endsWith(".") || !EMAIL_LOCAL_REGEX.test(local)) return false;
+  if (!domain || domain.length > 253 || domain.startsWith(".") || domain.endsWith(".")) return false;
+  const labels = domain.split(".");
+  if (labels.length < 2) return false;
+  const allLabelsValid = labels.every((l) => l.length >= 1 && l.length <= 63 && DOMAIN_LABEL_REGEX.test(l));
+  if (!allLabelsValid) return false;
+  return isIanaDelegatedTld(labels[labels.length - 1].toLowerCase());
+}
 
 const PAN_NAME_WORD = "[\\p{L}][\\p{L}\\p{M}\\u200C\\u200D]*";
 const PAN_LEGAL_NAME_REGEX = new RegExp(`^${PAN_NAME_WORD}(?:(?:\\. ?|[ '’-])${PAN_NAME_WORD})*\\.?$`, "u");
@@ -80,7 +110,9 @@ const validateSignatoryName = (value?: string | null): string => {
 };
 
 export const getEighteenYearsAgo = (): Date => {
-  return getMaxDobForEighteen();
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return d;
 };
 
 const PAN_CATEGORY_CODES = "ABCFGHJLPT";
@@ -99,7 +131,17 @@ const validateSignatoryPan = (value?: string | null): string => {
 };
 
 const validateSignatoryDob = (value?: string | null): string => {
-  return validateGstDob(value);
+  const raw = value !== null && value !== undefined ? String(value) : "";
+  if (!raw.trim()) return "Date of birth is required";
+  const dob = parseAnyDate(raw);
+  if (!dob) return "Enter a valid date in DD-MM-YYYY format";
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const selected = new Date(dob.getFullYear(), dob.getMonth(), dob.getDate());
+  if (selected.getTime() > today.getTime()) return "Date of birth cannot be in the future.";
+  if (selected.getTime() === today.getTime()) return "Date of birth must be earlier than today.";
+  if (dob.getFullYear() < today.getFullYear() - 120) return "Enter a valid date of birth";
+  return "";
 };
 
 const validateSignatoryDesignation = (value?: string | null): string => {
@@ -108,10 +150,11 @@ const validateSignatoryDesignation = (value?: string | null): string => {
   if (raw.startsWith(" ") || raw.endsWith(" ") || /\s{2,}/.test(raw) || /[\r\n\t\f\v]/.test(raw)) {
     return "Use a single space between words.";
   }
-  if (/[0-9\p{N}]/u.test(raw) || !SIGNATORY_DESIGNATION_REGEX.test(raw)) {
+  if (/[0-9\p{N}]/u.test(raw)) {
     return "Designation contains unsupported characters.";
   }
   if (raw.length > 50) return "Designation cannot exceed 50 characters";
+  if (!SIGNATORY_DESIGNATION_REGEX.test(raw)) return "Designation contains unsupported characters.";
   return "";
 };
 
@@ -214,15 +257,15 @@ export const GstValidators = {
    * Validates 10-digit Indian Mobile Number starting with 6, 7, 8, or 9 (rejects dummy / identical numbers)
    */
   isValidMobile: (mobile: string): boolean => validateSignatoryMobile(mobile) === "",
-  validateSignatoryName,
+  validateSignatoryName: (value?: string | null): string => validateSignatoryName(value),
   isValidSignatoryName: (value?: string | null): boolean => validateSignatoryName(value) === "",
-  validateSignatoryPan,
+  validateSignatoryPan: (value?: string | null): string => validateSignatoryPan(value),
   isValidSignatoryPan: (value?: string | null): boolean => validateSignatoryPan(value) === "",
-  validateSignatoryDob,
+  validateSignatoryDob: (value?: string | null): string => validateSignatoryDob(value),
   isValidSignatoryDob: (value?: string | null): boolean => validateSignatoryDob(value) === "",
-  validateSignatoryDesignation,
+  validateSignatoryDesignation: (value?: string | null): string => validateSignatoryDesignation(value),
   isValidSignatoryDesignation: (value?: string | null): boolean => validateSignatoryDesignation(value) === "",
-  validateSignatoryMobile,
+  validateSignatoryMobile: (value?: string | null): string => validateSignatoryMobile(value),
   isValidSignatoryMobile: (value?: string | null): boolean => validateSignatoryMobile(value) === "",
 
   /**
@@ -267,7 +310,11 @@ export const GstValidators = {
     if (/^0+$/.test(raw)) return "Enter a valid bank account number. An account number cannot contain only zeros.";
     if (raw.length > 18) return "Enter a valid bank account number (9 to 18 digits)";
     const orig = original !== null && original !== undefined ? String(original) : "";
-    if (orig.trim().length > 0 && raw !== orig) return "Account numbers do not match.";
+    if (orig.trim().length > 0) {
+      if (raw !== orig) return "Account numbers do not match.";
+      if (raw.length < 9) return "Enter a valid bank account number (9 to 18 digits)";
+      return "";
+    }
     if (raw.length < 9) return "Enter a valid bank account number (9 to 18 digits)";
     return "";
   },
@@ -284,7 +331,8 @@ export const GstValidators = {
     if (!raw.trim()) return "PIN code is required";
     if (/[^0-9]/.test(raw)) return "PIN code must contain digits only";
     if (raw.startsWith("0")) return "PIN code cannot start with 0";
-    if (raw.length !== 6) return raw.length > 6 ? "PIN code cannot exceed 6 digits" : "PIN code must contain exactly 6 digits";
+    if (raw.length > 6) return "PIN code cannot exceed 6 digits";
+    if (raw.length < 6) return "PIN code must contain exactly 6 digits";
     return "";
   },
 
@@ -333,7 +381,8 @@ export const GstValidators = {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const selected = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-        return selected.getTime() > today.getTime() ? "Commencement date cannot be in the future" : "";
+        if (selected.getTime() > today.getTime()) return "Commencement date cannot be in the future";
+        return "";
       }
       case "reasonForRegistration": return GstValidators.isNotEmpty(value, 2) ? "" : "Please select a reason";
       case "compositionScheme": return GstValidators.isNotEmpty(value, 2) ? "" : "Please select an option";
@@ -346,14 +395,17 @@ export const GstValidators = {
       case "pinCode": return GstValidators.validatePinCode(value);
       case "hsnCode": return GstValidators.validateHsnCode(value);
       case "accountHolderName":
-        return !value.trim() ? "Account holder name is required" : validateFullName(value) ? "" : "Enter a valid account holder name";
+        if (!value.trim()) return "Account holder name is required";
+        return validateFullName(value) ? "" : "Enter a valid account holder name";
       case "bankAccountNumber": return GstValidators.validateBankAccountNumber(value);
       case "confirmBankAccountNumber": return GstValidators.validateConfirmBankAccountNumber(value, context?.bankAccountNumber);
       case "ifscCode":
-        return !value.trim() ? "IFSC code is required" : GstValidators.isValidIfsc(value) ? "" : "Enter a valid 11-digit IFSC code (e.g. HDFC0001234)";
+        if (!value.trim()) return "IFSC code is required";
+        return GstValidators.isValidIfsc(value) ? "" : "Enter a valid 11-digit IFSC code (e.g. HDFC0001234)";
       case "bankName": return GstValidators.isNotEmpty(value, 2) ? "" : "Bank name is required";
       case "branchName":
-        return !value.trim() ? "Branch name is required" : GstValidators.isValidBranchName(value) ? "" : "Enter a valid branch name";
+        if (!value.trim()) return "Branch name is required";
+        return GstValidators.isValidBranchName(value) ? "" : "Enter a valid branch name";
       case "accountType": return GstValidators.isNotEmpty(value, 2) ? "" : "Account type is required";
       case "signatoryName": return GstValidators.validateSignatoryName(value);
       case "businessPan": return GstValidators.validateSignatoryPan(value);

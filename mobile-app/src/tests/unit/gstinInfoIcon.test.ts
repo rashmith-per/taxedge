@@ -55,11 +55,11 @@ test("Test 2: GstinInfoIcon field-relative anchored popover and timer cleanup", 
     "Must use blue outlined information icon (information-circle-outline)"
   );
 
-  // Check auto-dismiss timer set to 10 seconds (10000ms)
+  // Check auto-dismiss timer within 3-5 seconds (3000ms - 5000ms)
   assert.match(
     content,
-    /AUTO_DISMISS_DELAY_MS\s*=\s*(10000|10_000)/,
-    "Must automatically dismiss after 10 seconds"
+    /AUTO_DISMISS_DELAY_MS\s*=\s*(3\d{3}|4\d{3}|5000)/,
+    "Must automatically dismiss after 3-5 seconds"
   );
 
   // Check timer cleanup on unmount (avoiding memory leaks)

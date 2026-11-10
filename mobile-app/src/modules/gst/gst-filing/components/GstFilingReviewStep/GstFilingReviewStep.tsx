@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,6 @@ import { BrandColors } from "@/shared/theme";
 import {
   formatIndianCurrency,
 } from "@/shared/formatters/currencyFormatter";
-import {
-  GstReviewUploadedDocsCard,
-  GstReviewUploadedDocItem,
-} from "@/modules/gst/components/common";
-import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
-import { FilingDocItem } from "@/modules/gst/gst-filing/config/gstFilingDocumentsConfig";
 import { styles } from "@/modules/gst/gst-filing/components/GstFilingReviewStep/GstFilingReviewStep.styles";
 
 export interface GstFilingReviewStepProps {
@@ -31,7 +25,6 @@ export interface GstFilingReviewStepProps {
   uploadedDocsCount?: number;
   totalRequiredDocsCount?: number;
   missingDocsCount?: number;
-  documents?: readonly FilingDocItem[];
   grossTaxableTurnover?: number | string;
   taxablePurchases?: number | string;
   eligibleItc?: number | string;
@@ -70,7 +63,6 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
   uploadedDocsCount = 0,
   totalRequiredDocsCount = 0,
   missingDocsCount = 0,
-  documents = [],
   grossTaxableTurnover = 0,
   taxablePurchases = 0,
   eligibleItc = 0,
@@ -85,20 +77,6 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
   onUpdateComputation,
 }) => {
   const isNilReturn = filingNature === "Nil Return";
-  const [previewDoc, setPreviewDoc] = useState<GstReviewUploadedDocItem | null>(null);
-
-  const uploadedDocItems: GstReviewUploadedDocItem[] = useMemo(() => {
-    return documents
-      .filter((d) => Boolean(d.fileUri))
-      .map((d) => ({
-        id: d.id,
-        name: d.name,
-        subtitle: d.fileName || d.fileSize || d.subtitle,
-        fileUri: d.fileUri,
-        fileName: d.fileName || d.name,
-        fileSize: d.fileSize,
-      }));
-  }, [documents]);
 
   // Numeric computation state
   const baseTurnover = parseNumeric(grossTaxableTurnover, 0);
@@ -279,16 +257,27 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
             <Text style={styles.label}>Output GST (18%)</Text>
             <Text style={styles.value}>{formatInr(outputGst)}</Text>
           </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Eligible Input Tax Credit (ITC)</Text>
+            <Text style={[styles.value, styles.valueSuccess]}>- {formatInr(currentItc)}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Net Tax Liability (Govt)</Text>
+            <Text style={styles.value}>{formatInr(netLiability)}</Text>
+          </View>
         </View>
       )}
 
-      {/* 3. Uploaded Documents Card */}
-      {isNilReturn ? (
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Documents</Text>
-          </View>
-          <View style={styles.divider} />
+      {/* 3. Documents Card */}
+      <View style={styles.card}>
+        <View style={styles.cardHeaderRow}>
+          <Text style={styles.cardTitle}>Documents</Text>
+        </View>
+        <View style={styles.divider} />
+
+        {isNilReturn ? (
           <View style={styles.allDocsUploadedBox}>
             <Ionicons name="checkmark-circle" size={22} color="#059669" />
             <View style={styles.flex1Col}>
@@ -300,28 +289,16 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
               </Text>
             </View>
           </View>
-        </View>
-      ) : uploadedDocItems.length > 0 ? (
-        <GstReviewUploadedDocsCard
-          documents={uploadedDocItems}
-          onEdit={onReuploadDocuments || onEditDocuments || (() => {})}
-          onPreviewDoc={(item) => setPreviewDoc(item)}
-        />
-      ) : (
-        <View style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Documents</Text>
-          </View>
-          <View style={styles.divider} />
+        ) : missingDocsCount > 0 ? (
           <View style={styles.missingDocsRow}>
             <View style={styles.missingAlertBox}>
               <Ionicons name="warning-outline" size={24} color="#E11D48" style={styles.alertIconTopMargin} />
               <View style={styles.flex1Col}>
                 <Text style={styles.missingAlertTitle}>
-                  {missingDocsCount || 12} Documents Missing
+                  {missingDocsCount} {missingDocsCount === 1 ? "Document" : "Documents"} Missing
                 </Text>
                 <Text style={styles.missingAlertSub}>
-                  Please upload all required documents to proceed with filing.
+                  Please upload all 12 required documents to proceed with filing.
                 </Text>
               </View>
             </View>
@@ -336,23 +313,20 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
               <Ionicons name="chevron-forward" size={13} color={BrandColors.PRIMARY_ORANGE} />
             </TouchableOpacity>
           </View>
-        </View>
-      )}
-
-      {/* Full-Screen Document Preview Modal */}
-      <GstViewDocumentModal
-        visible={Boolean(previewDoc)}
-        title={previewDoc?.name || "Document Preview"}
-        fileUri={previewDoc?.fileUri}
-        fileName={previewDoc?.fileName || previewDoc?.name}
-        fileSize={previewDoc?.fileSize}
-        fileTypeLabel={
-          previewDoc?.fileTypeLabel ||
-          previewDoc?.fileName?.split(".").pop()?.toUpperCase()
-        }
-        mimeType={previewDoc?.mimeType}
-        onClose={() => setPreviewDoc(null)}
-      />
+        ) : (
+          <View style={styles.allDocsUploadedBox}>
+            <Ionicons name="checkmark-circle" size={22} color="#059669" />
+            <View style={styles.flex1Col}>
+              <Text style={styles.allDocsUploadedTitle}>
+                All Required Documents Uploaded
+              </Text>
+              <Text style={styles.allDocsUploadedSub}>
+                {uploadedDocsCount} {uploadedDocsCount === 1 ? "document" : "documents"} verified and ready for CA computation.
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
     </View>
   );
 };

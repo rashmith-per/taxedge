@@ -10,7 +10,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { styles } from "./GstBusinessStep.styles";
 import { UniversalDatePicker } from "@/shared/components/UniversalDatePicker";
-import { GstinInfoIcon, GstStatePickerModal } from "@/modules/gst/components/common";
+import { GstinInfoIcon } from "@/modules/gst/components/common";
 import {
   FormInput,
   FormSelect,
@@ -18,33 +18,36 @@ import {
   AccordionSection,
   sanitizeAlphanumericUpper,
 } from "./GstFormElements";
-import { GstBankDetailsSection } from "./GstBankDetailsSection";
-import { GstConsentSection } from "./GstConsentSection";
-import { GstSignatorySection } from "./GstSignatorySection";
 import { BANK_FIELD_NAMES, SIGNATORY_FIELD_NAMES, isTextFormField } from "../../utils/gstDraftLifecycle";
 import { formatUiDate } from "../../utils/gstRegistrationMapper";
 import { GstValidators } from "@/modules/gst/utils/gstValidators";
-import {
-  normalizePersonName,
-  normalizeBusinessName,
-  normalizeBankName,
-  normalizeAddress,
-  normalizeAlphabeticLocation,
-  finalizeTrim,
-} from "@/modules/gst/utils/gstSpaceValidation";
 import { logger } from "@/core/logging/logger";
 import { hsnSacPolicy } from "@/modules/gst/utils/hsnSacPolicy";
 import { useGstFieldLookups } from "@/modules/gst/gst-registration/hooks/useGstFieldLookups";
 import {
-  BUSINESS_TYPES, NATURE_OF_BUSINESS, REASONS,
+  STATE_OPTIONS, BANK_OPTIONS, BUSINESS_TYPES, NATURE_OF_BUSINESS, REASONS,
   COMPOSITION_OPTIONS, PLACE_OPTIONS, ACCOUNT_TYPES,
-  type GstBusinessFormData, type FormErrors,
-} from "../../types/gstBusinessTypes";
+  type BusinessType, type NatureOfBusiness, type ReasonForRegistration,
+  type CompositionOption, type PlaceOption, type AccountType,
+} from "../../constants/gstOptionConstants";
+
 export {
-  BUSINESS_TYPES, NATURE_OF_BUSINESS, REASONS,
-  COMPOSITION_OPTIONS, PLACE_OPTIONS, ACCOUNT_TYPES,
-  type GstBusinessFormData, type FormErrors,
-} from "../../types/gstBusinessTypes";
+  BUSINESS_TYPES, NATURE_OF_BUSINESS, REASONS, COMPOSITION_OPTIONS, PLACE_OPTIONS, ACCOUNT_TYPES,
+  type BusinessType, type NatureOfBusiness, type ReasonForRegistration,
+  type CompositionOption, type PlaceOption, type AccountType,
+};
+
+export interface GstBusinessFormData {
+  gstId?: string; customerId?: string; legalName: string; businessName: string; businessType: string;
+  natureOfBusiness: string; placeOfBusiness: string; businessStartDate: string; reasonForRegistration: string;
+  compositionScheme: string; businessAddress: string; city: string; district: string; state: string; pinCode: string;
+  hsnCode: string; accountHolderName: string; bankAccountNumber: string; confirmBankAccountNumber: string;
+  ifscCode: string; bankName: string; branchName: string; accountType: string; signatoryName: string;
+  signatoryPan: string; signatoryDob: string; signatoryDesignation: string; signatoryMobile: string;
+  signatoryEmail: string; addressProofType: string; aadhaarConsent: boolean; businessPan: string;
+}
+
+export type FormErrors = Partial<Record<keyof GstBusinessFormData, string>>;
 
 const BANK_FIELD_KEYS = BANK_FIELD_NAMES as readonly (keyof GstBusinessFormData)[]; const SIGNATORY_FIELD_KEYS = SIGNATORY_FIELD_NAMES as readonly (keyof GstBusinessFormData)[];
 
@@ -69,7 +72,6 @@ export const GstBusinessStep: React.FC<Props> = ({
 }) => {
   const [userToggledBank, setUserToggledBank] = useState<boolean | null>(null);
   const [userToggledSignatory, setUserToggledSignatory] = useState<boolean | null>(null);
-  const [stateModalVisible, setStateModalVisible] = useState(false);
   const bankYRef = useRef(0);
   const signatoryYRef = useRef(0);
   const consentYRef = useRef(0);
@@ -203,40 +205,16 @@ export const GstBusinessStep: React.FC<Props> = ({
     [data, errors, updateField],
   );
 
-  const renderStateField = () => (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.label}>State / UT *</Text>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => setStateModalVisible(true)}
-        style={[styles.selectInput, errors?.state && styles.inputError]}
-        accessibilityRole="combobox"
-        accessibilityLabel="State / UT"
-      >
-        <Text style={[styles.selectText, !data?.state && styles.placeholderText]}>
-          {data?.state || "Select"}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color="#1E293B" />
-      </TouchableOpacity>
-      {errors?.state ? <Text style={styles.errorText}>{errors.state}</Text> : null}
-    </View>
-  );
-
   const renderBusinessIdentity = () => (
     <SectionCard
       iconName="storefront-outline"
       title="Business Identity"
       subtitle="Legal name and constitutional details"
     >
-      {renderInput("legalName", "Legal Name of Business (as per PAN) *", "Exactly as on the PAN card", {
-        maxLength: 100,
-        transform: normalizeBusinessName,
-        onBlurOverride: (v) => updateField("legalName", finalizeTrim(v)),
-      })}
+      {renderInput("legalName", "Legal Name of Business (as per PAN) *", "Exactly as on the PAN card", { maxLength: 100, onBlurOverride: (v) => updateField("legalName", v.trim()) })}
       {renderInput("businessName", "Trade Name *", "Enter your business / trade name", {
         maxLength: 100,
-        transform: normalizeBusinessName,
-        onBlurOverride: (v) => updateField("businessName", finalizeTrim(v)),
+        onBlurOverride: (v) => updateField("businessName", v.trim()),
         infoIcon: <GstinInfoIcon fieldType="tradeName" />,
       })}
       {renderSelect("businessType", "Constitution of Business *", "Select business type", BUSINESS_TYPES)}
@@ -271,26 +249,16 @@ export const GstBusinessStep: React.FC<Props> = ({
         subtitle="Registered business address & HSN details"
       >
         {renderSelect("placeOfBusiness", "Place of Business *", "Select place type", PLACE_OPTIONS)}
-        {renderInput("businessAddress", "Business Address *", "Building, street, locality", {
-          maxLength: 250,
-          transform: normalizeAddress,
-          onBlurOverride: (v) => updateField("businessAddress", finalizeTrim(v)),
-        })}
+        {renderInput("businessAddress", "Business Address *", "Building, street, locality", { maxLength: 250, onBlurOverride: (v) => updateField("businessAddress", v.trim()) })}
         <View style={styles.row}>
-          <View style={styles.halfField}>{renderInput("city", "City *", "City", {
-            maxLength: 50,
-            transform: normalizeAlphabeticLocation,
-            onBlurOverride: (v) => updateField("city", finalizeTrim(v)),
-          })}</View>
-          <View style={styles.halfField}>{renderInput("district", "District *", "District", {
-            maxLength: 50,
-            transform: normalizeAlphabeticLocation,
-            onBlurOverride: (v) => updateField("district", finalizeTrim(v)),
-          })}</View>
+          <View style={styles.halfField}>{renderInput("city", "City *", "City", { maxLength: 50, onBlurOverride: (v) => updateField("city", v.trim()) })}</View>
+          <View style={styles.halfField}>{renderInput("district", "District *", "District", { maxLength: 50, onBlurOverride: (v) => updateField("district", v.trim()) })}</View>
         </View>
         <View style={styles.row}>
           <View style={styles.halfField}>
-            {renderStateField()}
+            {renderSelect("state", "State / UT *", "Select", STATE_OPTIONS, {
+              searchable: true, searchPlaceholder: "Search state or UT...",
+            })}
           </View>
           <View style={styles.halfField}>
             {renderInput("pinCode", "PIN Code *", "560001", {
@@ -320,74 +288,111 @@ export const GstBusinessStep: React.FC<Props> = ({
     );
   };
 
+  const renderBankDetails = () => (
+    <View
+      onLayout={(e) => {
+        const y = e.nativeEvent.layout.y;
+        bankYRef.current = y;
+        onSectionLayout?.("bank", y);
+      }}
+    >
+      <AccordionSection
+        iconName="wallet-outline"
+        title="Bank Details"
+        subtitle="Account for refunds & credits"
+        isExpanded={isBankExpanded}
+        errorCount={bankErrorCount}
+        onToggle={() => {
+          const next = !isBankExpanded;
+          setUserToggledBank(next);
+          if (next) {
+            Keyboard.dismiss();
+            if (bankYRef.current > 0) onRequestScrollToSection?.("bank", bankYRef.current);
+          }
+        }}
+      >
+        {renderInput("accountHolderName", "Account Holder Name *", "As per bank records", { maxLength: 100, onBlurOverride: (v) => updateField("accountHolderName", v.trim()) })}
+        {renderInput("bankAccountNumber", "Bank Account Number *", "Enter account number", {
+          keyboardType: "numeric", maxLength: 18,
+          onChangeOverride: (acc) => data?.confirmBankAccountNumber ? onChange({ bankAccountNumber: acc, confirmBankAccountNumber: data.confirmBankAccountNumber }) : updateField("bankAccountNumber", acc),
+          onBlurOverride: (acc) => { updateField("bankAccountNumber", acc.trim()); if (data?.confirmBankAccountNumber) blurField("confirmBankAccountNumber"); },
+        })}
+        {renderInput("confirmBankAccountNumber", "Confirm Account Number *", "Re-enter account number", { keyboardType: "numeric", maxLength: 18, onBlurOverride: (acc) => updateField("confirmBankAccountNumber", acc.trim()) })}
+        {renderInput("ifscCode", "IFSC Code *", "e.g. HDFC0001234", { autoCapitalize: "characters", maxLength: 11, transform: sanitizeAlphanumericUpper })}
+        <View style={styles.row}>
+          <View style={styles.halfField}>{renderInput("bankName", "Bank Name *", "Enter Bank Name (e.g. HDFC Bank)", { maxLength: 100, onBlurOverride: (v) => updateField("bankName", v.trim()) })}</View>
+          <View style={styles.halfField}>{renderInput("branchName", "Branch Name *", "Enter Branch Name", { maxLength: 100, onBlurOverride: (v) => updateField("branchName", v.trim()) })}</View>
+        </View>
+        {renderSelect("accountType", "Account Type *", "Select account type", ACCOUNT_TYPES)}
+      </AccordionSection>
+    </View>
+  );
+
+  const renderSignatoryDetails = () => (
+    <View
+      onLayout={(e) => {
+        const y = e.nativeEvent.layout.y;
+        signatoryYRef.current = y;
+        onSectionLayout?.("signatory", y);
+      }}
+    >
+      <AccordionSection
+        iconName="person-circle-outline"
+        title="Authorised Signatory"
+        subtitle="Primary contact & PAN verification"
+        isExpanded={isSignatoryExpanded}
+        errorCount={signatoryErrorCount}
+        onToggle={() => {
+          const next = !isSignatoryExpanded;
+          setUserToggledSignatory(next);
+          if (next) {
+            Keyboard.dismiss();
+            if (signatoryYRef.current > 0) onRequestScrollToSection?.("signatory", signatoryYRef.current);
+          }
+        }}
+      >
+        <View onLayout={(e) => { const y = signatoryYRef.current + e.nativeEvent.layout.y; fieldOffsetsRef.current.signatoryName = y; onFieldLayout?.("signatoryName", y); }}>
+          {renderInput("signatoryName", "Signatory Name *", "Full name", { maxLength: 100 })}
+        </View>
+        <View style={styles.row} onLayout={(e) => { const y = signatoryYRef.current + e.nativeEvent.layout.y; fieldOffsetsRef.current.signatoryPan = y; fieldOffsetsRef.current.signatoryDob = y; onFieldLayout?.("signatoryPan", y); onFieldLayout?.("signatoryDob", y); }}>
+          <View style={styles.halfField}>{renderInput("signatoryPan", "Signatory PAN *", "ABCPE1234F", { autoCapitalize: "characters", maxLength: 10, transform: sanitizeAlphanumericUpper })}</View>
+          <View style={styles.halfField}>{renderDatePicker("signatoryDob", "Date of Birth *", { maximumDate: getYesterdayDate() })}</View>
+        </View>
+        <View onLayout={(e) => { const y = signatoryYRef.current + e.nativeEvent.layout.y; fieldOffsetsRef.current.signatoryDesignation = y; onFieldLayout?.("signatoryDesignation", y); }}>
+          {renderInput("signatoryDesignation", "Designation *", "Proprietor / Director / Partner", { maxLength: 50 })}
+        </View>
+        <View style={styles.row} onLayout={(e) => { const y = signatoryYRef.current + e.nativeEvent.layout.y; fieldOffsetsRef.current.signatoryMobile = y; fieldOffsetsRef.current.signatoryEmail = y; onFieldLayout?.("signatoryMobile", y); onFieldLayout?.("signatoryEmail", y); }}>
+          <View style={styles.halfField}>{renderInput("signatoryMobile", "Signatory Mobile *", "10-digit", { keyboardType: "numeric", maxLength: 10 })}</View>
+          <View style={styles.halfField}>{renderInput("signatoryEmail", "Signatory Email *", "email@business.com", { keyboardType: "email-address", maxLength: 150, autoCapitalize: "none", onBlurOverride: (email) => updateField("signatoryEmail", email.trim()) })}</View>
+        </View>
+      </AccordionSection>
+    </View>
+  );
+
+  const renderConsentSection = () => {
+    const isChecked = Boolean(data?.aadhaarConsent);
+    return (
+      <View style={styles.sectionCard} onLayout={(e) => { const y = e.nativeEvent.layout.y; consentYRef.current = y; fieldOffsetsRef.current.aadhaarConsent = y; onSectionLayout?.("consent", y); onFieldLayout?.("aadhaarConsent", y); }}>
+        <View style={styles.consentRow}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => updateField("aadhaarConsent", !isChecked)} style={styles.checkboxTouch} accessibilityRole="checkbox" accessibilityState={{ checked: isChecked }} accessibilityLabel="Aadhaar authentication consent">
+            <Ionicons name={isChecked ? "checkbox" : "square-outline"} size={24} color={isChecked ? BrandColors.PRIMARY_ORANGE : "#94A3B8"} />
+          </TouchableOpacity>
+          <Text style={styles.consentText}>I consent to Aadhaar authentication (e-KYC) for this GST registration.</Text>
+        </View>
+        {errors?.aadhaarConsent ? <Text style={[styles.errorText, styles.errorTextMarginBottom]}>{errors.aadhaarConsent}</Text> : null}
+      </View>
+    );
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View style={styles.container}>
         {renderBusinessIdentity()}
         {renderRegistrationScheme()}
         {renderAddressSection()}
-        <GstBankDetailsSection
-          data={data}
-          errors={errors}
-          isBankExpanded={isBankExpanded}
-          bankErrorCount={bankErrorCount}
-          onToggle={() => {
-            const next = !isBankExpanded;
-            setUserToggledBank(next);
-            if (next) {
-              Keyboard.dismiss();
-              if (bankYRef.current > 0) onRequestScrollToSection?.("bank", bankYRef.current);
-            }
-          }}
-          updateField={updateField}
-          blurField={blurField}
-          onChange={onChange}
-          inputRefs={inputRefs}
-          bankYRef={bankYRef}
-          onSectionLayout={onSectionLayout}
-          accountTypes={ACCOUNT_TYPES}
-        />
-        <GstSignatorySection
-          data={data}
-          errors={errors}
-          isSignatoryExpanded={isSignatoryExpanded}
-          signatoryErrorCount={signatoryErrorCount}
-          onToggle={() => {
-            const next = !isSignatoryExpanded;
-            setUserToggledSignatory(next);
-            if (next) {
-              Keyboard.dismiss();
-              if (signatoryYRef.current > 0) onRequestScrollToSection?.("signatory", signatoryYRef.current);
-            }
-          }}
-          updateField={updateField}
-          blurField={blurField}
-          renderInput={renderInput}
-          renderDatePicker={renderDatePicker}
-          signatoryYRef={signatoryYRef}
-          fieldOffsetsRef={fieldOffsetsRef}
-          onSectionLayout={onSectionLayout}
-          onFieldLayout={onFieldLayout}
-          getYesterdayDate={getYesterdayDate}
-        />
-        <GstConsentSection
-          aadhaarConsent={data?.aadhaarConsent}
-          error={errors?.aadhaarConsent}
-          onConsentChange={(val) => updateField("aadhaarConsent", val)}
-          consentYRef={consentYRef}
-          fieldOffsetsRef={fieldOffsetsRef}
-          onSectionLayout={onSectionLayout}
-          onFieldLayout={onFieldLayout}
-        />
-        <GstStatePickerModal
-          visible={stateModalVisible}
-          selectedState={data?.state || ""}
-          onSelect={(st) => {
-            updateField("state", st);
-            setStateModalVisible(false);
-          }}
-          onClose={() => setStateModalVisible(false)}
-        />
+        {renderBankDetails()}
+        {renderSignatoryDetails()}
+        {renderConsentSection()}
       </View>
     </TouchableWithoutFeedback>
   );

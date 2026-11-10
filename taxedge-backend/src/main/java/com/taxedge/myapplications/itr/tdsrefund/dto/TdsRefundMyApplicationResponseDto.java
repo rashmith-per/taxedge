@@ -3,6 +3,7 @@ package com.taxedge.myapplications.itr.tdsrefund.dto;
 import java.time.LocalDateTime;
 
 import com.taxedge.gst.registration.enums.RegisterationStatus;
+import com.taxedge.itr.tdsrefund.enums.AccountType;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,8 +15,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TdsRefundMyApplicationResponseDto {
-
-    // Essential identification, status, and dates
     private String tdsRefundId;
     private String applicationType;
     private RegisterationStatus status;
@@ -24,10 +23,19 @@ public class TdsRefundMyApplicationResponseDto {
     private LocalDateTime updatedAt;
     private LocalDateTime submittedAt;
 
-    // Display identifier
+    // Banking & Personal Details
+    private String accountHolderName;
+    private String accountNumber;
+    private String ifscCode;
+    private String bankName;
+    private String branchName;
+    private AccountType accountType;
+    private String legalBusinessName;
     private String businessPan;
+    private String aadhaarNumber;
+    private String mobileNumber;
 
-    // Document flags from documents table
+    // Documents flags
     private boolean businessPanDocumentUploaded;
     private boolean aadhaarDocumentUploaded;
 }

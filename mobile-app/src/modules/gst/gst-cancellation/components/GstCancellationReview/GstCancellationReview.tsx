@@ -85,7 +85,7 @@ export function GstCancellationReview({
         currentStep={2}
         totalSteps={2}
         stepLabel="Review & Submit"
-        showBack={false}
+        onBack={onBack}
       />
 
       <ScrollView

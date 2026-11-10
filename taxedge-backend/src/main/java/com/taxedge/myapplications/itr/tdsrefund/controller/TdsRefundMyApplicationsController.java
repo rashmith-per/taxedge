@@ -16,14 +16,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/v1/my-applications/tds-refund")
+@RequestMapping("/api/v1/itr/my-applications")
 @RequiredArgsConstructor
 @Slf4j
 public class TdsRefundMyApplicationsController {
 
     private final TdsRefundMyApplicationsService tdsRefundMyApplicationsService;
 
-    @GetMapping("/{custId}")
+    @GetMapping("/tds-refund/{custId}")
     public ResponseEntity<List<TdsRefundMyApplicationResponseDto>> getMyTdsRefundApplications(
             @PathVariable("custId") String pathCustId,
             @RequestHeader(value = "X-Customer-Id", required = false) String headerCustId) {

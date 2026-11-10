@@ -28,12 +28,6 @@ import {
 } from "../../config/gstCoreAmendmentConfig";
 import { InputField, DropdownField } from "../GstAmendmentFields";
 import { GstAmendmentProofs } from "../GstAmendmentProofs";
-import {
-  normalizeBusinessName,
-  normalizeAddress,
-  normalizeAlphabeticLocation,
-  finalizeTrim,
-} from "@/modules/gst/utils/gstSpaceValidation";
 
 interface GstCoreAmendmentEditProps {
   selectedSection: AmendmentSectionConfig;
@@ -176,7 +170,7 @@ export const GstCoreAmendmentEdit: React.FC<GstCoreAmendmentEditProps> = ({
             <InputField
               label="New Legal Business Name"
               value={formData.newLegalBusinessName}
-              onChangeText={(val) => onUpdateField("newLegalBusinessName", normalizeBusinessName(val))}
+              onChangeText={(val) => onUpdateField("newLegalBusinessName", val)}
               placeholder="Enter legal business name"
               error={errors.newLegalBusinessName}
             />
@@ -187,21 +181,21 @@ export const GstCoreAmendmentEdit: React.FC<GstCoreAmendmentEditProps> = ({
               <InputField
                 label="New Principal Business Address"
                 value={formData.newPrincipalAddress}
-                onChangeText={(val) => onUpdateField("newPrincipalAddress", normalizeAddress(val))}
+                onChangeText={(val) => onUpdateField("newPrincipalAddress", val)}
                 placeholder="Enter principal business address"
                 error={errors.newPrincipalAddress}
               />
               <InputField
                 label="City / Town"
                 value={formData.newPrincipalCity}
-                onChangeText={(val) => onUpdateField("newPrincipalCity", normalizeAlphabeticLocation(val))}
+                onChangeText={(val) => onUpdateField("newPrincipalCity", val)}
                 placeholder="Enter city or town"
                 error={errors.newPrincipalCity}
               />
               <InputField
                 label="District"
                 value={formData.newPrincipalDistrict}
-                onChangeText={(val) => onUpdateField("newPrincipalDistrict", normalizeAlphabeticLocation(val))}
+                onChangeText={(val) => onUpdateField("newPrincipalDistrict", val)}
                 placeholder="Enter district"
                 error={errors.newPrincipalDistrict}
               />
@@ -251,14 +245,14 @@ export const GstCoreAmendmentEdit: React.FC<GstCoreAmendmentEditProps> = ({
               <InputField
                 label="New Additional Place Address"
                 value={formData.newAdditionalAddress}
-                onChangeText={(val) => onUpdateField("newAdditionalAddress", normalizeAddress(val))}
+                onChangeText={(val) => onUpdateField("newAdditionalAddress", val)}
                 placeholder="Enter additional business address"
                 error={errors.newAdditionalAddress}
               />
               <InputField
                 label="City / Town"
                 value={formData.newAdditionalCity}
-                onChangeText={(val) => onUpdateField("newAdditionalCity", normalizeAlphabeticLocation(val))}
+                onChangeText={(val) => onUpdateField("newAdditionalCity", val)}
                 placeholder="Enter city or town"
                 error={errors.newAdditionalCity}
               />

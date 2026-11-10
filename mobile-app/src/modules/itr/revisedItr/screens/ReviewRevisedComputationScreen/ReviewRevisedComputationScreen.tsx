@@ -7,8 +7,6 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
-import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useRevisedProgressStore } from "../../store/revisedProgressStore";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
@@ -16,15 +14,11 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RevisedItrHeader } from "../../components/common";
-import {
-  ComputationComparisonTable,
-  RevisedRefundHeroCard,
-} from "../../components/review";
+import { formatIndianAmount } from "@/shared/formatters/currencyFormatter";
 import {
   styles,
   getContainerInsetsStyle,
   getScrollContentInsetsStyle,
-  getBottomBarInsetsStyle,
 } from "./ReviewRevisedComputationScreen.styles";
 
 import { useAuthStore } from "@/modules/authentication/store/authStore";
@@ -32,7 +26,6 @@ import { useCustomerStore } from "@/modules/customer/store/customerStore";
 import { useApplicationStore } from "@/store/applicationStore";
 import { DEFAULT_REVISED_FORM_FIELDS } from "../../mock/revisedItrData";
 import { RevisedFormFields } from "../../types/revisedItr.types";
-import { buildComparisonRows, computeRevisedRefund } from "../../services/revisedItrCalculations";
 
 export const ReviewRevisedComputationScreen: React.FC = () => {
   React.useEffect(() => {
@@ -53,28 +46,10 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
     revisedItrId?: string;
   }>();
 
-  const {
-    showDraftModal,
-    markSubmitted,
-    handleSaveAndExit,
-    handleDiscardAndExit,
-    handleCancel,
-  } = useUniversalDraftGuard({
-    saveDestination: "/service/itr",
-    discardDestination: "/service/itr",
-    isDirty: () => true,
-    onSaveDraft: () => {
-      useApplicationStore.getState().saveRevisedItrDraft({ step: 3 });
-    },
-    onDiscardDraft: () => {
-      useApplicationStore.getState().clearRevisedItrDraft();
-    },
-    isSubmitted: () => isSubmitting || useRevisedProgressStore.getState().isSubmitted,
-  });
-  const assessmentYear = params.assessmentYear || "AY 2025–26";
+  const assessmentYear = params.assessmentYear || "AY 2026-27";
   const ackNo = params.acknowledgementNumber || "";
 
-  // BUG-ITR-060: compute live from store so doc count stays accurate after editing income/Changes.
+  // Compute live from store so doc count stays accurate after editing income/Changes
   const storeDocumentsForCount = useRevisedProgressStore((s) => s.documents);
   const uploadedDocs = storeDocumentsForCount
     ? storeDocumentsForCount.filter((d) => d.status === "uploaded" || !!d.fileUri).length.toString()
@@ -116,7 +91,8 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
-        revisedDetails: params.revisedDetails, isEditing: "true",
+        revisedDetails: params.revisedDetails,
+        isEditing: "true",
       },
     });
   };
@@ -128,7 +104,8 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
-        revisedDetails: params.revisedDetails, isEditing: "true",
+        revisedDetails: params.revisedDetails,
+        isEditing: "true",
       },
     });
   };
@@ -140,50 +117,13 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
-        revisedDetails: params.revisedDetails, isEditing: "true",
+        revisedDetails: params.revisedDetails,
+        isEditing: "true",
       },
     });
   };
 
   const createApplication = useApplicationStore((state) => state.createApplication);
-  const applications = useApplicationStore((state) => state.applications);
-
-  // Resolve original gross income from the previously filed application record.
-  const originalApp = applications.find(
-    (a) =>
-      (a.formData as any)?.previousAckNumber === ackNo ||
-      a.id === ackNo,
-  );
-  const rawOriginalGross: unknown = (originalApp?.formData as any)?.grossTotalIncome;
-  const originalGrossIncomeStr =
-    rawOriginalGross != null
-      ? `₹${Number(rawOriginalGross).toLocaleString("en-IN")}`
-      : undefined;
-
-  const comparisonRows = buildComparisonRows(
-    formDetails,
-    params.revisionReason ?? null,
-    originalGrossIncomeStr,
-  );
-
-  // Extract tax outcome fields stored when the original ITR was filed.
-  const rawTaxesPaid: unknown = (originalApp?.formData as any)?.totalTaxesPaid;
-  const totalTaxesPaid = rawTaxesPaid != null ? Number(rawTaxesPaid) : undefined;
-  const rawFinalAmount: unknown = (originalApp?.formData as any)?.finalAmount;
-  const originalFinalAmount = rawFinalAmount != null ? Number(rawFinalAmount) : undefined;
-  const rawFinalType: unknown = (originalApp?.formData as any)?.finalType;
-  const originalFinalType = typeof rawFinalType === "string" ? rawFinalType : undefined;
-  const rawRegime: unknown = (originalApp?.formData as any)?.regime;
-  const originalRegime = typeof rawRegime === "string" ? rawRegime : undefined;
-
-  const refundSummary = computeRevisedRefund(
-    formDetails.taxableIncome,
-    originalRegime,
-    totalTaxesPaid,
-    originalFinalAmount,
-    originalFinalType,
-    assessmentYear,
-  );
 
   const handleSubmitRevisedItr = async () => {
     if (isSubmitting || storeIsSubmitted) return;
@@ -314,20 +254,12 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         console.warn("[Revised ITR Submit] Notification dispatch warning:", notifErr);
       }
 
-      // 5. Clear draft & reset progress
+      // 5. Update submission state
       try {
-        useApplicationStore.getState().clearRevisedItrDraft();
         useRevisedProgressStore.getState().setIsSubmitted(true);
       } catch { }
 
-      // Mark submitted to disable navigation draft prevention
-      markSubmitted();
-
-      // 6. Navigate to Application Success screen, clearing service screens from the stack.
-      // When canDismiss() is true (service screens sit above the root tab), dismissAll() pops
-      // back to the root and navigate() pushes success as the only service entry — preventing
-      // back navigation into the Revised ITR wizard. When canDismiss() is false, replace() swaps
-      // just the current entry as before.
+      // 6. Navigate to Application Success screen
       const successParams = {
         serviceType: "revised",
         serviceTitle,
@@ -355,12 +287,22 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
     }
   };
 
+  const formatAmount = (val?: string): string => {
+    if (!val || !val.trim()) return "—";
+    return `₹${formatIndianAmount(val)}`;
+  };
+
   return (
     <View style={[styles.container, getContainerInsetsStyle(insets.top)]}>
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Screen Header */}
-      <RevisedItrHeader subtitle="Review Revised ITR" hideBackButton showDraftIcon={false} />
+      {/* Screen Header with Step Indicator */}
+      <RevisedItrHeader
+        subtitle="Review & Submit"
+        currentStep={5}
+        totalSteps={5}
+        hideBackButton
+      />
 
       {/* Main Content */}
       <ScrollView
@@ -403,14 +345,10 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
               <Text style={styles.infoLabel}>ITR Form</Text>
               <Text style={styles.infoVal}>ITR-1</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Gross Total Income</Text>
-              <Text style={styles.infoVal}>₹8,12,400</Text>
-            </View>
           </View>
         </View>
 
-        {/* 2. Changes Section */}
+        {/* 2. Changes Section — Displaying ALL Step 3 Fields */}
         <View style={styles.reviewCard}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Changes</Text>
@@ -427,36 +365,72 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
               <Text style={styles.infoLabel}>Revision Reason</Text>
               <Text style={styles.infoVal}>{getReasonLabel(params.revisionReason)}</Text>
             </View>
-            {params.revisionReason === "incorrect_bank" ? (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised Bank</Text>
-                  <Text style={styles.infoVal}>{formDetails.bankAccount}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised IFSC</Text>
-                  <Text style={styles.infoVal}>{formDetails.ifsc}</Text>
-                </View>
-              </>
-            ) : (
+
+            {/* Income Fields (for missed_income or other) */}
+            {(params.revisionReason === "missed_income" || params.revisionReason === "other") && (
               <>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Revised Salary / Business</Text>
-                  <Text style={styles.infoVal}>₹{formDetails.salaryBusinessIncome}</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.salaryBusinessIncome)}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Revised Taxable Income</Text>
-                  <Text style={styles.infoVal}>₹{formDetails.taxableIncome}</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.taxableIncome)}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised Other Income</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.otherIncome)}</Text>
+                </View>
+              </>
+            )}
+
+            {/* Deduction Fields (for wrong_deduction or other) */}
+            {(params.revisionReason === "wrong_deduction" || params.revisionReason === "other") && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised 80C Deduction</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.sec80c)}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised 80D Deduction</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.sec80d)}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised Home Loan Interest</Text>
+                  <Text style={styles.infoVal}>{formatAmount(formDetails.homeLoanInterest)}</Text>
+                </View>
+                {params.revisionReason === "wrong_deduction" && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Revised Taxable Income</Text>
+                    <Text style={styles.infoVal}>{formatAmount(formDetails.taxableIncome)}</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Bank Details (for incorrect_bank or other) */}
+            {(params.revisionReason === "incorrect_bank" || params.revisionReason === "other") && (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised Bank</Text>
+                  <Text style={styles.infoVal}>{formDetails.bankAccount || "—"}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Revised IFSC</Text>
+                  <Text style={styles.infoVal}>{formDetails.ifsc || "—"}</Text>
                 </View>
               </>
             )}
           </View>
         </View>
 
-        {/* 4. Documents Section */}
+        {/* 3. Documents Section */}
         <View style={styles.reviewCard}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Documents</Text>
+            <View style={styles.docLeft}>
+              <Ionicons name="attach-outline" size={17} color="#083B75" />
+              <Text style={styles.cardTitle}>Uploaded Documents</Text>
+            </View>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleEditDocs}
@@ -466,63 +440,62 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Uploaded Count</Text>
-              <Text style={styles.infoVal}>{uploadedDocs} of {totalDocs} documents</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Verification Status</Text>
-              <Text style={styles.infoVal}>Ready for CA Review</Text>
-            </View>
+            {storeDocumentsForCount && storeDocumentsForCount.filter((d) => d.status === "uploaded" || !!d.fileUri).length > 0 ? (
+              storeDocumentsForCount
+                .filter((d) => d.status === "uploaded" || !!d.fileUri)
+                .map((doc, idx, arr) => (
+                  <View
+                    key={doc.id}
+                    style={[
+                      styles.docItemRow,
+                      idx === arr.length - 1 && styles.docItemRowLast,
+                    ]}
+                  >
+                    <View style={styles.docLeft}>
+                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                      <View style={styles.docTextGroup}>
+                        <Text style={styles.docName} numberOfLines={1}>
+                          {doc.title.replace("\n", " ")}
+                        </Text>
+                        {doc.fileName ? (
+                          <Text style={styles.docMeta} numberOfLines={1}>
+                            {doc.fileName} {doc.fileSize ? `• ${doc.fileSize}` : ""}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <View style={styles.uploadedBadge}>
+                      <Text style={styles.uploadedBadgeText}>Uploaded</Text>
+                    </View>
+                  </View>
+                ))
+            ) : (
+              <Text style={styles.emptyDocsText}>No documents uploaded yet</Text>
+            )}
           </View>
         </View>
 
-        {/* 5. Tax Calculation Comparison — rows derived from active revised form data */}
-        <ComputationComparisonTable rows={comparisonRows} />
-
-        {/* 6. Revised Refund Summary Card — computed when original return data is available */}
-        <RevisedRefundHeroCard
-          revisedRefund={refundSummary.revisedRefund}
-          originalRefund={refundSummary.originalRefund}
-          changeRefund={refundSummary.changeRefund}
-          additionalTaxPayable={refundSummary.additionalTaxPayable}
-        />
+        {/* Action Button — In Scroll Flow (Matching GST Filing) */}
+        <View style={styles.buttonWrapper}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleSubmitRevisedItr}
+            disabled={isSubmitting || storeIsSubmitted}
+            style={styles.proceedButton}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.proceedButtonText}>Submit for CA Review</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-
-      {/* Sticky Bottom Action Button */}
-      <View
-        style={[
-          styles.bottomBar,
-          getBottomBarInsetsStyle(insets.bottom),
-        ]}
-      >
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleSubmitRevisedItr}
-          disabled={isSubmitting || storeIsSubmitted}
-          style={styles.proceedButton}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Text style={styles.proceedButtonText}>Submit for CA Review</Text>
-              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-      <UniversalDraftModal
-        visible={showDraftModal}
-        onSaveAndExit={handleSaveAndExit}
-        onDiscard={handleDiscardAndExit}
-        onKeepEditing={handleCancel}
-      />
     </View>
   );
 };
 
 export default ReviewRevisedComputationScreen;
-
-
-

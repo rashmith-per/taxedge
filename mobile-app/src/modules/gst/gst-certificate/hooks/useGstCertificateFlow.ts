@@ -12,7 +12,6 @@ import { useGstStore } from "@/modules/gst/store/gstStore";
 import { notificationService } from "@/modules/notifications/services/notificationService";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { validateGstinFull, validateGstinLive } from "@/modules/gst/utils/gstValidation";
-import { normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
 
 import { CertificateRequestParams } from "../types/gstCertificateTypes";
 import { buildCertificateHtml } from "../utils/gstCertificateHtml";
@@ -123,7 +122,7 @@ export function useGstCertificateFlow() {
   });
 
   const handleGstinChange = useCallback((text: string) => {
-    const cleaned = normalizeStructuredCode(text).slice(0, 15);
+    const cleaned = text.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     setGstin(cleaned);
     setGstinError(validateGstinLive(cleaned) ?? "");
   }, []);

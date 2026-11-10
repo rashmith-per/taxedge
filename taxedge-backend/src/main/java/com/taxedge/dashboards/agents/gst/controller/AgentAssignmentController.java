@@ -36,16 +36,14 @@ public class AgentAssignmentController {
                 request.getApplicationId(), request.getApplicationType(), request.getAgentId());
 
        
-        String type = registrationType != null ? registrationType : RegisterationType;
-        if (type == null) {
-            throw new IllegalArgumentException("Registration type is required");
-        }
-
-        String message = switch (type.toUpperCase()) {
-            case "GST" -> agentAssignmentService.assignGstApplication(request);
-            case "ITR" -> itrAgentAssignmentService.assignItrApplication(request);
-            case "COMPANY" -> companyRegistrationAgentAssignmentService.assignCompanyApplication(request);
-            default -> throw new IllegalArgumentException("Unsupported registration type: " + type);
+        String message = switch (registrationType) {
+            case "GST" -> agentAssignmentService.assignGstApplication(
+                    request.getApplicationId(), request.getAgentId(), request.getApplicationType());
+            case "ITR" -> itrAgentAssignmentService.assignItrApplication(
+                    request.getApplicationId(), request.getAgentId(), request.getApplicationType());
+            case "COMPANY" -> companyRegistrationAgentAssignmentService.assignCompanyApplication(
+                    request.getApplicationId(), request.getAgentId(), request.getApplicationType());
+            default -> throw new IllegalArgumentException("Unsupported registration type: " + registrationType);
         };
 
         return ResponseEntity.ok(message);

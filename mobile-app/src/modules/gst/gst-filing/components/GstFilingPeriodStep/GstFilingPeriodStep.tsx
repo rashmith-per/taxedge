@@ -16,15 +16,11 @@ import { styles } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/
 import { GstFilingSelectModal } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstFilingSelectModal";
 import { GstCalculationMethodSection } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstCalculationMethodSection";
 import { RecursivePills } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/RecursivePills";
-import { GstVerifiedEntityCard } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstVerifiedEntityCard";
-import { GstFilingSelectionModals } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstFilingSelectionModals";
-import { GstFrequencyPeriodSection } from "@/modules/gst/gst-filing/components/GstFilingPeriodStep/GstFrequencyPeriodSection";
 import {
   validateGstin,
   validateEstimatedAmount,
 } from "@/modules/gst/gst-filing/utils/gstFilingValidation";
 import { validateGstinLive } from "@/modules/gst/utils/gstValidation";
-import { normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
 import { GstinInfoIcon } from "@/modules/gst/components/common";
 import {
   FILING_PERIODS,
@@ -154,7 +150,7 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
   }, [data.gstin, data.isVerifiedEntity, onChange]);
 
   const handleGstinChange = (text: string) => {
-    const cleaned = normalizeStructuredCode(text).slice(0, 15);
+    const cleaned = text.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 15);
     if (cleaned === data.gstin) {
       return;
     }
@@ -203,17 +199,100 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
   return (
     <View style={styles.container}>
       {/* CARD 1: Filing Frequency & Period */}
-      <GstFrequencyPeriodSection
-        data={data}
-        errors={errors}
-        filingPeriods={FILING_PERIODS}
-        onChange={onChange}
-        onError={onError}
-        onBlurField={onBlurField}
-        onOpenYearModal={() => setShowYearModal(true)}
-        onOpenPeriodModal={() => setShowPeriodModal(true)}
-        selectedPeriodValue={selectedPeriodValue}
-      />
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionIconBox}>
+            <Ionicons name="calendar-outline" size={18} color={BrandColors.PRIMARY_ORANGE} />
+          </View>
+          <View style={styles.sectionTitleWrap}>
+            <Text style={styles.sectionMainTitle}>Filing Frequency & Period</Text>
+            <Text style={styles.sectionSubtitle}>Select filing frequency and return period</Text>
+          </View>
+        </View>
+
+        {/* 1. Select Filing Frequency (Pills) */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Select Filing Frequency *</Text>
+          <View style={styles.periodPillsRow}>
+            <RecursivePills
+              items={FILING_PERIODS}
+              selectedValue={data.periodType}
+              onSelect={(period) => {
+                onChange({
+                  periodType: period,
+                  filingPeriod: "",
+                  filingMonth: "",
+                  filingType: "",
+                });
+                onError?.("periodType", "");
+                onError?.("filingPeriod", "");
+                onBlurField?.("periodType");
+              }}
+            />
+          </View>
+          <Text style={styles.frequencyHint}>
+            Frequency filters both the period list and the return types below.
+          </Text>
+          {errors.periodType ? (
+            <Text style={styles.errorText}>{errors.periodType}</Text>
+          ) : null}
+        </View>
+
+        {/* 2. Financial Year Dropdown */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Financial Year *</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => dismissKeyboardThen(() => setShowYearModal(true))}
+            style={[styles.selectInput, errors.financialYear && styles.inputError]}
+          >
+            <Text
+              style={[styles.selectText, !data.financialYear && styles.placeholderText]}
+            >
+              {data.financialYear || "Select financial year"}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#64748B" />
+          </TouchableOpacity>
+          <Text style={styles.frequencyHint}>
+            Historical periods are available based on GST portal eligibility and filing rules.
+          </Text>
+          {errors.financialYear ? (
+            <Text style={styles.errorText}>{errors.financialYear}</Text>
+          ) : null}
+        </View>
+
+        {/* 3. Filing Period / Return Period Dropdown */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Filing Period / Return Period *</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              if (!data.periodType) {
+                onError?.("filingPeriod", "Select filing frequency first");
+                return;
+              }
+              dismissKeyboardThen(() => setShowPeriodModal(true));
+            }}
+            style={[
+              styles.selectInput,
+              (errors.filingPeriod || errors.filingMonth) && styles.inputError,
+              !data.periodType && { opacity: 0.75 },
+            ]}
+          >
+            <Text
+              style={[styles.selectText, !selectedPeriodValue && styles.placeholderText]}
+            >
+              {selectedPeriodValue || (!data.periodType ? "Select filing frequency first" : "Select return period")}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#64748B" />
+          </TouchableOpacity>
+          {errors.filingPeriod || errors.filingMonth ? (
+            <Text style={styles.errorText}>
+              {errors.filingPeriod || errors.filingMonth}
+            </Text>
+          ) : null}
+        </View>
+      </View>
 
       {/* CARD 2: Taxpayer & Return Details */}
       <View style={styles.sectionCard}>
@@ -271,13 +350,30 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
           ) : null}
 
           {/* Backend-Verified Entity Card (auto-resolved from GST portal) */}
-          <GstVerifiedEntityCard
-            isVerifiedEntity={data.isVerifiedEntity}
-            state={data.state}
-            tradeName={data.tradeName}
-            businessName={data.businessName}
-            taxpayerScheme={data.taxpayerScheme}
-          />
+          {data.isVerifiedEntity ? (
+            <View style={styles.verifiedCard}>
+              <View style={styles.verifiedTopRow}>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={15} color="#059669" />
+                  <Text style={styles.verifiedBadgeText}>
+                    Verified from GST Portal
+                  </Text>
+                </View>
+                <Text style={styles.verifiedStateText}>
+                  {data.state || "Active"}
+                </Text>
+              </View>
+              <Text style={styles.verifiedTradeName}>
+                {data.tradeName || data.businessName}
+              </Text>
+              <Text style={styles.verifiedLegalName}>{data.businessName}</Text>
+              <View style={styles.schemePill}>
+                <Text style={styles.schemePillText}>
+                  {data.taxpayerScheme || "Regular Scheme"}
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* 5. Filing Return Type Dropdown */}
@@ -326,19 +422,6 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
           errors={errors}
           onChange={(fields) => {
             onChange(fields);
-            const isManual = fields.calculationMethod === "manual_estimates" || data.calculationMethod === "manual_estimates";
-            if ("taxableSales" in fields) {
-              const err = validateEstimatedAmount(fields.taxableSales, "sales", isManual);
-              onError?.("taxableSales", err || "");
-            }
-            if ("taxablePurchases" in fields) {
-              const err = validateEstimatedAmount(fields.taxablePurchases, "purchases", isManual);
-              onError?.("taxablePurchases", err || "");
-            }
-            if ("eligibleItc" in fields) {
-              const err = validateEstimatedAmount(fields.eligibleItc, "eligible ITC", isManual);
-              onError?.("eligibleItc", err || "");
-            }
           }}
           onBlurField={(field) => {
             const isManual = data.calculationMethod === "manual_estimates";
@@ -356,37 +439,51 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
         />
       ) : null}
 
-      {/* Selection Modals */}
-      <GstFilingSelectionModals
-        showYearModal={showYearModal}
-        setShowYearModal={setShowYearModal}
-        financialYears={FINANCIAL_YEARS}
-        selectedYear={data.financialYear}
-        onSelectYear={(item) => {
+      {/* Dynamic Financial Year Selection Modal */}
+      <GstFilingSelectModal
+        visible={showYearModal}
+        title="Select Financial Year"
+        data={FINANCIAL_YEARS}
+        selectedValue={data.financialYear}
+        onSelect={(item) => {
           onChange({
             financialYear: item,
             filingPeriod: "",
             filingMonth: "",
           });
+          setShowYearModal(false);
         }}
-        showPeriodModal={showPeriodModal}
-        setShowPeriodModal={setShowPeriodModal}
-        periodModalTitle={getPeriodModalTitle()}
-        periods={currentPeriods}
-        selectedPeriod={selectedPeriodValue}
-        onSelectPeriod={(item) => {
+        onClose={() => setShowYearModal(false)}
+      />
+
+      {/* Period Selection Modal (Monthly / Quarterly / Annual) */}
+      <GstFilingSelectModal
+        visible={showPeriodModal}
+        title={getPeriodModalTitle()}
+        data={currentPeriods}
+        selectedValue={selectedPeriodValue}
+        onSelect={(item) => {
           onChange({
             filingPeriod: item,
             filingMonth: item,
           });
+          setShowPeriodModal(false);
         }}
-        showTypeModal={showTypeModal}
-        setShowTypeModal={setShowTypeModal}
-        returnTypes={currentReturnTypes}
-        selectedReturnType={data.filingType}
-        onSelectReturnType={(item) => {
+        onClose={() => setShowPeriodModal(false)}
+      />
+
+      {/* Filing Type Selection Modal */}
+      <GstFilingSelectModal
+        visible={showTypeModal}
+        title="Select Return Type"
+        data={currentReturnTypes}
+        selectedValue={data.filingType}
+        numberOfLines={2}
+        onSelect={(item) => {
           onChange({ filingType: item });
+          setShowTypeModal(false);
         }}
+        onClose={() => setShowTypeModal(false)}
       />
     </View>
   );

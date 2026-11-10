@@ -1,26 +1,25 @@
 package com.taxedge.dashboards.agents.gst.service;
 
-import com.taxedge.dashboards.agents.gst.dto.AssignAgentRequest;
-
 public interface AgentAssignmentService {
 
-    String assignGstApplication(AssignAgentRequest request);
+    String assignGstApplication(String id, Long agentId, String applicationType);
 
-    void assignGstRegistration(AssignAgentRequest request);
+    void assignGstRegistration(String businessGstId, Long agentId);
 
-    void assignGstFiling(AssignAgentRequest request);
+    void assignGstFiling(String gstfilingId, Long agentId);
 
-    void assignGstCompliance(AssignAgentRequest request);
+    void assignGstCompliance(String complianceId, Long agentId);
 
-    void assignAdditionalPlaceAmendment(AssignAgentRequest request);
+    void assignAdditionalPlaceAmendment(String amendmentId, Long agentId);
 
-    void assignBankAccountAmendment(AssignAgentRequest request);
+    void assignBankAccountAmendment(String amendmentId, Long agentId);
 
-    void assignContactAmendment(AssignAgentRequest request);
+    void assignContactAmendment(String amendmentId, Long agentId);
 
-    void assignLegalNameAmendment(AssignAgentRequest request);
+    void assignLegalNameAmendment(String amendmentId, Long agentId);
 
-    void assignPrincipalPlaceAmendment(AssignAgentRequest request);
+    void assignPrincipalPlaceAmendment(String amendmentId, Long agentId);
 
-    void assignSignatoryAmendment(AssignAgentRequest request);
+    void assignSignatoryAmendment(String amendmentId, Long agentId);
 }
+

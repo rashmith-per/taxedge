@@ -24,12 +24,6 @@ import {
 import { BANK_ACCOUNT_TYPES, NON_CORE_ACCEPTED_PROOFS } from "../../config/gstNonCoreAmendmentConfig";
 import { InputField, DropdownField, DateField, PhoneField } from "../GstAmendmentFields";
 import { GstAmendmentProofs } from "../GstAmendmentProofs";
-import {
-  normalizeBankName,
-  normalizePersonName,
-  normalizeStructuredCode,
-} from "@/modules/gst/utils/gstSpaceValidation";
-import { getMaxDobForEighteen } from "@/modules/gst/validators/dobValidators";
 
 interface GstNonCoreAmendmentEditProps {
   selectedSection: AmendmentSectionConfig;
@@ -50,7 +44,6 @@ interface GstNonCoreAmendmentEditProps {
   onDeleteDoc: () => void;
   onToggleExpandProofs: () => void;
   onReviewChanges: () => void;
-  onBlurField?: (field: keyof AmendmentFormData) => void;
   isEditMode?: boolean;
   isSaving?: boolean;
 }
@@ -73,13 +66,12 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
   onDeleteDoc,
   onToggleExpandProofs,
   onReviewChanges,
-  onBlurField,
   isEditMode = false,
   isSaving = false,
 }) => {
   const sectionId = selectedSection.id;
   const acceptedProofConfig = NON_CORE_ACCEPTED_PROOFS[sectionId];
-  const maxDob = useMemo(() => getMaxDobForEighteen(), []);
+  const maxDob = useMemo(() => new Date(), []);
 
   return (
     <View style={styles.root}>
@@ -129,7 +121,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="New Bank Name"
                   value={formData.newBankName}
-                  onChangeText={(val) => onUpdateField("newBankName", normalizeBankName(val))}
+                  onChangeText={(val) => onUpdateField("newBankName", val)}
                   placeholder="Enter bank name"
                   error={errors.newBankName}
                 />
@@ -152,7 +144,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="IFSC Code"
                   value={formData.newIfscCode}
-                  onChangeText={(val) => onUpdateField("newIfscCode", normalizeStructuredCode(val))}
+                  onChangeText={(val) => onUpdateField("newIfscCode", val.toUpperCase())}
                   placeholder="Enter IFSC code"
                   autoCapitalize="characters"
                   maxLength={11}
@@ -178,14 +170,14 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="Full Name of Signatory"
                   value={formData.newSignatoryName}
-                  onChangeText={(val) => onUpdateField("newSignatoryName", normalizePersonName(val))}
+                  onChangeText={(val) => onUpdateField("newSignatoryName", val)}
                   placeholder="Enter full name"
                   error={errors.newSignatoryName}
                 />
                 <InputField
                   label="PAN Number"
                   value={formData.newSignatoryPan}
-                  onChangeText={(val) => onUpdateField("newSignatoryPan", normalizeStructuredCode(val))}
+                  onChangeText={(val) => onUpdateField("newSignatoryPan", val.toUpperCase())}
                   placeholder="Enter PAN number"
                   autoCapitalize="characters"
                   maxLength={10}
@@ -204,7 +196,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                   label="Designation / Status"
                   value={formData.newSignatoryDesignation}
                   onChangeText={(val) => onUpdateField("newSignatoryDesignation", val.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3))}
-                  placeholder="Proprietor / Director / Partner"
+                  placeholder="MR / MS / DR"
                   autoCapitalize="characters"
                   maxLength={3}
                   error={errors.newSignatoryDesignation}
@@ -219,8 +211,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="Email Address"
                   value={formData.newSignatoryEmail}
-                  onChangeText={(val) => onUpdateField("newSignatoryEmail", val.replace(/\s+/g, "").toLowerCase())}
-                  onBlur={() => onBlurField?.("newSignatoryEmail")}
+                  onChangeText={(val) => onUpdateField("newSignatoryEmail", val.toLowerCase())}
                   placeholder="Enter email address"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -241,7 +232,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="New Primary Contact Email"
                   value={formData.newContactEmail}
-                  onChangeText={(val) => onUpdateField("newContactEmail", val.replace(/\s+/g, "").toLowerCase())}
+                  onChangeText={(val) => onUpdateField("newContactEmail", val.toLowerCase())}
                   placeholder="Enter email address"
                   keyboardType="email-address"
                   autoCapitalize="none"

@@ -7,11 +7,6 @@ import {
 } from "@/shared/validators/gstValidators";
 import { validateGstinFull } from "@/modules/gst/utils/gstValidation";
 import { parseDDMMYYYY, isFutureDate } from "@/shared/formatters/dateFormatter";
-import { validateGstDob } from "@/modules/gst/validators/dobValidators";
-import { validateAmendmentEmail } from "./gstAmendmentEmailValidation";
-import { isFormDataDirty } from "./gstAmendmentDirtyCheck";
-
-export { validateAmendmentEmail, isFormDataDirty };
 
 export {
   GSTIN_REGEX,
@@ -55,6 +50,48 @@ export function validateGstinInput(
   return { isValid: true };
 }
 
+export function isFormDataDirty(
+  currentStep: AmendmentStep,
+  formData: AmendmentFormData,
+  supportingDocOrDocs: SupportingDoc | Record<string, SupportingDoc | null> | null
+): boolean {
+  if (currentStep === "LANDING" || currentStep === "SUCCESS") return false;
+
+  const hasDoc = Boolean(
+    supportingDocOrDocs &&
+      (typeof supportingDocOrDocs === "object" && "uri" in supportingDocOrDocs
+        ? Boolean(supportingDocOrDocs.uri)
+        : Object.values(supportingDocOrDocs).some((doc) => Boolean(doc?.uri)))
+  );
+
+  return Boolean(
+    formData.newLegalBusinessName ||
+      formData.newPrincipalAddress ||
+      formData.newPrincipalCity ||
+      formData.newPrincipalDistrict ||
+      formData.newPrincipalState ||
+      formData.newPrincipalPincode ||
+      formData.newPrincipalNatureOfPremises ||
+      formData.newAdditionalAddress ||
+      formData.newAdditionalCity ||
+      formData.newAdditionalPincode ||
+      formData.newAdditionalNatureOfPremises ||
+      formData.newBankName ||
+      formData.newBankAccountNumber ||
+      formData.confirmBankAccountNumber ||
+      formData.newIfscCode ||
+      formData.newAccountType ||
+      formData.newSignatoryName ||
+      formData.newSignatoryPan ||
+      formData.newSignatoryDob ||
+      formData.newSignatoryDesignation ||
+      formData.newSignatoryMobile ||
+      formData.newSignatoryEmail ||
+      formData.newContactMobile ||
+      formData.newContactEmail ||
+      hasDoc
+  );
+}
 
 export const isValidPincode = (pincode: string): boolean => {
   return /^[1-9][0-9]{5}$/.test(pincode.trim());
@@ -66,6 +103,77 @@ export const hasEmoji = (val: string): boolean => {
   return /(\p{Extended_Pictographic}|\p{Emoji_Presentation})/u.test(nonAscii);
 };
 
+/**
+ * Strict validator for email addresses in the GST Amendment module.
+ * Rejects invalid domain endings, typos appended to .com (e.g. .comjdjdidi, .comm),
+ * invalid TLDs, consecutive dots, spaces, and numbers in the top-level domain.
+ */
+export function validateAmendmentEmail(raw: string): boolean {
+  const email = (raw || "").trim();
+  if (!email || email.length > 100) return false;
+  if (/\s/.test(email)) return false;
+
+  const atIndex = email.indexOf("@");
+  if (atIndex === -1 || atIndex !== email.lastIndexOf("@")) return false;
+
+  const localPart = email.slice(0, atIndex);
+  const domainPart = email.slice(atIndex + 1);
+
+  if (!localPart || !domainPart) return false;
+  if (localPart.length > 64) return false;
+
+  // Local part cannot start/end with dot or contain consecutive dots
+  if (localPart.startsWith(".") || localPart.endsWith(".") || localPart.includes("..")) {
+    return false;
+  }
+  if (!/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(localPart)) {
+    return false;
+  }
+
+  // Domain cannot start/end with dot or hyphen or contain consecutive dots
+  if (domainPart.startsWith(".") || domainPart.endsWith(".") || domainPart.includes("..")) {
+    return false;
+  }
+  if (domainPart.startsWith("-") || domainPart.endsWith("-")) {
+    return false;
+  }
+
+  const domainLabels = domainPart.split(".");
+  if (domainLabels.length < 2) return false;
+
+  const allLabelsValid = domainLabels.every(
+    (label) => label && label.length <= 63 && /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(label)
+  );
+  if (!allLabelsValid) return false;
+
+  // Top-Level Domain (TLD) is the final segment
+  const tld = domainLabels[domainLabels.length - 1].toLowerCase();
+
+  // TLD must consist strictly of letters (no digits or symbols) between 2 and 10 characters
+  if (!/^[a-zA-Z]{2,10}$/.test(tld)) {
+    return false;
+  }
+
+  // Reject accidental typo extensions starting with "com" followed by extra characters (e.g. "comjdjdidi", "comm", "comxyz")
+  if (/^com[a-z]+/i.test(tld)) {
+    return false;
+  }
+
+  // Reject typo extensions on other common TLDs (e.g. "orgxyz", "netxyz", "inxyz", "eduxyz")
+  if (/^(?:org|net|gov|edu|biz|info|mil)[a-z]+/i.test(tld)) {
+    return false;
+  }
+
+  // If domain is a well-known email provider, validate that provider's domain structure
+  const provider = domainLabels[domainLabels.length - 2].toLowerCase();
+  if (["gmail", "hotmail", "outlook", "icloud"].includes(provider)) {
+    if (tld !== "com" || domainLabels.length !== 2) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 /**
  * Universal single-source validator for every GST Amendment text field.
@@ -101,7 +209,7 @@ export function validateAmendmentFieldValue(
       case "newSignatoryDesignation": return "Enter a valid designation (MR, MS, DR or DRS).";
       case "newSignatoryMobile":
       case "newContactMobile": return "Enter mobile number";
-      case "newSignatoryEmail": return "Email address is required.";
+      case "newSignatoryEmail":
       case "newContactEmail": return "Enter email address";
       default: return null;
     }
@@ -127,7 +235,7 @@ export function validateAmendmentFieldValue(
       case "confirmBankAccountNumber": return "Enter a valid bank account number";
       case "newSignatoryMobile":
       case "newContactMobile": return "Enter a valid 10-digit mobile number";
-      case "newSignatoryEmail": return "Please enter a valid email address.";
+      case "newSignatoryEmail":
       case "newContactEmail": return "Enter a valid email address";
       default: return null;
     }
@@ -228,8 +336,15 @@ export function validateAmendmentFieldValue(
     }
 
     case "newSignatoryDob": {
-      const err = validateGstDob(trimmed);
-      return err || null;
+      const dobDate = parseDDMMYYYY(trimmed);
+      if (!dobDate) return "Enter a valid date of birth.";
+      if (isFutureDate(dobDate)) return "Date of birth cannot be in the future.";
+      const now = new Date();
+      const ageYears = now.getFullYear() - dobDate.getFullYear();
+      const birthdayThisYear = new Date(now.getFullYear(), dobDate.getMonth(), dobDate.getDate());
+      const age = birthdayThisYear > now ? ageYears - 1 : ageYears;
+      if (age < 18) return "You must be at least 18 years old.";
+      return null;
     }
 
     case "newSignatoryDesignation": {
@@ -249,13 +364,7 @@ export function validateAmendmentFieldValue(
       return null;
     }
 
-    case "newSignatoryEmail": {
-      if (!validateAmendmentEmail(trimmed)) {
-        return "Please enter a valid email address.";
-      }
-      return null;
-    }
-
+    case "newSignatoryEmail":
     case "newContactEmail": {
       if (!validateAmendmentEmail(trimmed)) {
         return "Enter a valid email address";

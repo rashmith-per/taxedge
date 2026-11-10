@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/v1/my-applications/itr-filing")
+@RequestMapping("/api/v1/itr/my-applications")
 @RequiredArgsConstructor
 @Slf4j
 public class ItrFilingMyApplicationsController {

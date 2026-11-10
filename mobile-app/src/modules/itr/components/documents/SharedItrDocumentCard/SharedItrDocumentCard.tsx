@@ -278,7 +278,7 @@ export const SharedItrDocumentCard: React.FC<SharedItrDocumentCardProps> = ({
       <UploadSourceModal
         visible={showSourceModal}
         documentTitle={item.title}
-        maxSizeText="Maximum file size: 15 MB"
+        maxSizeText={`${Math.round((maxSizeBytes ?? MAX_FILE_SIZE_BYTES) / (1024 * 1024))} MB`}
         onChooseFiles={handleChooseFiles}
         onSelectGallery={handlePickGallery}
         onTakePhoto={handleTakePhoto}
@@ -464,7 +464,7 @@ export const SharedItrDocumentCard: React.FC<SharedItrDocumentCardProps> = ({
       <UploadSourceModal
         visible={showSourceModal}
         documentTitle={item.title}
-        maxSizeText="Maximum file size: 15 MB"
+        maxSizeText={`${Math.round((maxSizeBytes ?? MAX_FILE_SIZE_BYTES) / (1024 * 1024))} MB`}
         onChooseFiles={handleChooseFiles}
         onSelectGallery={handlePickGallery}
         onTakePhoto={handleTakePhoto}

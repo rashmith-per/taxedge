@@ -25,7 +25,6 @@ import {
   styles,
   getContainerInsetsStyle,
   getScrollContentInsetsStyle,
-  getBottomBarInsetsStyle,
 } from "./RevisedDocumentsScreen.styles";
 
 export const RevisedDocumentsScreen: React.FC = () => {
@@ -82,7 +81,6 @@ export const RevisedDocumentsScreen: React.FC = () => {
     (d) => d.status === "uploaded" || !!d.fileUri
   ).length;
   const totalCount = documents.length;
-  const isCompleted = uploadedCount === totalCount && totalCount > 0;
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const isSubmittingRef = useRef(false);
@@ -247,7 +245,12 @@ export const RevisedDocumentsScreen: React.FC = () => {
     <View style={[styles.container, getContainerInsetsStyle(insets.top)]}>
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <RevisedItrHeader subtitle="Documents & Submission" hideBackButton={params.isEditing === "true"} />
+      <RevisedItrHeader
+        subtitle="Upload Documents"
+        currentStep={4}
+        totalSteps={5}
+        hideBackButton={params.isEditing === "true"}
+      />
 
       <ScrollView
         contentContainerStyle={[
@@ -258,24 +261,10 @@ export const RevisedDocumentsScreen: React.FC = () => {
       >
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.pageTitle}>Upload Documents</Text>
+          <Text style={styles.pageTitle}>Upload Supporting Documents</Text>
           <Text style={styles.pageSubtitle}>
             Upload proofs for the corrections made in your revised return.
           </Text>
-        </View>
-
-        {/* Upload Progress Header */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressRow}>
-            <Text style={styles.counterText}>
-              {uploadedCount} of {totalCount} documents uploaded
-            </Text>
-            <View style={styles.inProgressBadge}>
-              <Text style={styles.inProgressText}>
-                {isCompleted ? "Completed" : "In Progress"}
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* Required Documents Section */}
@@ -297,45 +286,40 @@ export const RevisedDocumentsScreen: React.FC = () => {
             {additionalDocs.map((item) => renderDocCard(item, false))}
           </View>
         )}
-      </ScrollView>
 
-      {/* Sticky Bottom Action Button */}
-      <View
-        style={[
-          styles.bottomBar,
-          getBottomBarInsetsStyle(insets.bottom),
-        ]}
-      >
-        {params.isEditing === "true" ? (
-          /* Separate Button 1: Update & Continue (PUT Method) */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleUpdateAndContinue}
-            style={styles.continueButton}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.continueButtonText}>Update & Continue</Text>
-            )}
-          </TouchableOpacity>
-        ) : (
-          /* Separate Button 2: Continue (POST Method) */
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleContinue}
-            style={styles.continueButton}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.continueButtonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
+        {/* Action Button — In Scroll Flow (Matching GST Filing) */}
+        <View style={styles.buttonWrapper}>
+          {params.isEditing === "true" ? (
+            /* Separate Button 1: Update & Continue (PUT Method) */
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleUpdateAndContinue}
+              style={styles.continueButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Update & Continue</Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            /* Separate Button 2: Continue (POST Method) */
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleContinue}
+              style={styles.continueButton}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.continueButtonText}>Continue</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 };

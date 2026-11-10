@@ -4,7 +4,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { styles } from "./GstAmendmentPicker.styles";
 import { PickerModalState } from "../../types/gstAmendmentTypes";
-import { GstStatePickerModal } from "@/modules/gst/components/common";
 
 interface GstAmendmentPickerProps {
   pickerModal: PickerModalState;
@@ -16,25 +15,6 @@ export const GstAmendmentPicker: React.FC<GstAmendmentPickerProps> = ({
   onClose,
 }) => {
   if (!pickerModal.isOpen) return null;
-
-  const isStatePicker =
-    pickerModal.title.toLowerCase().includes("state") ||
-    pickerModal.title.toLowerCase().includes("union territory");
-
-  if (isStatePicker) {
-    return (
-      <GstStatePickerModal
-        visible={pickerModal.isOpen}
-        title={pickerModal.title}
-        selectedState={pickerModal.selectedVal}
-        onSelect={(val) => {
-          pickerModal.onSelect(val);
-          onClose();
-        }}
-        onClose={onClose}
-      />
-    );
-  }
 
   return (
     <Modal
