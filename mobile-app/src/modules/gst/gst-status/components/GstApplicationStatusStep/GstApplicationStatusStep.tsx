@@ -63,6 +63,8 @@ export const GstApplicationStatusStep: React.FC<GstApplicationStatusStepProps> =
   const handleGoApplications = () => {
     if (onGoApplications) {
       onGoApplications();
+    } else if (appId && appId !== "Not available") {
+      router.push(`/application/${appId}` as any);
     } else {
       router.replace("/(main)/applications");
     }
@@ -220,7 +222,7 @@ export const GstApplicationStatusStep: React.FC<GstApplicationStatusStepProps> =
           onPress={handleGoApplications}
         >
           <Ionicons name="folder-outline" size={19} color={BrandColors.PRIMARY_BLUE} />
-          <Text style={styles.secondaryAppBtnText}>Track in My Applications</Text>
+          <Text style={styles.secondaryAppBtnText}>Track My Application</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

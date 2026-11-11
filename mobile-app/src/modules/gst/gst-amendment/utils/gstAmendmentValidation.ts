@@ -83,7 +83,7 @@ export function validateAmendmentFieldValue(
   if (!trimmed) {
     if (!isTouched) return null;
     switch (field) {
-      case "newLegalBusinessName": return "Enter legal business name";
+      case "newLegalBusinessName": return "Legal Name is required.";
       case "newPrincipalAddress":
       case "newAdditionalAddress": return "Enter business address";
       case "newPrincipalCity":
@@ -135,7 +135,7 @@ export function validateAmendmentFieldValue(
 
   switch (field) {
     case "newLegalBusinessName": {
-      if (trimmed.length > 100) return "Legal business name exceeds the maximum length";
+      if (trimmed.length > 25) return "Legal Name cannot exceed 25 characters.";
       if (!/[a-zA-Z\p{L}]/u.test(trimmed)) return "Enter a valid legal business name";
       if (/^\d+$/.test(trimmed.replace(/[\s.&',\-/]/g, ""))) return "Enter a valid legal business name";
       if (!/^[a-zA-Z0-9\p{L}\s.&',\-\/]+$/u.test(trimmed)) {

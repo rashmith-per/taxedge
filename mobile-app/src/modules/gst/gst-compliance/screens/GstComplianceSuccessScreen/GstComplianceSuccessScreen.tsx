@@ -83,7 +83,13 @@ export function GstComplianceSuccessScreen() {
           estCompletion={estimatedResponse}
           statusText="Under Verification"
           onGoHome={() => router.replace("/(main)/home")}
-          onGoApplications={() => router.replace("/(main)/applications")}
+          onGoApplications={() => {
+            if (refId && refId !== "Not available") {
+              router.push(`/application/${refId}` as any);
+            } else {
+              router.replace("/(main)/applications");
+            }
+          }}
           onContactSupport={() => router.push("/chat/support")}
         />
       </ScrollView>

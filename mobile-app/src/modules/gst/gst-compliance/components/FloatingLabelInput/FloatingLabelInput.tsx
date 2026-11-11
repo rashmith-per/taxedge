@@ -13,7 +13,7 @@ import { BrandColors } from "@/shared/theme";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
 import {
   normalizeLiveInput,
-  normalizeLiveMultilineInput,
+  normalizeRemarksText,
   finalizeTrim,
 } from "@/modules/gst/utils/gstSpaceValidation";
 import {
@@ -68,7 +68,7 @@ export const FloatingLabelInput: React.FC<FloatingLabelInputProps> = ({
   const inputRef = useRef<TextInput>(null);
 
   const handleChangeText = (text: string) => {
-    const cleaned = multiline ? normalizeLiveMultilineInput(text) : normalizeLiveInput(text);
+    const cleaned = multiline ? normalizeRemarksText(text) : normalizeLiveInput(text);
     if (onChangeText) onChangeText(cleaned);
   };
 

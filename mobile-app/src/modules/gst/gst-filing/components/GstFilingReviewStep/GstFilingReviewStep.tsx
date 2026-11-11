@@ -13,6 +13,7 @@ import {
 import {
   GstReviewUploadedDocsCard,
   GstReviewUploadedDocItem,
+  GstReviewEditButton,
 } from "@/modules/gst/components/common";
 import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
 import { FilingDocItem } from "@/modules/gst/gst-filing/config/gstFilingDocumentsConfig";
@@ -129,14 +130,7 @@ export const GstFilingReviewStep: React.FC<GstFilingReviewStepProps> = ({
   const returnFormName = filingType ? filingType.split(" ")[0] : "GSTR-1";
 
   const renderEditButton = (onPress?: () => void) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={styles.editBtn}
-    >
-      <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE} />
-      <Text style={styles.editBtnText}>Edit</Text>
-    </TouchableOpacity>
+    <GstReviewEditButton onPress={onPress} />
   );
 
   const hasEstimates = currentTurnover > 0 || currentPurchases > 0 || currentItc > 0;

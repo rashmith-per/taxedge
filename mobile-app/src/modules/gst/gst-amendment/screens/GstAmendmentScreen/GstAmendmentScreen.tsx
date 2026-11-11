@@ -138,10 +138,22 @@ export function GstAmendmentScreen() {
           submissionResult={workflow.submissionResult}
           insets={insets}
           onTrack={() => {
-            workflow.router.replace("/(main)/applications");
+            const targetId = workflow.submissionResult?.arn || workflow.submissionResult?.appId;
+            if (targetId) {
+              workflow.router.push(`/application/${targetId}` as any);
+            } else {
+              workflow.router.replace("/(main)/applications");
+            }
           }}
           onGoHome={() => workflow.router.replace("/(main)/home")}
-          onOpenApplications={() => workflow.router.replace("/(main)/applications")}
+          onOpenApplications={() => {
+            const targetId = workflow.submissionResult?.arn || workflow.submissionResult?.appId;
+            if (targetId) {
+              workflow.router.push(`/application/${targetId}` as any);
+            } else {
+              workflow.router.replace("/(main)/applications");
+            }
+          }}
         />
       )}
 

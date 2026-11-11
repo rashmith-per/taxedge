@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Keyboard,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -227,7 +228,10 @@ export function GstComplianceScreen() {
                   </Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => setShowFyModal(true)}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowFyModal(true);
+                    }}
                     style={[styles.selectorBox, isDark && styles.selectorBoxDark, Boolean(errors.financialYear) && styles.selectorBoxError]}
                   >
                     <Text

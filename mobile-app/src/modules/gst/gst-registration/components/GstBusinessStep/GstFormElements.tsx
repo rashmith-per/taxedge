@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
   FlatList,
+  Keyboard,
   type KeyboardTypeOptions,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -177,6 +178,7 @@ export const FormSelect: React.FC<SelectProps> = React.memo(({
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => {
+          Keyboard.dismiss();
           setSearchQuery("");
           setModalVisible(true);
         }}
@@ -297,7 +299,10 @@ export const FormDatePicker: React.FC<DatePickerProps> = React.memo(({
     <Text style={styles.label}>{label}</Text>
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={onPress}
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
       style={[
         styles.dateInput,
         styles.formDatePickerBtn,

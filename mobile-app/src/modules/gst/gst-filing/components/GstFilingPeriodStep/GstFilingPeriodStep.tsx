@@ -210,8 +210,8 @@ export const GstFilingPeriodStep: React.FC<GstFilingPeriodStepProps> = ({
         onChange={onChange}
         onError={onError}
         onBlurField={onBlurField}
-        onOpenYearModal={() => setShowYearModal(true)}
-        onOpenPeriodModal={() => setShowPeriodModal(true)}
+        onOpenYearModal={() => dismissKeyboardThen(() => setShowYearModal(true))}
+        onOpenPeriodModal={() => dismissKeyboardThen(() => setShowPeriodModal(true))}
         selectedPeriodValue={selectedPeriodValue}
       />
 

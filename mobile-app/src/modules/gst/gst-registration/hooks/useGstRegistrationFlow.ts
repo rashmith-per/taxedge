@@ -145,6 +145,9 @@ export const useGstRegistrationFlow = (scrollViewRef: GstScrollViewRef) => {
           if (currentErr) {
             const err = GstValidators.validateBusinessField(key, strVal, ctx);
             if (err) acc[key] = err; else delete acc[key];
+          } else if (key === "signatoryDob" && strVal) {
+            const err = GstValidators.validateBusinessField(key, strVal, ctx);
+            if (err) acc[key] = err;
           } else if (strVal.trim().length > 0) {
             const validationErr = GstValidators.validateBusinessField(key, strVal, ctx);
             if (validationErr && !validationErr.toLowerCase().includes("required")) acc[key] = validationErr;
@@ -220,7 +223,7 @@ export const useGstRegistrationFlow = (scrollViewRef: GstScrollViewRef) => {
           const targetY = typeof measuredY === "number" && measuredY > 0 ? measuredY : fallbackY;
           scrollViewRef.current?.scrollTo({ y: Math.max(0, targetY - 10), animated: true });
         }
-      } else { scrollViewRef.current?.scrollTo({ y: 0, animated: true }); }
+      } else scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     }, 120);
   };
 
@@ -228,8 +231,7 @@ export const useGstRegistrationFlow = (scrollViewRef: GstScrollViewRef) => {
     setDeclared(false);
     if (isEditMode) {
       setIsEditMode(false); setEditSection(null); setScreenIndex(2);
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-      return;
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true }); return;
     }
     if (screenIndex === 3) { router.replace("/(main)/home"); return; }
     if (screenIndex > 0) { setScreenIndex((prev) => prev - 1); scrollViewRef.current?.scrollTo({ y: 0, animated: true }); return; }
@@ -357,8 +359,7 @@ export const useGstRegistrationFlow = (scrollViewRef: GstScrollViewRef) => {
     const nowIso = new Date().toISOString();
     setSubmittedDate(nowIso);
     const appId = createApplication("gst-registration", "GST Registration", "GST", {
-      ...businessData, gstId: targetGstId, applicantName: businessData.businessName || businessData.legalName || "Your Business",
-      appliedDate: nowIso, submissionDate: nowIso,
+      ...businessData, gstId: targetGstId, applicantName: businessData.businessName || businessData.legalName || "Your Business", appliedDate: nowIso, submissionDate: nowIso,
     }, documents.map((d) => ({ name: d.name, status: "Uploaded" as const, fileUri: d.fileUri, fileName: d.fileName, fileSize: d.fileSize })), 0, "Pending", false, targetGstId || undefined);
     const finalDisplayId = targetGstId || appId;
     setCreatedAppId(finalDisplayId);
@@ -381,7 +382,6 @@ export const useGstRegistrationFlow = (scrollViewRef: GstScrollViewRef) => {
       logger.error("[useGstRegistrationFlow] GST Flow Error:", { error: err });
     } finally { setIsLoading(false); }
   };
-
   const resolvedBackendGstId = useMemo(() => resolveTargetGstId([createdGstId, businessData.gstId, createdAppId]), [createdGstId, businessData.gstId, createdAppId]);
   const existingApp = useMemo(() => {
     const tid = resolvedBackendGstId || createdGstId || createdAppId || businessData.gstId || params.gstId || params.id || params.appId;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Keyboard } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { pickDocumentFromDrive } from "@/shared/utils/driveDocumentUploader";
@@ -130,6 +130,7 @@ export const GstDocumentCard: React.FC<GstDocumentCardProps> = ({
   };
 
   const handleChooseFiles = async () => {
+    Keyboard.dismiss();
     setShowSourceModal(false);
     if (onChooseFilesOverride) {
       await onChooseFilesOverride();
@@ -177,6 +178,7 @@ export const GstDocumentCard: React.FC<GstDocumentCardProps> = ({
   };
 
   const handleTakePhoto = async () => {
+    Keyboard.dismiss();
     setShowSourceModal(false);
     try {
       const currentPerm = await ImagePicker.getCameraPermissionsAsync();
@@ -230,6 +232,7 @@ export const GstDocumentCard: React.FC<GstDocumentCardProps> = ({
   };
 
   const handleSelectGallery = async () => {
+    Keyboard.dismiss();
     setShowSourceModal(false);
     try {
       const currentPerm = await ImagePicker.getMediaLibraryPermissionsAsync();
@@ -374,6 +377,7 @@ export const GstDocumentCard: React.FC<GstDocumentCardProps> = ({
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={() => {
+              Keyboard.dismiss();
               if (isDropdownSelector && onDropdownPress) {
                 onDropdownPress();
               } else {
@@ -409,7 +413,10 @@ export const GstDocumentCard: React.FC<GstDocumentCardProps> = ({
 
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={() => setShowSourceModal(true)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowSourceModal(true);
+            }}
             style={styles.changeButton}
           >
             <Ionicons name="swap-horizontal" size={14} color="#C2410C" />

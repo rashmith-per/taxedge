@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Keyboard } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { styles } from "./GstBusinessStep.styles";
@@ -43,7 +43,10 @@ export const AccordionSection: React.FC<AccordionSectionProps> = React.memo(
       <TouchableOpacity
         style={styles.accordionCardHeader}
         activeOpacity={0.7}
-        onPress={onToggle}
+        onPress={() => {
+          Keyboard.dismiss();
+          onToggle();
+        }}
         accessibilityRole="button"
         accessibilityLabel={`${title}, ${isExpanded ? "expanded" : "collapsed"}${errorCount > 0 ? `, ${errorCount} error${errorCount > 1 ? "s" : ""}` : ""}`}
         accessibilityState={{ expanded: isExpanded }}

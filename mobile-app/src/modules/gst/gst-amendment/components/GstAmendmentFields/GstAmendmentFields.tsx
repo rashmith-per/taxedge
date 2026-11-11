@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity, KeyboardTypeOptions } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Keyboard, KeyboardTypeOptions } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { UniversalDatePicker } from "@/shared/components/UniversalDatePicker";
 import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
@@ -86,7 +86,10 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
     </Text>
     <TouchableOpacity
       activeOpacity={0.8}
-      onPress={onPress}
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
       style={[styles.dropdownSelect, Boolean(error) && styles.inputError]}
     >
       <Text style={value ? styles.dropdownSelectText : styles.dropdownPlaceholderText}>

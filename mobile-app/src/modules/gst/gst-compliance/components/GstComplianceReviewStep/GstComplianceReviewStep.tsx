@@ -8,6 +8,7 @@ import { ComplianceFormData, UploadedDocInfo } from "@/modules/gst/validation/co
 import {
   GstReviewUploadedDocsCard,
   GstReviewUploadedDocItem,
+  GstReviewEditButton,
 } from "@/modules/gst/components/common";
 import { resolveDocType } from "../../utils/gstPreviewUtils";
 import { styles } from "./GstComplianceReviewStep.styles";
@@ -192,14 +193,7 @@ export const GstComplianceReviewStep: React.FC<GstComplianceReviewStepProps> = (
   }, [isRecon, formData.purchaseDoc, formData.salesDoc, formData.noticeDoc]);
 
   const renderEditButton = (section?: string) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => onEditStep(section)}
-      style={styles.editBtn}
-    >
-      <Ionicons name="pencil" size={12} color={BrandColors.PRIMARY_ORANGE} />
-      <Text style={styles.editBtnText}>Edit</Text>
-    </TouchableOpacity>
+    <GstReviewEditButton onPress={() => onEditStep(section)} />
   );
 
   const gstr2bDisplay = formatGstr2bReference(formData.gstr2bRef, dbData?.gstr2bNumber);

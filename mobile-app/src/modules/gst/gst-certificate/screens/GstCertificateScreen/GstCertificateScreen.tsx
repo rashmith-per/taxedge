@@ -4,7 +4,7 @@ import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLa
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { GstSelectModal, GstinInfoIcon } from "@/modules/gst/components/common";
+import { GstinInfoIcon } from "@/modules/gst/components/common";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 
 import { useGstCertificateFlow } from "../../hooks/useGstCertificateFlow";
@@ -14,12 +14,6 @@ import {
   getScaleTransformStyle,
   getOpacityAnimStyle,
 } from "./GstCertificateScreen.styles";
-
-const CERTIFICATE_REQUEST_TYPES = [
-  "Download Existing Certificate (Form REG-06)",
-  "Request Reprint / Duplicate Copy",
-  "Certificate Verification & Status Check",
-];
 
 export function GstCertificateScreen() {
   const insets = useSafeAreaInsets();
@@ -123,14 +117,10 @@ export function GstCertificateScreen() {
                 Request Purpose <Text style={st.star}>*</Text>
               </Text>
             </View>
-            <TouchableOpacity
-              style={st.dropdownBox}
-              activeOpacity={0.8}
-              onPress={() => flow.setShowTypeModal(true)}
-            >
-              <Text style={st.dropdownText}>{flow.requestType}</Text>
-              <Ionicons name="chevron-down" size={18} color="#64748B" />
-            </TouchableOpacity>
+            <View style={st.selectedOptionBox}>
+              <Text style={st.selectedOptionText}>{flow.requestType}</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#FF7A00" />
+            </View>
             {Boolean(flow.error) && <Text style={st.errorText}>{flow.error}</Text>}
           </View>
 
@@ -189,7 +179,7 @@ export function GstCertificateScreen() {
           <View style={st.detailsCard}>
             <View style={st.detailRow}>
               <View style={st.detailIconBox}>
-                <Ionicons name="barcode-outline" size={18} color="#1E5EFF" />
+                <Ionicons name="barcode-outline" size={18} color="#FFFFFF" />
               </View>
               <Text style={st.detailLabel}>GSTIN</Text>
               <Text style={st.detailVal}>{flow.gstin}</Text>
@@ -198,7 +188,7 @@ export function GstCertificateScreen() {
 
             <View style={st.detailRow}>
               <View style={st.detailIconBox}>
-                <Ionicons name="document-text-outline" size={18} color="#1E5EFF" />
+                <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />
               </View>
               <Text style={st.detailLabel}>Form</Text>
               <Text style={st.detailVal}>Form GST REG-06</Text>
@@ -207,7 +197,7 @@ export function GstCertificateScreen() {
 
             <View style={st.detailRow}>
               <View style={st.detailIconBox}>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#16A34A" />
+                <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
               </View>
               <Text style={st.detailLabel}>Status</Text>
               <View style={st.statusPill}>
@@ -219,42 +209,28 @@ export function GstCertificateScreen() {
           <View style={st.btnScaleAnimWrap}>
             {Boolean(flow.certificatePdfUri) && (
               <TouchableOpacity
-                style={st.blueOutlineBtn}
-                activeOpacity={0.8}
+                style={st.primaryShareBtn}
+                activeOpacity={0.85}
                 onPress={() =>
                   flow.downloadAndSharePdf(flow.certificatePdfUri!, flow.generatedFileName)
                 }
               >
-                <Ionicons name="share-outline" size={18} color="#1E5EFF" style={st.iconMarginRight8} />
-                <Text style={st.blueOutlineBtnText}>Share / Save Certificate</Text>
+                <Ionicons name="share-outline" size={18} color="#FFFFFF" style={st.iconMarginRight8} />
+                <Text style={st.primaryShareBtnText}>Share / Save Certificate</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity
-              style={st.blueOutlineBtn}
+              style={st.secondaryDashboardBtn}
               activeOpacity={0.8}
-              onPress={() => flow.router.replace("/(main)/applications")}
+              onPress={() => flow.router.replace("/(main)/home")}
             >
-              <Ionicons name="folder-outline" size={18} color="#1E5EFF" style={st.iconMarginRight8} />
-              <Text style={st.blueOutlineBtnText}>Go to My Applications</Text>
+              <Ionicons name="home" size={19} color="#083B75" style={st.iconMarginRight8} />
+              <Text style={st.secondaryDashboardBtnText}>Go to Dashboard</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       )}
-
-      {/* Select Modal */}
-      <GstSelectModal
-        visible={flow.showTypeModal}
-        title="Select Certificate Request Purpose"
-        options={CERTIFICATE_REQUEST_TYPES}
-        selectedValue={flow.requestType}
-        onSelect={(opt: string) => {
-          flow.setRequestType(opt);
-          flow.setError("");
-          flow.setShowTypeModal(false);
-        }}
-        onClose={() => flow.setShowTypeModal(false)}
-      />
 
       <UniversalDraftModal
         visible={flow.draftGuard.showDraftModal}

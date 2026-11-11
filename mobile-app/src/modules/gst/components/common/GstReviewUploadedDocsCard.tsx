@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { View, Text, TouchableOpacity, Platform } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
+import { GstReviewEditButton } from "./GstReviewEditButton";
 import { styles } from "./GstReviewUploadedDocsCard.styles";
 
 export interface GstReviewUploadedDocItem {
@@ -34,15 +35,10 @@ export const GstReviewUploadedDocsCard: React.FC<GstReviewUploadedDocsCardProps>
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{title}</Text>
-        <TouchableOpacity
-          style={styles.editDocsButton}
+        <GstReviewEditButton
           onPress={onEdit}
           accessibilityLabel={`Edit ${title}`}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="pencil" size={16} color={BrandColors.PRIMARY_ORANGE} />
-          <Text style={styles.editDocsButtonText}>Edit</Text>
-        </TouchableOpacity>
+        />
       </View>
 
       {documents.length > 0 ? (

@@ -171,3 +171,54 @@ export function isOnlySpacesOrEmpty(text?: string | null): boolean {
   if (!text || typeof text !== "string") return true;
   return text.trim().length === 0;
 }
+
+/**
+ * Normalizes email address input:
+ * - Disallows all whitespace and emojis
+ * - Converts to lowercase
+ * - Strips characters not allowed in valid email addresses: only a-z, 0-9, ., _, -, +, @
+ */
+export function normalizeEmail(text?: string | null): string {
+  if (!text || typeof text !== "string") return "";
+  const cleaned = removeEmoji(text).replace(/\s+/g, "").toLowerCase();
+  return cleaned.replace(/[^a-z0-9._\-+@]/g, "");
+}
+
+/**
+ * Normalizes digits-only input (Mobile, PIN, Bank Account, HSN, etc.):
+ * - Disallows all whitespace and emojis
+ * - Strips any non-digit character
+ */
+export function normalizeDigits(text?: string | null, maxLength?: number): string {
+  if (!text || typeof text !== "string") return "";
+  const digits = removeEmoji(text).replace(/\D/g, "");
+  return typeof maxLength === "number" && maxLength > 0 ? digits.slice(0, maxLength) : digits;
+}
+
+/**
+ * Normalizes monetary amount input (e.g. ₹ figures):
+ * - Disallows emojis and whitespace
+ * - Keeps digits and at most one decimal point (up to maxDecimals)
+ */
+export function normalizeMonetaryAmount(text?: string | null, maxDecimals = 2): string {
+  if (!text || typeof text !== "string") return "";
+  const cleaned = removeEmoji(text).replace(/[^\d.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  if (maxDecimals <= 0) return cleaned.slice(0, firstDot);
+  const intPart = cleaned.slice(0, firstDot);
+  const fracPart = cleaned.slice(firstDot + 1).replace(/\./g, "").slice(0, maxDecimals);
+  return `${intPart}.${fracPart}`;
+}
+
+/**
+ * Normalizes general multiline remarks and text:
+ * - Removes emojis and control characters
+ * - Allows alphanumeric, standard punctuation, and normal spaces/newlines
+ */
+export function normalizeRemarksText(text?: string | null): string {
+  if (!text || typeof text !== "string") return "";
+  let val = normalizeLiveMultilineInput(text);
+  val = val.replace(/[^\p{L}\p{M}\p{N}\s.,\/\-'’()#:–—&!?%₹$*+;=@"\n\r]/gu, "");
+  return val;
+}

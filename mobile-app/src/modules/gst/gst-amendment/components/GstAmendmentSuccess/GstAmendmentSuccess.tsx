@@ -27,6 +27,9 @@ export const GstAmendmentSuccess: React.FC<GstAmendmentSuccessProps> = ({
 }) => {
   const router = useRouter();
 
+  const appId = submissionResult.arn || submissionResult.appId || "Not available";
+  const formattedDate = formatAmendmentSubmissionDate(submissionResult.date) || formatSubmissionDate(submissionResult.date) || "Today";
+
   const handleGoHome = () => {
     if (onGoHome) onGoHome();
     else router.replace("/(main)/home");
@@ -35,15 +38,9 @@ export const GstAmendmentSuccess: React.FC<GstAmendmentSuccessProps> = ({
   const handleGoApplications = () => {
     if (onOpenApplications) onOpenApplications();
     else if (onTrack) onTrack();
+    else if (appId && appId !== "Not available") router.push(`/application/${appId}` as any);
     else router.replace("/(main)/applications");
   };
-
-  const handleContactSupport = () => {
-    router.push("/chat/support");
-  };
-
-  const appId = submissionResult.arn || submissionResult.appId || "Not available";
-  const formattedDate = formatAmendmentSubmissionDate(submissionResult.date) || formatSubmissionDate(submissionResult.date) || "Today";
 
   // Lookup application details from store if present to get user's business name
   const existingApp = useApplicationStore

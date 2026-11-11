@@ -30,6 +30,7 @@ import {
   normalizeBankName,
   normalizeAddress,
   normalizeAlphabeticLocation,
+  normalizeDigits,
   finalizeTrim,
 } from "@/modules/gst/utils/gstSpaceValidation";
 import { logger } from "@/core/logging/logger";
@@ -84,12 +85,9 @@ export const GstBusinessStep: React.FC<Props> = ({
   const isBankExpanded = hasBankErrors || (userToggledBank !== null ? userToggledBank : initialExpandedSection === "bank");
   const isSignatoryExpanded = hasSignatoryErrors || (userToggledSignatory !== null ? userToggledSignatory : initialExpandedSection === "signatory");
 
+  // Focus handling is user-initiated only; unsolicited focus on errors or transitions is blocked
   useEffect(() => {
     if (!focusedField) return;
-    if (isTextFormField(focusedField) && inputRefs.current[focusedField]) {
-      const timer = setTimeout(() => { inputRefs.current[focusedField]?.focus(); }, 180);
-      return () => clearTimeout(timer);
-    }
   }, [focusedField]);
 
   useEffect(() => {
@@ -208,7 +206,10 @@ export const GstBusinessStep: React.FC<Props> = ({
       <Text style={styles.label}>State / UT *</Text>
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => setStateModalVisible(true)}
+        onPress={() => {
+          Keyboard.dismiss();
+          setStateModalVisible(true);
+        }}
         style={[styles.selectInput, errors?.state && styles.inputError]}
         accessibilityRole="combobox"
         accessibilityLabel="State / UT"
@@ -296,7 +297,9 @@ export const GstBusinessStep: React.FC<Props> = ({
             {renderInput("pinCode", "PIN Code *", "560001", {
               keyboardType: "numeric",
               maxLength: 6,
-              onChangeOverride: (pin) => {
+              transform: (v: string) => normalizeDigits(v, 6),
+              onChangeOverride: (rawPin) => {
+                const pin = normalizeDigits(rawPin, 6);
                 updateField("pinCode", pin);
                 if (GstValidators.isValidPinCode(pin)) handlePinLookup(pin);
               },
@@ -307,6 +310,7 @@ export const GstBusinessStep: React.FC<Props> = ({
         {renderInput("hsnCode", "Primary HSN / SAC Code *", "e.g. 998311", {
           keyboardType: "numeric",
           maxLength: 8,
+          transform: (v: string) => normalizeDigits(v, 8),
           infoIcon: <GstinInfoIcon fieldType="sacCode" />,
         })}
         {hsnClassification?.isValid && (
@@ -333,11 +337,9 @@ export const GstBusinessStep: React.FC<Props> = ({
           bankErrorCount={bankErrorCount}
           onToggle={() => {
             const next = !isBankExpanded;
+            Keyboard.dismiss();
             setUserToggledBank(next);
-            if (next) {
-              Keyboard.dismiss();
-              if (bankYRef.current > 0) onRequestScrollToSection?.("bank", bankYRef.current);
-            }
+            if (next && bankYRef.current > 0) onRequestScrollToSection?.("bank", bankYRef.current);
           }}
           updateField={updateField}
           blurField={blurField}
@@ -354,11 +356,9 @@ export const GstBusinessStep: React.FC<Props> = ({
           signatoryErrorCount={signatoryErrorCount}
           onToggle={() => {
             const next = !isSignatoryExpanded;
+            Keyboard.dismiss();
             setUserToggledSignatory(next);
-            if (next) {
-              Keyboard.dismiss();
-              if (signatoryYRef.current > 0) onRequestScrollToSection?.("signatory", signatoryYRef.current);
-            }
+            if (next && signatoryYRef.current > 0) onRequestScrollToSection?.("signatory", signatoryYRef.current);
           }}
           updateField={updateField}
           blurField={blurField}

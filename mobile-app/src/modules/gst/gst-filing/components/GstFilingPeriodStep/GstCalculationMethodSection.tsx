@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Keyboard } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import {
@@ -53,7 +53,10 @@ export const GstCalculationMethodSection: React.FC<GstCalculationMethodSectionPr
 
       <TouchableOpacity
         style={[styles.methodCard, isCaAssisted && styles.methodCardActive]}
-        onPress={() => onChange({ calculationMethod: "ca_assisted" })}
+        onPress={() => {
+          Keyboard.dismiss();
+          onChange({ calculationMethod: "ca_assisted" });
+        }}
         activeOpacity={0.8}
       >
         <Ionicons

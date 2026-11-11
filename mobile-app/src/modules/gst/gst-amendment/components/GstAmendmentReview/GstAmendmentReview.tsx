@@ -8,7 +8,7 @@ import {
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
-import { GstReviewUploadedDocsCard, GstReviewUploadedDocItem } from "@/modules/gst/components/common";
+import { GstReviewUploadedDocsCard, GstReviewUploadedDocItem, GstReviewEditButton } from "@/modules/gst/components/common";
 import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
 import {
   styles,
@@ -126,14 +126,7 @@ export const GstAmendmentReview: React.FC<GstAmendmentReviewProps> = ({
         <View style={styles.requestedDetailsCard}>
           <View style={styles.requestedCardHeaderRow}>
             <Text style={styles.requestedCardTitle}>REQUESTED CHANGES</Text>
-            <TouchableOpacity
-              style={styles.editOptionBtn}
-              activeOpacity={0.7}
-              onPress={onEdit}
-            >
-              <Ionicons name="create-outline" size={14} color={BrandColors.PRIMARY_ORANGE} />
-              <Text style={styles.editOptionText}>Edit</Text>
-            </TouchableOpacity>
+            <GstReviewEditButton onPress={onEdit} accessibilityLabel="Edit Requested Changes" />
           </View>
 
           {Object.entries(requestedValDict).map(([label, val]) => (

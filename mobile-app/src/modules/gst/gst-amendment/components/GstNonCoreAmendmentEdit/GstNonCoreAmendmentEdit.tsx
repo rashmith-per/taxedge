@@ -28,6 +28,7 @@ import {
   normalizeBankName,
   normalizePersonName,
   normalizeStructuredCode,
+  normalizeEmail,
 } from "@/modules/gst/utils/gstSpaceValidation";
 import { getMaxDobForEighteen } from "@/modules/gst/validators/dobValidators";
 
@@ -219,7 +220,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="Email Address"
                   value={formData.newSignatoryEmail}
-                  onChangeText={(val) => onUpdateField("newSignatoryEmail", val.replace(/\s+/g, "").toLowerCase())}
+                  onChangeText={(val) => onUpdateField("newSignatoryEmail", normalizeEmail(val))}
                   onBlur={() => onBlurField?.("newSignatoryEmail")}
                   placeholder="Enter email address"
                   keyboardType="email-address"
@@ -241,7 +242,7 @@ export const GstNonCoreAmendmentEdit: React.FC<GstNonCoreAmendmentEditProps> = (
                 <InputField
                   label="New Primary Contact Email"
                   value={formData.newContactEmail}
-                  onChangeText={(val) => onUpdateField("newContactEmail", val.replace(/\s+/g, "").toLowerCase())}
+                  onChangeText={(val) => onUpdateField("newContactEmail", normalizeEmail(val))}
                   placeholder="Enter email address"
                   keyboardType="email-address"
                   autoCapitalize="none"

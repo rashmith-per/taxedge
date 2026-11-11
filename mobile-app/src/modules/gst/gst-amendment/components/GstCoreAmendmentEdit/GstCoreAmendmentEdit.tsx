@@ -176,8 +176,9 @@ export const GstCoreAmendmentEdit: React.FC<GstCoreAmendmentEditProps> = ({
             <InputField
               label="New Legal Business Name"
               value={formData.newLegalBusinessName}
-              onChangeText={(val) => onUpdateField("newLegalBusinessName", normalizeBusinessName(val))}
+              onChangeText={(val) => onUpdateField("newLegalBusinessName", normalizeBusinessName(val).slice(0, 25))}
               placeholder="Enter legal business name"
+              maxLength={25}
               error={errors.newLegalBusinessName}
             />
           )}

@@ -17,7 +17,10 @@ import {
 import { FileUploadCard } from "@/modules/gst/gst-compliance/components/FileUploadCard/FileUploadCard";
 import { NativeDatePickerInput } from "@/modules/gst/gst-compliance/components/NativeDatePickerInput/NativeDatePickerInput";
 import { FloatingLabelInput } from "@/modules/gst/gst-compliance/components/FloatingLabelInput/FloatingLabelInput";
-import { normalizeStructuredCode } from "@/modules/gst/utils/gstSpaceValidation";
+import {
+  normalizeStructuredCode,
+  normalizeRemarksText,
+} from "@/modules/gst/utils/gstSpaceValidation";
 import { GstinInfoIcon } from "@/modules/gst/components/common";
 import { styles } from "@/modules/gst/gst-compliance/components/RequestTypeSection/RequestTypeSection.styles";
 
@@ -148,7 +151,7 @@ export const RequestTypeSection: React.FC<RequestTypeSectionProps> = ({
             placeholder="Tell us anything our CA should know..."
             value={formData.reconciliationRemarks}
             onChangeText={(text) => {
-              onUpdateField("reconciliationRemarks", text);
+              onUpdateField("reconciliationRemarks", normalizeRemarksText(text));
               if (errors.reconciliationRemarks) onClearError("reconciliationRemarks");
             }}
             error={errors.reconciliationRemarks}
@@ -281,7 +284,7 @@ export const RequestTypeSection: React.FC<RequestTypeSectionProps> = ({
           placeholder="Add any important information for our CA"
           value={formData.noticeRemarks}
           onChangeText={(text) => {
-            onUpdateField("noticeRemarks", text);
+            onUpdateField("noticeRemarks", normalizeRemarksText(text));
             if (errors.noticeRemarks) onClearError("noticeRemarks");
           }}
           error={errors.noticeRemarks}

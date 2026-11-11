@@ -1,12 +1,16 @@
 import React from "react";
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Keyboard } from "react-native";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
 import { GstServiceBanner, GstSelectModal, GstinInfoIcon } from "@/modules/gst/components/common";
 import { DatePickerDialog } from "@/shared/components/DatePickerDialog";
 import { formatDateDDMMYYYY, parseDDMMYYYY } from "@/shared/formatters/dateFormatter";
-import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
+import {
+  normalizeRemarksText,
+  normalizeMonetaryAmount,
+  normalizeStructuredCode,
+} from "@/modules/gst/utils/gstSpaceValidation";
 import { GstStepHeader } from "@/modules/gst/components/GstStepHeader";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 
@@ -117,7 +121,7 @@ export function GstCancellationScreen() {
                   placeholderTextColor="#94A3B8"
                   value={flow.form.gstin}
                   onChangeText={(t) => {
-                    flow.setFormField("gstin", t.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+                    flow.setFormField("gstin", normalizeStructuredCode(t).slice(0, 15));
                     flow.clearError("gstin");
                   }}
                   maxLength={15}
@@ -134,7 +138,10 @@ export function GstCancellationScreen() {
                 <TouchableOpacity
                   style={[styles.selectBox, Boolean(flow.errors.reason) && styles.inputError]}
                   activeOpacity={0.7}
-                  onPress={() => flow.setReasonOpen(true)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    flow.setReasonOpen(true);
+                  }}
                 >
                   <Text
                     style={flow.form.reason ? styles.selectTextSelected : styles.placeholderText}
@@ -157,7 +164,7 @@ export function GstCancellationScreen() {
                     placeholderTextColor="#94A3B8"
                     value={flow.form.otherReason}
                     onChangeText={(t) => {
-                      flow.setFormField("otherReason", removeEmoji(t));
+                      flow.setFormField("otherReason", normalizeRemarksText(t));
                       flow.clearError("otherReason");
                     }}
                     multiline
@@ -174,7 +181,10 @@ export function GstCancellationScreen() {
                 <TouchableOpacity
                   style={[styles.selectBox, Boolean(flow.errors.cancellationDate) && styles.inputError]}
                   activeOpacity={0.7}
-                  onPress={() => flow.setDateOpen(true)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    flow.setDateOpen(true);
+                  }}
                 >
                   <Text
                     style={
@@ -216,7 +226,7 @@ export function GstCancellationScreen() {
                   placeholderTextColor="#94A3B8"
                   value={flow.form.closingStock}
                   onChangeText={(t) => {
-                    flow.setFormField("closingStock", removeEmoji(t));
+                    flow.setFormField("closingStock", normalizeMonetaryAmount(t));
                     flow.clearError("closingStock");
                   }}
                   keyboardType="numeric"
@@ -235,7 +245,7 @@ export function GstCancellationScreen() {
                   placeholderTextColor="#94A3B8"
                   value={flow.form.pendingLiabilities}
                   onChangeText={(t) => {
-                    flow.setFormField("pendingLiabilities", removeEmoji(t));
+                    flow.setFormField("pendingLiabilities", normalizeMonetaryAmount(t));
                     flow.clearError("pendingLiabilities");
                   }}
                   keyboardType="numeric"
@@ -254,7 +264,7 @@ export function GstCancellationScreen() {
                   placeholderTextColor="#94A3B8"
                   value={flow.form.lastGstr3b}
                   onChangeText={(t) => {
-                    flow.setFormField("lastGstr3b", removeEmoji(t));
+                    flow.setFormField("lastGstr3b", normalizeStructuredCode(t, true));
                     flow.clearError("lastGstr3b");
                   }}
                 />

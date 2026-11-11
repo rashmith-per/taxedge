@@ -10,6 +10,7 @@ import { BrandColors, Colors } from "@/shared/theme";
 import { GstBusinessFormData } from "@/modules/gst/gst-registration/components/GstBusinessStep/GstBusinessStep";
 import { DocumentItem } from "@/modules/gst/gst-registration/components/GstUnifiedDocumentStep/GstUnifiedDocumentStep.types";
 import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
+import { GstReviewEditButton } from "@/modules/gst/components/common";
 import { styles } from "./GstReviewStep.styles";
 
 interface GstReviewStepProps {
@@ -101,9 +102,7 @@ export const GstReviewStep: React.FC<GstReviewStepProps> = ({
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Business Details</Text>
-          <TouchableOpacity onPress={() => onEditStep(0, "business")} activeOpacity={0.7}>
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
+          <GstReviewEditButton onPress={() => onEditStep(0, "business")} />
         </View>
         <View style={styles.divider} />
 
@@ -148,9 +147,7 @@ export const GstReviewStep: React.FC<GstReviewStepProps> = ({
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Bank Details</Text>
-          <TouchableOpacity onPress={() => onEditStep(0, "bank")} activeOpacity={0.7}>
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
+          <GstReviewEditButton onPress={() => onEditStep(0, "bank")} />
         </View>
         <View style={styles.divider} />
 
@@ -175,9 +172,7 @@ export const GstReviewStep: React.FC<GstReviewStepProps> = ({
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Authorised Signatory</Text>
-          <TouchableOpacity onPress={() => onEditStep(0, "signatory")} activeOpacity={0.7}>
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
+          <GstReviewEditButton onPress={() => onEditStep(0, "signatory")} />
         </View>
         <View style={styles.divider} />
 
@@ -209,15 +204,10 @@ export const GstReviewStep: React.FC<GstReviewStepProps> = ({
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Uploaded Documents</Text>
-          <TouchableOpacity
-            style={styles.editDocsButton}
+          <GstReviewEditButton
             onPress={() => onEditStep(1, "documents")}
             accessibilityLabel="Edit Uploaded Documents"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pencil" size={16} color={BrandColors.PRIMARY_ORANGE} />
-            <Text style={styles.editDocsButtonText}>Edit</Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {uploadedDocs.length > 0 && (

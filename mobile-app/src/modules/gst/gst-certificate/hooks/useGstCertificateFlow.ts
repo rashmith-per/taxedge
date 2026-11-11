@@ -90,7 +90,7 @@ export function useGstCertificateFlow() {
   useEffect(() => {
     if (!isCompleted) return;
     const backAction = () => {
-      router.replace("/(main)/applications");
+      router.replace("/(main)/home");
       return true;
     };
     const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
@@ -218,8 +218,6 @@ export function useGstCertificateFlow() {
       } catch (appErr) {
         logger.warn("[useGstCertificateFlow] ApplicationStore sync failed:", { error: appErr });
       }
-
-      await downloadAndSharePdf(uri, fileName);
     } catch (err) {
       logger.error("[useGstCertificateFlow] Certificate generation failed:", { error: err });
       Alert.alert("Generation Failed", "Could not generate certificate. Please try again.");

@@ -5,9 +5,10 @@ import { AccordionSection, sanitizeAlphanumericUpper } from "./GstFormElements";
 import { styles } from "./GstBusinessStep.styles";
 import {
   normalizePersonName,
+  normalizeEmail,
+  normalizeDigits,
   finalizeTrim,
 } from "@/modules/gst/utils/gstSpaceValidation";
-import { getMaxDobForEighteen } from "@/modules/gst/validators/dobValidators";
 
 interface GstSignatorySectionProps {
   data: GstBusinessFormData;
@@ -89,9 +90,7 @@ export const GstSignatorySection: React.FC<GstSignatorySectionProps> = ({
             })}
           </View>
           <View style={styles.halfField}>
-            {renderDatePicker("signatoryDob", "Date of Birth *", {
-              maximumDate: getMaxDobForEighteen(),
-            })}
+            {renderDatePicker("signatoryDob", "Date of Birth *")}
           </View>
         </View>
         <View
@@ -121,6 +120,7 @@ export const GstSignatorySection: React.FC<GstSignatorySectionProps> = ({
             {renderInput("signatoryMobile", "Signatory Mobile *", "10-digit", {
               keyboardType: "numeric",
               maxLength: 10,
+              transform: (v: string) => normalizeDigits(v, 10),
             })}
           </View>
           <View style={styles.halfField}>
@@ -128,6 +128,7 @@ export const GstSignatorySection: React.FC<GstSignatorySectionProps> = ({
               keyboardType: "email-address",
               maxLength: 150,
               autoCapitalize: "none",
+              transform: normalizeEmail,
               onBlurOverride: (email: string) => updateField("signatoryEmail", email.trim()),
             })}
           </View>
