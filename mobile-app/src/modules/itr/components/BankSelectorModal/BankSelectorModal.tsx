@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  ScrollView,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { ItrSelectableBank } from "../../itr-filing/types/itrFiling.types";
 import { validators } from "@/shared/validation/validators";
 import { styles } from "./BankSelectorModal.styles";
@@ -204,7 +204,11 @@ const BankFormContent: React.FC<BankFormContentProps> = ({
           : "Enter bank details for receiving your direct income tax refund from CPC Bengaluru."}
       </Text>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.formContainer}>
+      <KeyboardAwareScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.formContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Bank Name — Manually entered */}
         <View style={styles.inputGroup}>
           <View style={styles.labelRow}>
@@ -293,7 +297,7 @@ const BankFormContent: React.FC<BankFormContentProps> = ({
             {isEditing ? "Update Bank Account" : "Save & Validate Account"}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };
