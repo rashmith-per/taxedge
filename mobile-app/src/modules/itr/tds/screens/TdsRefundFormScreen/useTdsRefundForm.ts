@@ -17,6 +17,7 @@ import { tdsDraftService, INITIAL_TDS_FORM_DATA, getTdsCustId } from "../../serv
 import { tdsApiService } from "../../services/tdsApiService";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { useTdsProfileSync } from "./useTdsProfileSync";
+import { useTdsBackDraftSave } from "../../hooks/useTdsBackDraftSave";
 import { describeSaveError } from "./tdsFormHelpers";
 import {
   syncUpdatedCustomerProfile,
@@ -53,23 +54,38 @@ export const useTdsRefundForm = () => {
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const isSavingRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
+  // False until the draft stored on the device has been applied. The form is not shown before that,
+  // so empty defaults are never rendered or typed into while a saved draft is about to arrive.
+  const [isHydrating, setIsHydrating] = useState(true);
+  // Fields the user changed. Late server data must not overwrite them.
+  const editedFieldsRef = useRef<{ business: Set<string>; bank: Set<string> }>({
+    business: new Set(),
+    bank: new Set(),
+  });
+  const personalEditedRef = useRef(false);
 
+  const [documents, setDocuments] = useState<any[]>([]);
   const documentsRef = useRef<any[]>([]);
+  // Always the newest rendered state, so Back saves what is on screen and not a stale closure.
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+
+  const isDirtyNow = () => {
+    if (hasUserEdited) return true;
+    if (!initialSnapshotRef.current) return false;
+    return (
+      JSON.stringify({ bank: formData.bank, income: formData.income }) !== initialSnapshotRef.current
+    );
+  };
 
   const draftGuard = useUniversalDraftGuard({
     saveDestination: "/service/itr",
     discardDestination: "/service/itr",
-    isDirty: () => {
-      // hasUserEdited must be checked first — before the snapshot null-guard.
-      // If the user edits before the async loadData() sets initialSnapshotRef,
-      // returning false here would silently swallow the guard.
-      if (hasUserEdited) return true;
-      if (!initialSnapshotRef.current) return false;
-      const currentSnapshot = JSON.stringify({ bank: formData.bank, income: formData.income });
-      return currentSnapshot !== initialSnapshotRef.current;
-    },
+    // Editing a single section from Review keeps the existing Save / Discard prompt.
+    // Back from the first screen saves automatically (see useTdsBackDraftSave below).
+    isDirty: () => isEditing && isDirtyNow(),
     onSaveDraft: async () => {
-      await tdsDraftService.saveFormDraft(formData);
+      await tdsDraftService.saveFormDraft(formDataRef.current);
       await tdsDraftService.saveDocumentsDraft(documentsRef.current);
     },
     onDiscardDraft: async () => {
@@ -78,61 +94,54 @@ export const useTdsRefundForm = () => {
     isSubmitted: () => useTdsProgressStore.getState().isSubmitted,
   });
 
+  // Back from the first application screen saves the draft locally, then leaves. It reuses the same
+  // local draft storage as the explicit save and never calls the submit APIs.
+  const persistDraftOnBack = async () => {
+    const latestForm = formDataRef.current;
+    const latestDocs = documentsRef.current;
+    await tdsDraftService.saveFormDraft(latestForm, "FORM");
+    // Never overwrite stored documents with an empty list if they have not been loaded.
+    if (latestDocs.length > 0) {
+      await tdsDraftService.saveDocumentsDraft(latestDocs);
+    }
+    try {
+      const appStore = (await import("@/store/applicationStore")).useApplicationStore.getState();
+      appStore.saveTdsDraft?.({
+        formData: latestForm,
+        documents: latestDocs as any,
+        step: "FORM",
+        updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    } catch (storeErr) {
+      console.warn("[TDS Form] appStore.saveTdsDraft warning:", storeErr);
+    }
+  };
+
+  useTdsBackDraftSave({
+    shouldSave: !isEditing && !isHydrating && !useTdsProgressStore.getState().isSubmitted && isDirtyNow(),
+    saveDraft: persistDraftOnBack,
+    isBusy: () => isSavingRef.current,
+  });
+
   useEffect(() => {
-    async function loadData() {
-      const freshPersonal = await fetchAndPopulateProfile();
+    let cancelled = false;
 
-      const currentMobile = useAuthStore.getState().customer?.mobile ||
-        authStorage.getSession().activeMobile ||
-        useAuthStore.getState().mobileNumber ||
-        freshPersonal?.mobileNumber;
-
-      const custId = getTdsCustId(freshPersonal?.mobileNumber);
-
-      let draftBank: any = null;
-      let draftIncome: any = null;
-      let draftBusiness: any = null;
-      let draftPersonal: any = null;
-      const savedDraft = await tdsDraftService.getFormDraft();
-      
-      if (savedDraft) {
-        const isSameCustomer = !savedDraft.personal?.mobileNumber ||
-          !currentMobile ||
-          savedDraft.personal.mobileNumber.replace(/\D/g, "") === currentMobile.replace(/\D/g, "");
-
-        if (isSameCustomer) {
-          draftBank = savedDraft.bank;
-          draftIncome = savedDraft.income;
-          draftBusiness = savedDraft.business;
-          draftPersonal = savedDraft.personal;
-        } else {
-          await tdsDraftService.clearDraft();
-          useTdsProgressStore.getState().reset();
-        }
-      } else if (!isEditingParam) {
-        useTdsProgressStore.getState().reset();
-      }
-
-      // Check application store draft as secondary fallback
-      let storeDraftForm: any = null;
+    async function readStoreDraftForm(): Promise<any> {
       try {
         const appStore = (await import("@/store/applicationStore")).useApplicationStore.getState();
-        if (appStore.tdsDraft?.formData) {
-          storeDraftForm = appStore.tdsDraft.formData;
-        }
-      } catch {}
+        return appStore.tdsDraft?.formData ?? null;
+      } catch {
+        return null;
+      }
+    }
 
+    /** Server lookups for an existing application. Each failure is tolerated; local data still wins. */
+    async function fetchRemoteApplication(existingAppId: string | undefined, custId: string) {
       let backendApp: any = null;
       let dbDetails: any = null;
-      const routeAppId = (paramId || paramAppId) as string | undefined;
-      const existingAppId = routeAppId || (await tdsDraftService.getApplicationId());
-      if (existingAppId) {
-        await tdsDraftService.saveApplicationId(existingAppId);
-      }
-
       try {
         if (existingAppId || custId) {
-          backendApp = await tdsApiService.fetchFullTdsApplication(custId || "", existingAppId || undefined);
+          backendApp = await tdsApiService.fetchFullTdsApplication(custId || "", existingAppId);
         }
         if (backendApp?.tdsRefundId) {
           await tdsDraftService.saveApplicationId(backendApp.tdsRefundId);
@@ -171,50 +180,152 @@ export const useTdsRefundForm = () => {
         isIfscVerified: Boolean(dbDetails.bankName),
       } : null;
 
-      setFormData((prev) => {
-        const mergedBusiness = mergeNonEmptyFields(
-          prev.business,
-          backendApp?.business,
-          backendBusinessFromDb,
-          storeDraftForm?.business,
-          draftBusiness
-        );
-
-        const mergedBank = mergeNonEmptyFields(
-          prev.bank,
-          backendApp?.bank,
-          backendBankFromDb,
-          storeDraftForm?.bank,
-          draftBank
-        );
-
-        const mergedIncome = mergeNonEmptyFields(
-          prev.income,
-          backendApp?.income,
-          storeDraftForm?.income,
-          draftIncome
-        );
-
-        const mergedPersonal = mergeNonEmptyFields(
-          prev.personal,
-          freshPersonal,
-          storeDraftForm?.personal,
-          draftPersonal
-        );
-        
-        // BUG_B23_001: snapshot keys must match isDirty keys ({bank, income}) — business excluded
-        initialSnapshotRef.current = JSON.stringify({ bank: mergedBank, income: mergedIncome });
-        
-        return {
-          ...prev,
-          bank: mergedBank,
-          income: mergedIncome,
-          business: mergedBusiness,
-          personal: mergedPersonal,
-        };
-      });
+      return { backendApp, backendBusinessFromDb, backendBankFromDb };
     }
+
+    async function loadData() {
+      // Phase 1: everything already on the device, read in parallel and applied immediately.
+      // Previously this waited behind the profile request and several sequential server calls.
+      const currentMobile = useAuthStore.getState().customer?.mobile ||
+        authStorage.getSession().activeMobile ||
+        useAuthStore.getState().mobileNumber;
+      const routeAppId = (paramId || paramAppId) as string | undefined;
+
+      const [savedDraft, storeDraftForm, savedDocs, storedAppId] = await Promise.all([
+        tdsDraftService.getFormDraft(),
+        readStoreDraftForm(),
+        loadDraftDocuments(),
+        routeAppId ? Promise.resolve<string | null>(null) : tdsDraftService.getApplicationId(),
+      ]);
+      if (cancelled) return;
+
+      let draftBank: any = null;
+      let draftIncome: any = null;
+      let draftBusiness: any = null;
+      let draftPersonal: any = null;
+      let docs = savedDocs;
+      let knownAppId: string | null = storedAppId;
+
+      if (savedDraft) {
+        const isSameCustomer = !savedDraft.personal?.mobileNumber ||
+          !currentMobile ||
+          savedDraft.personal.mobileNumber.replace(/\D/g, "") === currentMobile.replace(/\D/g, "");
+
+        if (isSameCustomer) {
+          draftBank = savedDraft.bank;
+          draftIncome = savedDraft.income;
+          draftBusiness = savedDraft.business;
+          draftPersonal = savedDraft.personal;
+        } else {
+          // A different customer's draft: remove it, and do not show its documents or app id.
+          await tdsDraftService.clearDraft();
+          useTdsProgressStore.getState().reset();
+          docs = await loadDraftDocuments();
+          knownAppId = null;
+          if (cancelled) return;
+        }
+      } else if (!isEditingParam) {
+        useTdsProgressStore.getState().reset();
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        business: mergeNonEmptyFields(prev.business, storeDraftForm?.business, draftBusiness),
+        bank: mergeNonEmptyFields(prev.bank, storeDraftForm?.bank, draftBank),
+        income: mergeNonEmptyFields(prev.income, storeDraftForm?.income, draftIncome),
+        personal: mergeNonEmptyFields(prev.personal, storeDraftForm?.personal, draftPersonal),
+      }));
+      setDocuments(docs);
+      documentsRef.current = docs;
+      setIsHydrating(false);
+
+      // Phase 2: refresh from the server in the background. The profile and application requests
+      // run in parallel and never block or overwrite what the user is already doing.
+      try {
+        const existingAppId = routeAppId || knownAppId || undefined;
+        if (existingAppId) {
+          await tdsDraftService.saveApplicationId(existingAppId);
+        }
+        const custId = getTdsCustId(savedDraft?.personal?.mobileNumber);
+
+        const [freshPersonal, remote] = await Promise.all([
+          fetchAndPopulateProfile({ applyToForm: false }),
+          fetchRemoteApplication(existingAppId, custId),
+        ]);
+        if (cancelled) return;
+
+        const { backendApp, backendBusinessFromDb, backendBankFromDb } = remote;
+
+        setFormData((prev) => {
+          const edited = editedFieldsRef.current;
+          // Fields the user touched while the server data was loading keep the user's value.
+          const keepEdited = <T extends Record<string, any>>(
+            section: "business" | "bank",
+            merged: T
+          ): T => {
+            const out: Record<string, any> = { ...merged };
+            edited[section].forEach((key) => {
+              out[key] = (prev[section] as Record<string, any>)[key];
+            });
+            return out as T;
+          };
+
+          const mergedBusiness = keepEdited(
+            "business",
+            mergeNonEmptyFields(
+              prev.business,
+              backendApp?.business,
+              backendBusinessFromDb,
+              storeDraftForm?.business,
+              draftBusiness
+            )
+          );
+
+          const mergedBank = keepEdited(
+            "bank",
+            mergeNonEmptyFields(
+              prev.bank,
+              backendApp?.bank,
+              backendBankFromDb,
+              storeDraftForm?.bank,
+              draftBank
+            )
+          );
+          if (!mergedBank.accountHolderName && freshPersonal?.fullName && !edited.bank.has("accountHolderName")) {
+            mergedBank.accountHolderName = freshPersonal.fullName;
+          }
+
+          const mergedIncome = mergeNonEmptyFields(
+            prev.income,
+            backendApp?.income,
+            storeDraftForm?.income,
+            draftIncome
+          );
+
+          const mergedPersonal = personalEditedRef.current
+            ? prev.personal
+            : mergeNonEmptyFields(prev.personal, freshPersonal, storeDraftForm?.personal, draftPersonal);
+
+          // BUG_B23_001: snapshot keys must match isDirty keys ({bank, income}) — business excluded
+          initialSnapshotRef.current = JSON.stringify({ bank: mergedBank, income: mergedIncome });
+
+          return {
+            ...prev,
+            bank: mergedBank,
+            income: mergedIncome,
+            business: mergedBusiness,
+            personal: mergedPersonal,
+          };
+        });
+      } catch (err) {
+        console.warn("[TDS Screen] Background refresh warning:", err);
+      }
+    }
+
     loadData();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -225,6 +336,7 @@ export const useTdsRefundForm = () => {
       mobileNumber: cleanMob || updated.mobileNumber,
     };
 
+    personalEditedRef.current = true;
     const nextFormState: TdsCustomerIncomeFormData = {
       ...formData,
       personal: normalizedPersonal,
@@ -253,6 +365,7 @@ export const useTdsRefundForm = () => {
 
   const updateBank: UpdateBankField = (field, value) => {
     setHasUserEdited(true);
+    editedFieldsRef.current.bank.add(field);
     setFormData((prev) => ({
       ...prev,
       bank: { ...prev.bank, [field]: value },
@@ -280,6 +393,7 @@ export const useTdsRefundForm = () => {
 
   const updateBusiness = (field: string, value: string) => {
     setHasUserEdited(true);
+    editedFieldsRef.current.business.add(field);
     setFormData((prev) => ({
       ...prev,
       business: { ...prev.business, [field]: value },
@@ -299,19 +413,8 @@ export const useTdsRefundForm = () => {
     setErrors((prev) => applyBlurValidation(prev, fieldPath, formData));
   };
 
-  // BUG_B23_002: documents state moved before handleContinue to fix forward reference
-  const [documents, setDocuments] = useState<any[]>([]);
-
-  useEffect(() => {
-    async function loadDocs() {
-      const mergedDocs = await loadDraftDocuments();
-      setDocuments(mergedDocs);
-      documentsRef.current = mergedDocs;
-    }
-    loadDocs();
-  }, []);
-
   const handleUploadSuccess = (id: string, payload: any) => {
+    setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "uploaded", errorMessage: undefined, fileUri: payload.uri, fileName: payload.name, fileSize: payload.size, mimeType: payload.mimeType, fileTypeLabel: payload.fileTypeLabel } : doc);
       documentsRef.current = next;
@@ -319,6 +422,7 @@ export const useTdsRefundForm = () => {
     });
   };
   const handleUploadError = (id: string, errorMessage: string) => {
+    setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", errorMessage } : doc);
       documentsRef.current = next;
@@ -326,6 +430,7 @@ export const useTdsRefundForm = () => {
     });
   };
   const handleRemove = (id: string) => {
+    setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", fileUri: undefined, fileName: undefined, fileSize: undefined, mimeType: undefined, fileTypeLabel: undefined, errorMessage: undefined } : doc);
       documentsRef.current = next;
@@ -417,6 +522,8 @@ export const useTdsRefundForm = () => {
       setIsSaving(false);
     }
     draftGuard.markSubmitted();
+    setHasUserEdited(false);
+    initialSnapshotRef.current = JSON.stringify({ bank: formData.bank, income: formData.income });
     if (useTdsProgressStore.getState().maxStepReached < 3) {
       useTdsProgressStore.getState().setMaxStepReached(3);
     }
@@ -427,20 +534,10 @@ export const useTdsRefundForm = () => {
     }
   };
 
-  // Explicit back handler used by the custom header back button.
-  // Checks dirty state directly so the draft modal fires even if
-  // usePreventRemove hasn't yet had a chance to react to the latest render.
+  // Header Back. The draft is saved by useTdsBackDraftSave, which intercepts every way of leaving
+  // this screen (this button, Android hardware Back and the back gesture), so this only navigates.
   const handleBack = () => {
-    const dirty =
-      hasUserEdited ||
-      (initialSnapshotRef.current !== null &&
-        JSON.stringify({ bank: formData.bank, income: formData.income }) !==
-          initialSnapshotRef.current);
-    if (dirty) {
-      draftGuard.openDraftModal();
-    } else {
-      router.back();
-    }
+    router.back();
   };
 
   return {
@@ -458,6 +555,7 @@ export const useTdsRefundForm = () => {
     handleContinue,
     handleBack,
     isSaving,
+    isHydrating,
     draftGuard,
     documents,
     handleUploadSuccess,

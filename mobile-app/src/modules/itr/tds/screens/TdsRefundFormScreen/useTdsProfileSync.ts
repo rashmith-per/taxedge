@@ -12,7 +12,15 @@ export function useTdsProfileSync(
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [profileFetchError, setProfileFetchError] = useState<string | null>(null);
 
-  const fetchAndPopulateProfile = async (): Promise<PersonalDetails | null> => {
+  /**
+   * `applyToForm: false` fetches and returns the profile without writing it into the form state.
+   * The draft loader uses that so it can merge the profile with saved drafts in one step, instead
+   * of the profile briefly replacing the user's saved or typed personal details.
+   */
+  const fetchAndPopulateProfile = async (
+    options?: { applyToForm?: boolean }
+  ): Promise<PersonalDetails | null> => {
+    const applyToForm = options?.applyToForm !== false;
     setIsProfileLoading(true);
     setProfileFetchError(null);
     try {
@@ -118,7 +126,7 @@ export function useTdsProfileSync(
         pinCode: rawPin,
       };
 
-      setFormData((prev) => ({
+      if (applyToForm) setFormData((prev) => ({
         ...prev,
         personal: populatedPersonal,
         bank: {

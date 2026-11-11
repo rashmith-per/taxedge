@@ -41,6 +41,7 @@ export const TdsRefundFormScreen: React.FC = () => {
     handleRemove,
     isEditing,
     isSaving,
+    isHydrating,
   } = useTdsRefundForm();
 
   const {
@@ -99,7 +100,11 @@ export const TdsRefundFormScreen: React.FC = () => {
         <View style={styles.progressFill} />
       </View>
 
-      {/* Main Form Content */}
+      {isHydrating ? (
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={BrandColors.PRIMARY_BLUE} />
+        </View>
+      ) : (
       <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -129,6 +134,7 @@ export const TdsRefundFormScreen: React.FC = () => {
         />
 
       </KeyboardAwareScrollView>
+      )}
 
       {/* Sticky Bottom CTA - 2 Distinct Buttons */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 14 }]}>
@@ -138,7 +144,7 @@ export const TdsRefundFormScreen: React.FC = () => {
             activeOpacity={0.85}
             onPress={handleContinue}
             style={styles.ctaButton}
-            disabled={isSaving}
+            disabled={isSaving || isHydrating}
           >
             {isSaving ? (
               <ActivityIndicator color={BrandColors.WHITE} />
@@ -155,7 +161,7 @@ export const TdsRefundFormScreen: React.FC = () => {
             activeOpacity={0.85}
             onPress={handleContinue}
             style={styles.ctaButton}
-            disabled={isSaving}
+            disabled={isSaving || isHydrating}
           >
             {isSaving ? (
               <ActivityIndicator color={BrandColors.WHITE} />

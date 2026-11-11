@@ -12,15 +12,22 @@ export interface LoadedTdsReviewData {
   calculation: TaxCalculationBreakdown;
 }
 
-export async function loadTdsReviewData(
-  routeId?: string,
-  routeAppId?: string
-): Promise<LoadedTdsReviewData> {
-  const savedForm = await tdsDraftService.getFormDraft();
-  const savedDocs = await tdsDraftService.getDocumentsDraft();
-  const existingAppId = routeId || routeAppId || (await tdsDraftService.getApplicationId()) || undefined;
+interface LocalReviewBase {
+  existingAppId: string | undefined;
+  custId: string;
+  finalForm: TdsCustomerIncomeFormData;
+  finalDocs: TdsChecklistItem[];
+}
 
-  let appId: string | null = existingAppId || null;
+/** Reads the draft stored on the device. No network, so it completes in milliseconds. */
+async function readLocalReviewBase(routeId?: string, routeAppId?: string): Promise<LocalReviewBase> {
+  const routeProvidedId = routeId || routeAppId;
+  const [savedForm, savedDocs, storedAppId] = await Promise.all([
+    tdsDraftService.getFormDraft(),
+    tdsDraftService.getDocumentsDraft(),
+    routeProvidedId ? Promise.resolve<string | null>(null) : tdsDraftService.getApplicationId(),
+  ]);
+  const existingAppId = routeProvidedId || storedAppId || undefined;
 
   const custId = savedForm.personal?.mobileNumber
     ? savedForm.personal.mobileNumber.replace(/\D/g, "")
@@ -35,19 +42,51 @@ export async function loadTdsReviewData(
   };
   const finalDocs: TdsChecklistItem[] = savedDocs && savedDocs.length > 0 ? [...savedDocs] : [];
 
-  let dbDetails: any = null;
-  if (existingAppId) {
-    try {
-      console.log(`🌐 [TDS Review] Calling GET /tds-refund/get/${existingAppId}`);
-      dbDetails = await tdsApiService.getTdsRefund(existingAppId);
-      if (dbDetails) {
-        console.log("✅ [TDS Review] Successfully loaded database details from /tds-refund/get/{id}:", dbDetails);
-      }
-    } catch (getErr) {
-      console.warn(`[TDS Review] Warning calling GET /tds-refund/get/${existingAppId}:`, getErr);
-    }
-  }
+  return { existingAppId, custId, finalForm, finalDocs };
+}
 
+/**
+ * The Review data exactly as saved on the device, with the tax calculation. The screen shows this
+ * straight away and replaces it with `loadTdsReviewData` once the server refresh finishes.
+ */
+export async function loadLocalTdsReviewData(
+  routeId?: string,
+  routeAppId?: string
+): Promise<LoadedTdsReviewData> {
+  const { existingAppId, finalForm, finalDocs } = await readLocalReviewBase(routeId, routeAppId);
+  return {
+    appId: existingAppId || null,
+    formData: finalForm,
+    documents: finalDocs,
+    calculation: tdsCalculationService.calculate(finalForm),
+  };
+}
+
+/** The local draft refreshed with the application stored on the server. */
+export async function loadTdsReviewData(
+  routeId?: string,
+  routeAppId?: string
+): Promise<LoadedTdsReviewData> {
+  const { existingAppId, custId, finalForm, finalDocs } = await readLocalReviewBase(routeId, routeAppId);
+
+  let appId: string | null = existingAppId || null;
+
+  // The two server lookups do not depend on each other, so they run together instead of one after
+  // the other.
+  const [byIdResult, backendApp] = await Promise.all([
+    existingAppId
+      ? tdsApiService.getTdsRefund(existingAppId).catch((getErr) => {
+          console.warn(`[TDS Review] Warning calling GET /tds-refund/get/${existingAppId}:`, getErr);
+          return null;
+        })
+      : Promise.resolve(null),
+    tdsApiService.fetchFullTdsApplication(custId, existingAppId).catch((err) => {
+      console.warn("[TDS Estimate Screen] Backend fetch warning:", err);
+      return null;
+    }),
+  ]);
+
+  let dbDetails: any = byIdResult;
   if (!dbDetails && custId && custId !== "CUST-DEFAULT") {
     try {
       dbDetails = await tdsApiService.getBankAccountByCustId(custId);
@@ -122,13 +161,8 @@ export async function loadTdsReviewData(
     }
   }
 
-  try {
-    const backendApp = await tdsApiService.fetchFullTdsApplication(custId, existingAppId);
-    if (backendApp?.income) {
-      finalForm.income = { ...finalForm.income, ...backendApp.income };
-    }
-  } catch (err) {
-    console.warn("[TDS Estimate Screen] Backend fetch warning:", err);
+  if (backendApp?.income) {
+    finalForm.income = { ...finalForm.income, ...backendApp.income };
   }
 
   const calculation = tdsCalculationService.calculate(finalForm);
@@ -140,4 +174,3 @@ export async function loadTdsReviewData(
     calculation,
   };
 }
-

@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { WebView, type WebViewMessageEvent } from "react-native-webview";
+import type { WebViewMessageEvent } from "react-native-webview";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as FileSystem from "expo-file-system/legacy";
@@ -33,9 +33,48 @@ export interface PdfViewerModalProps {
 interface PdfWebViewHandle {
   injectJavaScript: (script: string) => void;
 }
-const PdfWebView = WebView as unknown as React.ComponentType<
+type PdfWebViewComponent = React.ComponentType<
   Record<string, unknown> & { ref?: React.Ref<PdfWebViewHandle> }
 >;
+
+let cachedWebView: PdfWebViewComponent | null | undefined;
+
+/**
+ * Loads react-native-webview on first use instead of at import time. Importing the package runs
+ * TurboModuleRegistry.getEnforcing("RNCWebViewModule"), which throws when the installed binary was
+ * built without the native module. A top-level import therefore crashed every screen that merely
+ * imports this file (such as TDS Refund). Loading it here keeps the failure inside the viewer.
+ */
+function loadWebView(): PdfWebViewComponent | null {
+  if (cachedWebView !== undefined) return cachedWebView;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    cachedWebView = require("react-native-webview").WebView as PdfWebViewComponent;
+  } catch {
+    cachedWebView = null;
+  }
+  return cachedWebView;
+}
+
+const VIEWER_UNAVAILABLE_MESSAGE =
+  "The PDF viewer is not available in this version of the app. Please update the app to view PDFs.";
+
+/** Catches render-time failures of the native WebView so they show the error state, not a crash. */
+class WebViewBoundary extends React.Component<
+  { onFail: () => void; children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onFail();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 type ViewerState = "preparing" | "rendering" | "ready" | "error";
 
@@ -71,6 +110,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   allowShare = true,
 }) => {
   const insets = useSafeAreaInsets();
+  const PdfWebView = visible ? loadWebView() : null;
   const webViewRef = useRef<PdfWebViewHandle>(null);
   const pdfBase64 = useRef<string | null>(null);
   const webReady = useRef(false);
@@ -89,6 +129,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   useEffect(() => {
     if (!visible || !fileUri) return undefined;
+    if (!loadWebView()) {
+      setErrorMessage(VIEWER_UNAVAILABLE_MESSAGE);
+      setState("error");
+      return undefined;
+    }
     let cancelled = false;
     pdfBase64.current = null;
     webReady.current = false;
@@ -195,7 +240,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         </View>
 
         <View style={styles.body}>
-          {visible ? (
+          {visible && PdfWebView ? (
+            <WebViewBoundary
+              onFail={() => {
+                setErrorMessage(VIEWER_UNAVAILABLE_MESSAGE);
+                setState("error");
+              }}
+            >
             <PdfWebView
               ref={webViewRef}
               originWhitelist={["*"]}
@@ -213,6 +264,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                 setState("error");
               }}
             />
+            </WebViewBoundary>
           ) : null}
 
           {showOverlay ? (

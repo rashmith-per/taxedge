@@ -22,7 +22,8 @@ import { formatCurrency } from "../../utils/tdsValidation";
 import { tdsDraftService, INITIAL_TDS_FORM_DATA } from "../../services/tdsDraftService";
 import { tdsApiService } from "../../services/tdsApiService";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
-import { loadTdsReviewData } from "./tdsEstimateHelpers";
+import { loadTdsReviewData, loadLocalTdsReviewData } from "./tdsEstimateHelpers";
+import { useTdsBackDraftSave } from "../../hooks/useTdsBackDraftSave";
 import { styles } from "./TdsRefundEstimateScreen.styles";
 
 export const TdsRefundEstimateScreen: React.FC = () => {
@@ -56,18 +57,60 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     isSubmitted: () => isSubmitting || useTdsProgressStore.getState().isSubmitted,
   });
 
+  // Newest rendered values, so Back saves what is on screen and not a stale closure.
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+  const documentsRef = useRef(documents);
+  documentsRef.current = documents;
+
+  // Back from the Review page (hardware Back or back gesture; this header has no Back button) saves
+  // the draft locally at the Review step, then leaves. It only writes local draft storage and never
+  // calls the submit APIs.
+  const { disable: disableBackSave } = useTdsBackDraftSave({
+    // `calculation` is only set after a successful load, so an unloaded (empty) form is never saved.
+    shouldSave: calculation !== null && !isSubmitting && !useTdsProgressStore.getState().isSubmitted,
+    saveDraft: async () => {
+      const latestForm = formDataRef.current;
+      const latestDocs = documentsRef.current;
+      await tdsDraftService.saveFormDraft(latestForm, "ESTIMATE");
+      if (latestDocs.length > 0) {
+        await tdsDraftService.saveDocumentsDraft(latestDocs as any);
+      }
+      useApplicationStore.getState().saveTdsDraft({
+        formData: latestForm,
+        documents: latestDocs as any,
+        step: "ESTIMATE",
+        updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    },
+    isBusy: () => isSubmitting,
+  });
+
   const loadReviewData = useCallback(async () => {
     const loadId = ++loadCountRef.current;
     setIsLoading(true);
-    try {
-      const data = await loadTdsReviewData(routeId, routeAppId);
-      if (loadId !== loadCountRef.current) return;
+    const apply = (data: Awaited<ReturnType<typeof loadTdsReviewData>>) => {
       if (data.appId) {
         setCurrentAppId(data.appId);
       }
       setFormData(data.formData);
       setDocuments(data.documents);
       setCalculation(data.calculation);
+    };
+    try {
+      // Show the draft saved on the device straight away; the server refresh below replaces it.
+      try {
+        const local = await loadLocalTdsReviewData(routeId, routeAppId);
+        if (loadId !== loadCountRef.current) return;
+        apply(local);
+        setIsLoading(false);
+      } catch (localErr) {
+        console.warn("[TDS Estimate] Local draft load warning:", localErr);
+      }
+
+      const data = await loadTdsReviewData(routeId, routeAppId);
+      if (loadId !== loadCountRef.current) return;
+      apply(data);
     } catch (err) {
       console.error("[TDS Estimate] Error loading review data:", err);
     } finally {
@@ -197,6 +240,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
 
       // Disable draft prevention upon successful submission
       markSubmitted();
+      disableBackSave();
 
       // 6. Navigate directly to Application Status screen
       router.replace({
