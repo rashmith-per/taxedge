@@ -14,6 +14,7 @@ import {
 } from "../../gst-compliance/utils/gstPreviewUtils";
 import { styles } from "./GstViewDocumentModal.styles";
 
+import { PdfViewerModal } from "@/shared/components/PdfViewerModal";
 export interface GstViewDocumentModalProps {
   visible: boolean;
   title: string;
@@ -237,6 +238,19 @@ export const GstViewDocumentModal: React.FC<GstViewDocumentModalProps> = ({
       </View>
     );
   };
+
+  // Native PDFs open in the in-app viewer (scroll, pages, zoom) instead of a static placeholder.
+  if (Platform.OS !== "web" && docType.isPdf && activeFileUri) {
+    return (
+      <PdfViewerModal
+        visible={visible}
+        fileUri={activeFileUri}
+        title={title}
+        fileName={activeFileName}
+        onClose={handleClose}
+      />
+    );
+  }
 
   return (
     <Modal

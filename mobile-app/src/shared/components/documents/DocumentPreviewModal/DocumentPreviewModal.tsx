@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   View,
@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Sharing from "expo-sharing";
+import { PdfViewerModal } from "@/shared/components/PdfViewerModal";
 import {
   styles,
   previewModalColors,
@@ -57,7 +57,19 @@ export const DocumentPreviewModal = <T extends PreviewDocumentItem = PreviewDocu
   onChangeFile,
   variant = "auto",
 }: DocumentPreviewModalProps<T>): React.ReactElement | null => {
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+
   if (!document) return null;
+
+  const pdfViewer = (uri: string | undefined, title: string | undefined, name: string | undefined) => (
+    <PdfViewerModal
+      visible={pdfViewerOpen}
+      fileUri={uri}
+      title={title}
+      fileName={name}
+      onClose={() => setPdfViewerOpen(false)}
+    />
+  );
 
   const resolvedVariant = resolveVariant(variant, document, Boolean(onChangeFile));
 
@@ -71,16 +83,13 @@ export const DocumentPreviewModal = <T extends PreviewDocumentItem = PreviewDocu
       document.fileUri.endsWith(".png") ||
       Boolean(document.mimeType && document.mimeType.startsWith("image/"));
 
-    const handleOpenPdf = async () => {
-      try {
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(document.fileUri!);
-        } else {
-          Alert.alert("Viewer", `Unable to open an external viewer for ${document.fileName || "this file"}`);
-        }
-      } catch {
+    // Opens the PDF inside the app. This never invokes the system share sheet.
+    const handleOpenPdf = () => {
+      if (!document.fileUri) {
         Alert.alert("Viewer", `Unable to open ${document.fileName || "the file"}`);
+        return;
       }
+      setPdfViewerOpen(true);
     };
 
     return (
@@ -184,6 +193,7 @@ export const DocumentPreviewModal = <T extends PreviewDocumentItem = PreviewDocu
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+        {pdfViewer(document.fileUri, document.name, document.fileName)}
       </Modal>
     );
   }
@@ -264,23 +274,27 @@ export const DocumentPreviewModal = <T extends PreviewDocumentItem = PreviewDocu
   const isMockFile = !fileUri || fileUri.startsWith(MOCK_URI_PREFIX);
   const showImage = isLoanImageFile(fileUri, fileName) && !isMockFile;
 
-  const handleOpenExternal = async () => {
-    try {
-      if (isMockFile) {
-        Alert.alert(
-          "Document Preview",
-          `Previewing verified file:\n${fileName}\nSize: ${document.fileSize || "1.5 MB"}`
-        );
-        return;
-      }
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-        return;
-      }
-      Alert.alert("Viewer", `Opening ${fileName}`);
-    } catch {
-      Alert.alert("Viewer", `Unable to open external viewer for ${fileName}`);
+  const isPdfFile =
+    fileUri.toLowerCase().endsWith(".pdf") ||
+    fileName.toLowerCase().endsWith(".pdf") ||
+    document.mimeType === "application/pdf";
+
+  // Opens PDFs inside the app. This never invokes the system share sheet.
+  const handleOpenExternal = () => {
+    if (isMockFile) {
+      Alert.alert(
+        "Document Preview",
+        `Previewing verified file:
+${fileName}
+Size: ${document.fileSize || "1.5 MB"}`
+      );
+      return;
     }
+    if (isPdfFile) {
+      setPdfViewerOpen(true);
+      return;
+    }
+    Alert.alert("Preview", `A preview is not available for ${fileName}.`);
   };
 
   return (
@@ -376,6 +390,7 @@ export const DocumentPreviewModal = <T extends PreviewDocumentItem = PreviewDocu
           </View>
         </View>
       </View>
+      {pdfViewer(fileUri, fileName, fileName)}
     </Modal>
   );
 };

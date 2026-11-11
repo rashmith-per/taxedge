@@ -28,6 +28,7 @@ export const TdsDocumentCard: React.FC<TdsDocumentCardProps & { variant?: "defau
         fileUri: item.fileUri,
         fileName: item.fileName,
         fileSize: item.fileSize,
+        mimeType: item.mimeType,
         errorMessage: item.errorMessage,
         iconType: item.iconType,
       }}

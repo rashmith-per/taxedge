@@ -1,16 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
   Image,
-  ActivityIndicator,
-  Alert,
   TouchableWithoutFeedback,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as Sharing from "expo-sharing";
+import { PdfViewerModal } from "@/shared/components/PdfViewerModal";
 import { styles } from "./ViewDocumentModal.styles";
 
 interface ViewDocumentModalProps {
@@ -57,33 +55,21 @@ export const ViewDocumentModal: React.FC<ViewDocumentModalProps> = ({
   mimeType,
   onClose,
 }) => {
-  const [opening, setOpening] = useState(false);
-
   const isImage = resolveIsImage(fileUri, mimeType, fileTypeLabel);
   const isPdf = !isImage && resolveIsPdf(fileUri, mimeType, fileName);
 
-  const handleOpenPdf = async () => {
-    if (!fileUri) return;
-    setOpening(true);
-    try {
-      const available = await Sharing.isAvailableAsync();
-      if (!available) {
-        Alert.alert(
-          "Cannot Open PDF",
-          "No PDF viewer is available on this device. Please install a PDF viewer app."
-        );
-        return;
-      }
-      await Sharing.shareAsync(fileUri, {
-        mimeType: mimeType || "application/pdf",
-        dialogTitle: title,
-      });
-    } catch {
-      Alert.alert("Open Failed", "Could not open the PDF. The file may have been moved or deleted.");
-    } finally {
-      setOpening(false);
-    }
-  };
+  if (isPdf && fileUri) {
+    // PDFs open in the in-app viewer; this never hands the file to the system share sheet.
+    return (
+      <PdfViewerModal
+        visible={visible}
+        fileUri={fileUri}
+        title={title}
+        fileName={fileName}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <Modal
@@ -141,25 +127,6 @@ export const ViewDocumentModal: React.FC<ViewDocumentModalProps> = ({
                   ) : null}
                 </View>
               )}
-
-              {/* PDF Open action */}
-              {isPdf && fileUri ? (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleOpenPdf}
-                  style={styles.openPdfButton}
-                  disabled={opening}
-                >
-                  {opening ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Ionicons name="open-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.openPdfButtonText}>Open PDF Viewer</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ) : null}
 
               {/* Done Button */}
               <TouchableOpacity

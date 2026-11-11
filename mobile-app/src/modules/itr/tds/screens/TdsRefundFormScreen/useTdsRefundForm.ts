@@ -313,7 +313,7 @@ export const useTdsRefundForm = () => {
 
   const handleUploadSuccess = (id: string, payload: any) => {
     setDocuments((prev) => {
-      const next = prev.map((doc) => doc.id === id ? { ...doc, status: "uploaded", fileUri: payload.uri, fileName: payload.name } : doc);
+      const next = prev.map((doc) => doc.id === id ? { ...doc, status: "uploaded", errorMessage: undefined, fileUri: payload.uri, fileName: payload.name, fileSize: payload.size, mimeType: payload.mimeType, fileTypeLabel: payload.fileTypeLabel } : doc);
       documentsRef.current = next;
       return next;
     });
@@ -327,7 +327,7 @@ export const useTdsRefundForm = () => {
   };
   const handleRemove = (id: string) => {
     setDocuments((prev) => {
-      const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", fileUri: undefined } : doc);
+      const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", fileUri: undefined, fileName: undefined, fileSize: undefined, mimeType: undefined, fileTypeLabel: undefined, errorMessage: undefined } : doc);
       documentsRef.current = next;
       return next;
     });

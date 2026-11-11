@@ -70,20 +70,19 @@ export const BusinessDetailsSection: React.FC<BusinessDetailsSectionProps> = ({
           onBlur={() => onBlurField?.("business.pan")}
           maxLength={10}
         />
-        {documents && documents.length > 0 && onUploadSuccess && onUploadError && onRemove && (
-          <View style={{ marginLeft: 8 }}>
-            <TdsDocumentCard
-              item={documents[0]}
-              variant="inline"
-              onUploadSuccess={onUploadSuccess}
-              onUploadError={onUploadError}
-              onRemove={onRemove}
-            />
-          </View>
-        )}
       </View>
       {errors["business.pan"] && (
         <Text style={styles.errorText}>{errors["business.pan"]}</Text>
+      )}
+      {documents && documents.length > 0 && onUploadSuccess && onUploadError && onRemove && (
+        <View style={{ marginTop: 10 }}>
+          <TdsDocumentCard
+            item={documents[0]}
+            onUploadSuccess={onUploadSuccess}
+            onUploadError={onUploadError}
+            onRemove={onRemove}
+          />
+        </View>
       )}
     </View>
 
@@ -103,20 +102,19 @@ export const BusinessDetailsSection: React.FC<BusinessDetailsSectionProps> = ({
           onBlur={() => onBlurField?.("business.aadhaar")}
           maxLength={12}
         />
-        {documents && documents.length > 1 && onUploadSuccess && onUploadError && onRemove && (
-          <View style={{ marginLeft: 8 }}>
-            <TdsDocumentCard
-              item={documents[1]}
-              variant="inline"
-              onUploadSuccess={onUploadSuccess}
-              onUploadError={onUploadError}
-              onRemove={onRemove}
-            />
-          </View>
-        )}
       </View>
       {errors["business.aadhaar"] && (
         <Text style={styles.errorText}>{errors["business.aadhaar"]}</Text>
+      )}
+      {documents && documents.length > 1 && onUploadSuccess && onUploadError && onRemove && (
+        <View style={{ marginTop: 10 }}>
+          <TdsDocumentCard
+            item={documents[1]}
+            onUploadSuccess={onUploadSuccess}
+            onUploadError={onUploadError}
+            onRemove={onRemove}
+          />
+        </View>
       )}
     </View>
 

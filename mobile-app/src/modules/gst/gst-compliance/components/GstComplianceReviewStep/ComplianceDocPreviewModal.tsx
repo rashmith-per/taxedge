@@ -6,6 +6,7 @@ import { UploadedDocInfo } from "@/modules/gst/validation/complianceSchema";
 import { resolveDocType } from "../../utils/gstPreviewUtils";
 import { styles } from "./GstComplianceReviewStep.styles";
 
+import { PdfViewerModal } from "@/shared/components/PdfViewerModal";
 interface ComplianceDocPreviewModalProps {
   previewDoc: UploadedDocInfo | null;
   isDark: boolean;
@@ -37,6 +38,19 @@ export const ComplianceDocPreviewModal: React.FC<ComplianceDocPreviewModalProps>
       previewDoc.uri &&
       /^(blob:|https?:|data:)/i.test(previewDoc.uri)
   );
+
+  // Native PDFs open in the in-app viewer instead of the system share sheet.
+  if (Platform.OS !== "web" && docTypeInfo.isPdf && previewDoc.uri) {
+    return (
+      <PdfViewerModal
+        visible
+        fileUri={previewDoc.uri}
+        title={previewDoc.name}
+        fileName={previewDoc.name}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <Modal visible={Boolean(previewDoc)} transparent animationType="fade" onRequestClose={onClose}>
