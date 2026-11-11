@@ -23,7 +23,6 @@ import { tdsDraftService, INITIAL_TDS_FORM_DATA } from "../../services/tdsDraftS
 import { tdsApiService } from "../../services/tdsApiService";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
 import { loadTdsReviewData, loadLocalTdsReviewData } from "./tdsEstimateHelpers";
-import { useTdsBackDraftSave } from "../../hooks/useTdsBackDraftSave";
 import { styles } from "./TdsRefundEstimateScreen.styles";
 
 export const TdsRefundEstimateScreen: React.FC = () => {
@@ -38,6 +37,31 @@ export const TdsRefundEstimateScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentAppId, setCurrentAppId] = useState<string | null>((routeId || routeAppId) as string | null);
   const loadCountRef = useRef(0);
+  // Newest rendered values, so Save as Draft stores what is on screen and not a stale closure.
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
+  const documentsRef = useRef(documents);
+  documentsRef.current = documents;
+
+  // Saves the draft locally at the Review step. It only writes local draft storage and never calls
+  // the submit APIs.
+  const persistDraftOnBack = async () => {
+    const latestForm = formDataRef.current;
+    const latestDocs = documentsRef.current;
+    if (!(await tdsDraftService.saveFormDraft(latestForm, "ESTIMATE"))) {
+      throw new Error("Could not write the TDS form draft");
+    }
+    if (latestDocs.length > 0 && !(await tdsDraftService.saveDocumentsDraft(latestDocs as any))) {
+      throw new Error("Could not write the TDS documents draft");
+    }
+    useApplicationStore.getState().saveTdsDraft({
+      formData: latestForm,
+      documents: latestDocs as any,
+      step: "ESTIMATE",
+      updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    });
+  };
+
   const {
     showDraftModal,
     markSubmitted,
@@ -45,47 +69,23 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     handleDiscardAndExit,
     handleCancel,
   } = useUniversalDraftGuard({
-    // BUG_B24_003: estimate screen is a read-only calculation view — never dirty so back is always free
-    isDirty: () => false,
+    // Back from Review (hardware Back or gesture; this header has no Back button) asks to save the
+    // draft. `calculation` is only set after a successful load, so an unloaded form is never offered.
+    isDirty: () => calculation !== null,
     onSaveDraft: async () => {
-      await useApplicationStore.getState().saveTdsDraft({ step: "ESTIMATE" });
+      try {
+        await persistDraftOnBack();
+      } catch (err) {
+        console.warn("[TDS Review] Saving draft failed:", err);
+        Alert.alert("Could not save your progress", "Your changes could not be saved as a draft. Please try again.");
+        throw err; // keeps the prompt open so nothing is lost silently
+      }
     },
     onDiscardDraft: async () => {
       await tdsDraftService.clearDraft();
       await useApplicationStore.getState().clearTdsDraft();
     },
     isSubmitted: () => isSubmitting || useTdsProgressStore.getState().isSubmitted,
-  });
-
-  // Newest rendered values, so Back saves what is on screen and not a stale closure.
-  const formDataRef = useRef(formData);
-  formDataRef.current = formData;
-  const documentsRef = useRef(documents);
-  documentsRef.current = documents;
-
-  // Back from the Review page (hardware Back or back gesture; this header has no Back button) saves
-  // the draft locally at the Review step, then leaves. It only writes local draft storage and never
-  // calls the submit APIs.
-  const { disable: disableBackSave } = useTdsBackDraftSave({
-    // `calculation` is only set after a successful load, so an unloaded (empty) form is never saved.
-    shouldSave: calculation !== null && !isSubmitting && !useTdsProgressStore.getState().isSubmitted,
-    saveDraft: async () => {
-      const latestForm = formDataRef.current;
-      const latestDocs = documentsRef.current;
-      if (!(await tdsDraftService.saveFormDraft(latestForm, "ESTIMATE"))) {
-        throw new Error("Could not write the TDS form draft");
-      }
-      if (latestDocs.length > 0 && !(await tdsDraftService.saveDocumentsDraft(latestDocs as any))) {
-        throw new Error("Could not write the TDS documents draft");
-      }
-      useApplicationStore.getState().saveTdsDraft({
-        formData: latestForm,
-        documents: latestDocs as any,
-        step: "ESTIMATE",
-        updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-    },
-    isBusy: () => isSubmitting,
   });
 
   // Set when the user opens a section edit. Update & Continue has already saved the new values to
@@ -261,7 +261,6 @@ export const TdsRefundEstimateScreen: React.FC = () => {
 
       // Disable draft prevention upon successful submission
       markSubmitted();
-      disableBackSave();
 
       // 6. Navigate directly to Application Status screen
       router.replace({

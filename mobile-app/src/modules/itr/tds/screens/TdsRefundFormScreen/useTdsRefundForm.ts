@@ -17,7 +17,6 @@ import { tdsDraftService, INITIAL_TDS_FORM_DATA, getTdsCustId } from "../../serv
 import { tdsApiService } from "../../services/tdsApiService";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { useTdsProfileSync } from "./useTdsProfileSync";
-import { useTdsBackDraftSave } from "../../hooks/useTdsBackDraftSave";
 import { describeSaveError } from "./tdsFormHelpers";
 import {
   syncUpdatedCustomerProfile,
@@ -82,23 +81,32 @@ export const useTdsRefundForm = () => {
   };
 
   const draftGuard = useUniversalDraftGuard({
-    saveDestination: "/service/itr",
-    discardDestination: "/service/itr",
-    // Back never opens the Save / Discard prompt any more: first visits and edits from Review both
-    // save automatically (see useTdsBackDraftSave below). The guard stays for markSubmitted().
-    isDirty: () => false,
+    // A first visit leaves to the ITR page; an edit opened from Review returns to Review.
+    saveDestination: isEditing ? undefined : "/service/itr",
+    discardDestination: isEditing ? undefined : "/service/itr",
+    // Back (header, Android hardware Back, back gesture) asks to save the draft whenever the user
+    // changed something. "Save as Draft & Exit" runs persistDraftOnBack below.
+    isDirty: () => !isHydrating && isDirtyNow(),
     onSaveDraft: async () => {
-      await tdsDraftService.saveFormDraft(formDataRef.current);
-      await tdsDraftService.saveDocumentsDraft(documentsRef.current);
+      try {
+        await persistDraftOnBack();
+      } catch (err) {
+        console.warn("[TDS Form] Saving draft failed:", err);
+        Alert.alert(
+          "Could not save your progress",
+          "Your changes could not be saved as a draft. Please try again."
+        );
+        throw err; // keeps the prompt open so nothing is lost silently
+      }
     },
     onDiscardDraft: async () => {
-      await tdsDraftService.clearDraft();
+      // Discarding an edit from Review only abandons the edit. The saved application stays.
+      if (!isEditing) await tdsDraftService.clearDraft();
     },
     isSubmitted: () => useTdsProgressStore.getState().isSubmitted,
   });
 
-  // Back from the first application screen saves the draft locally, then leaves. It reuses the same
-  // local draft storage as the explicit save and never calls the submit APIs.
+  // Saves the draft locally (same storage as the explicit save) and never calls the submit APIs.
   const persistDraftOnBack = async () => {
     const latestForm = formDataRef.current;
     const latestDocs = documentsRef.current;
@@ -124,12 +132,6 @@ export const useTdsRefundForm = () => {
       console.warn("[TDS Form] appStore.saveTdsDraft warning:", storeErr);
     }
   };
-
-  const backSave = useTdsBackDraftSave({
-    shouldSave: !isHydrating && !useTdsProgressStore.getState().isSubmitted && isDirtyNow(),
-    saveDraft: persistDraftOnBack,
-    isBusy: () => isSavingRef.current,
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -567,16 +569,14 @@ export const useTdsRefundForm = () => {
       useTdsProgressStore.getState().setMaxStepReached(3);
     }
     if (isEditing) {
-      // Leaving on purpose after a successful update: do not let Back handling save again.
-      backSave.disable();
       router.back();
     } else {
       router.push("/service/tds-estimate" as any);
     }
   };
 
-  // Header Back. The draft is saved by useTdsBackDraftSave, which intercepts every way of leaving
-  // this screen (this button, Android hardware Back and the back gesture), so this only navigates.
+  // Header Back. The draft guard intercepts every way of leaving this screen (this button, Android
+  // hardware Back and the back gesture) and shows the Save / Discard prompt, so this only navigates.
   const handleBack = () => {
     router.back();
   };

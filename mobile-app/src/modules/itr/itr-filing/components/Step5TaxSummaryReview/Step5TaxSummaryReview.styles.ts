@@ -106,6 +106,31 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
   },
+  incomeDetailBlock: {
+    paddingHorizontal: Spacing.sm,
+    paddingBottom: 8,
+    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  incomeDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: Spacing.xs,
+  },
+  incomeDetailLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    flexShrink: 1,
+  },
+  incomeDetailValue: {
+    fontSize: 11,
+    fontWeight: Typography.fontWeight.semiBold,
+    color: "#0F172A",
+    flex: 1,
+    textAlign: "right",
+  },
   reconciliationColLeft: {
     flex: 1,
     marginRight: Spacing.xs,

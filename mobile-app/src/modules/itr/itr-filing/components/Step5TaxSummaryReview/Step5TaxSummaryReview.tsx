@@ -89,7 +89,67 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
     tagText: string;
     tagType: "verified" | "warning" | "imported";
     visible: boolean;
+    /** Every value the user entered for this source, shown under the summary row. */
+    details: { label: string; value: string }[];
   }
+
+  const money = (v?: string) => {
+    const raw = (v ?? "").toString().trim();
+    if (!raw) return "";
+    const n = Number(raw.replace(/,/g, ""));
+    return Number.isNaN(n) ? raw : `₹ ${n.toLocaleString("en-IN")}`;
+  };
+  const text = (v?: string | number) => (v === undefined || v === null ? "" : String(v).trim());
+  /** Keeps only the fields the user actually filled in. */
+  const entered = (rows: [string, string][]) =>
+    rows.filter(([, value]) => value !== "").map(([label, value]) => ({ label, value }));
+  const yes = (flag?: boolean) => (flag ? "Yes" : "");
+  const businessTypeLabel: Record<string, string> = {
+    presumptive_44ad: "Presumptive - Sec 44AD",
+    presumptive_44ada: "Presumptive - Sec 44ADA",
+    regular_books: "Regular Books of Accounts",
+    not_sure: "Not sure",
+  };
+
+  const salaryDetails = entered([
+    ["Employer Name", text(incomeSources.salary.employerName)],
+    ["Gross Salary", money(incomeSources.salary.grossSalary)],
+    ["Allowances", money(incomeSources.salary.allowances)],
+    ["TDS Deducted", money(incomeSources.salary.tdsDeducted)],
+  ]);
+  const housePropertyDetails = entered([
+    ["Property Type", incomeSources.houseProperty.propertyType === "let_out" ? "Let-Out Property" : "Self-Occupied"],
+    ["Annual Rent Received", money(incomeSources.houseProperty.annualRentReceived)],
+    ["Municipal Taxes Paid", money(incomeSources.houseProperty.municipalTaxesPaid)],
+    ["Home Loan Interest", money(incomeSources.houseProperty.homeLoanInterest)],
+  ]);
+  const businessDetails = entered([
+    ["Business Type", businessTypeLabel[incomeSources.business.businessType] ?? ""],
+    ["Business Name", text(incomeSources.business.businessName)],
+    ["GSTIN", text(incomeSources.business.gstin)],
+    ["Business Activity", text(incomeSources.business.businessActivity)],
+    ["Gross Turnover", money(incomeSources.business.grossTurnover)],
+    ["Declared Profit", money(incomeSources.business.declaredProfit)],
+    ["GSTR-1 Turnover", money(incomeSources.business.gstr1Turnover)],
+    ["GSTR-3B Turnover", money(incomeSources.business.gstr3bTurnover)],
+  ]);
+  const capitalGainsDetails = entered([
+    ["Equity / Mutual Funds", yes(incomeSources.capitalGains.hasEquityMf)],
+    ["F&O / Intraday", yes(incomeSources.capitalGains.hasFnoIntraday)],
+    ["Property / Other Assets", yes(incomeSources.capitalGains.hasPropertyAssets)],
+    ["Crypto / VDA", yes(incomeSources.capitalGains.hasCryptoVda)],
+    ["Short-Term Gains", money(incomeSources.capitalGains.shortTermGains)],
+    ["Long-Term Gains", money(incomeSources.capitalGains.longTermGains)],
+    ["Broker", text(incomeSources.capitalGains.brokerName)],
+    ["Total Transactions", text(incomeSources.capitalGains.totalTransactions)],
+  ]);
+  const otherSourcesDetails = entered([
+    ["Savings Interest", money(incomeSources.otherSources.savingsInterest)],
+    ["FD Interest", money(incomeSources.otherSources.fdInterest)],
+    ["Dividend Income", money(incomeSources.otherSources.dividendIncome)],
+    ["Family Pension", money(incomeSources.otherSources.familyPension)],
+    ["Other Income", money(incomeSources.otherSources.otherIncome)],
+  ]);
 
   const summaryIncomeRows: IncomeSummaryItem[] = [
     {
@@ -99,7 +159,8 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
       amount: `₹ ${Number(incomeSources.salary.grossSalary || 0).toLocaleString("en-IN")}`,
       tagText: "Declared",
       tagType: "verified",
-      visible: incomeSources.salary.enabled && Number(incomeSources.salary.grossSalary || 0) > 0,
+      visible: incomeSources.salary.enabled && salaryDetails.length > 0,
+      details: salaryDetails,
     },
     {
       id: "rec-hp",
@@ -109,6 +170,7 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
       tagText: "Declared",
       tagType: "verified",
       visible: incomeSources.houseProperty.enabled,
+      details: housePropertyDetails,
     },
     {
       id: "rec-business",
@@ -117,7 +179,8 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
       amount: `₹ ${Number(incomeSources.business.grossTurnover || 0).toLocaleString("en-IN")}`,
       tagText: "Declared",
       tagType: "verified",
-      visible: incomeSources.business.enabled && Number(incomeSources.business.grossTurnover || 0) > 0,
+      visible: incomeSources.business.enabled && businessDetails.length > 0,
+      details: businessDetails,
     },
     {
       id: "rec-cg",
@@ -126,10 +189,8 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
       amount: `₹ ${(Number(incomeSources.capitalGains.shortTermGains || 0) + Number(incomeSources.capitalGains.longTermGains || 0)).toLocaleString("en-IN")}`,
       tagText: "Declared",
       tagType: "imported",
-      visible:
-        incomeSources.capitalGains.enabled &&
-        (Number(incomeSources.capitalGains.shortTermGains || 0) > 0 ||
-          Number(incomeSources.capitalGains.longTermGains || 0) > 0),
+      visible: incomeSources.capitalGains.enabled && capitalGainsDetails.length > 0,
+      details: capitalGainsDetails,
     },
     {
       id: "rec-other",
@@ -138,7 +199,8 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
       amount: `₹ ${(Number(incomeSources.otherSources.savingsInterest || 0) + Number(incomeSources.otherSources.fdInterest || 0) + Number(incomeSources.otherSources.dividendIncome || 0) + Number(incomeSources.otherSources.otherIncome || 0)).toLocaleString("en-IN")}`,
       tagText: "Declared",
       tagType: "imported",
-      visible: incomeSources.otherSources.enabled,
+      visible: incomeSources.otherSources.enabled && otherSourcesDetails.length > 0,
+      details: otherSourcesDetails,
     },
   ];
 
@@ -227,7 +289,8 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
         {visibleIncomeRows.length > 0 ? (
           <View style={styles.reconciliationTable}>
             {visibleIncomeRows.map((row) => (
-              <View key={row.id} style={styles.reconciliationRow}>
+              <View key={row.id}>
+              <View style={styles.reconciliationRow}>
                 <View style={styles.reconciliationColLeft}>
                   <Text style={styles.reconciliationTitle}>{row.title}</Text>
                   <Text style={styles.reconciliationSub}>{row.sub}</Text>
@@ -276,6 +339,17 @@ export const Step5TaxSummaryReview: React.FC<Step5TaxSummaryReviewProps> = ({
                     </Text>
                   </View>
                 </View>
+              </View>
+              {row.details.length > 0 && (
+                <View style={styles.incomeDetailBlock}>
+                  {row.details.map((d) => (
+                    <View key={d.label} style={styles.incomeDetailRow}>
+                      <Text style={styles.incomeDetailLabel}>{d.label}</Text>
+                      <Text style={styles.incomeDetailValue}>{d.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               </View>
             ))}
           </View>

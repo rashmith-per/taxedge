@@ -26,7 +26,6 @@ import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
 import { tdsApiService } from "../../services/tdsApiService";
 import { tdsDraftService } from "../../services/tdsDraftService";
-import { useTdsBackDraftSave } from "../../hooks/useTdsBackDraftSave";
 import {
   styles,
   getContainerInsetsStyle,
@@ -91,6 +90,40 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
   // Universal Draft Guard Hook for page exit
   // BUG_B24_002: destructure openDraftModal (shows modal) and handleSaveAndExit separately —
   // the back button must open the modal; the modal's Save button calls handleSaveAndExit
+  // Newest documents, so Save as Draft stores what is on screen and not a stale closure.
+  const documentsRef = useRef(documents);
+  documentsRef.current = documents;
+
+  // The local draft is written first and must succeed. The server copy is best effort and waits at
+  // most a few seconds, so a slow or offline network can never trap the user on this screen; the
+  // documents stay in the local draft and are restored when the application is reopened.
+  const persistDraftOnBack = async () => {
+    const latestDocs = documentsRef.current;
+    const localForm = await tdsDraftService.getFormDraft();
+    // Editing from Review resumes at Review; a first visit resumes at the checklist.
+    const resumeStep = isEditingFromEstimate ? "ESTIMATE" : "DOCUMENTS";
+    if (!(await tdsDraftService.saveFormDraft(localForm, resumeStep))) {
+      throw new Error("Could not write the TDS form draft");
+    }
+    if (!(await tdsDraftService.saveDocumentsDraft(latestDocs))) {
+      throw new Error("Could not write the TDS documents draft");
+    }
+    saveTdsDraft?.({
+      formData: localForm as any,
+      documents: latestDocs as any,
+      step: resumeStep,
+      updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    });
+    const serverSync = (async () => {
+      const tdsRefundId = await getOrFetchRefundId();
+      if (tdsRefundId) await tdsApiService.saveDocuments(latestDocs, tdsRefundId);
+    })().catch((err) => {
+      console.warn("[TDS Docs Screen] Draft save to backend warning:", err);
+    });
+    await Promise.race([serverSync, new Promise((resolve) => setTimeout(resolve, 4000))]);
+  };
+
+  // Universal Draft Guard: Back (header, Android hardware Back, back gesture) asks to save the draft.
   const {
     showDraftModal,
     markSubmitted,
@@ -98,70 +131,23 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     handleDiscardAndExit: discardDraft,
     handleCancel: cancelExit,
   } = useUniversalDraftGuard({
-    // Back saves automatically for first visits and for edits from Review (useTdsBackDraftSave
-    // below), so this guard no longer prompts. It stays for markSubmitted().
-    isDirty: () => false,
+    isDirty: () =>
+      !useTdsProgressStore.getState().isSubmitted &&
+      documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded")),
     onSaveDraft: async () => {
-      saveTdsDraft?.({
-        formData: tdsDraft?.formData || {},
-        documents: documents as any,
-        step: "DOCUMENTS",
-        updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-      await tdsDraftService.saveDocumentsDraft(documents);
       try {
-        const tdsRefundId = await getOrFetchRefundId();
-        if (tdsRefundId) {
-          await tdsApiService.saveDocuments(documents, tdsRefundId);
-        }
+        await persistDraftOnBack();
       } catch (err) {
-        console.warn("[TDS Docs Screen] Draft save to backend warning:", err);
+        console.warn("[TDS Docs Screen] Saving draft failed:", err);
+        Alert.alert("Could not save your progress", "Your changes could not be saved as a draft. Please try again.");
+        throw err; // keeps the prompt open so nothing is lost silently
       }
     },
     onDiscardDraft: async () => {
-      await tdsDraftService.clearDraft();
+      // Discarding an edit from Review only abandons the edit. The saved application stays.
+      if (!isEditingFromEstimate) await tdsDraftService.clearDraft();
     },
     isSubmitted: () => useTdsProgressStore.getState().isSubmitted,
-  });
-
-  // Newest documents, so Back saves what is on screen and not a stale closure.
-  const documentsRef = useRef(documents);
-  documentsRef.current = documents;
-
-  // Back (header, Android hardware Back or back gesture) saves the documents and the checklist step.
-  // The local draft is written first and must succeed. The server copy is best effort and waits at
-  // most a few seconds, so a slow or offline network can never trap the user on this screen; the
-  // documents stay in the local draft and are restored when the application is reopened.
-  const backSave = useTdsBackDraftSave({
-    shouldSave:
-      !useTdsProgressStore.getState().isSubmitted &&
-      documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded")),
-    saveDraft: async () => {
-      const latestDocs = documentsRef.current;
-      const localForm = await tdsDraftService.getFormDraft();
-      // Editing from Review resumes at Review; a first visit resumes at the checklist.
-      const resumeStep = isEditingFromEstimate ? "ESTIMATE" : "DOCUMENTS";
-      if (!(await tdsDraftService.saveFormDraft(localForm, resumeStep))) {
-        throw new Error("Could not write the TDS form draft");
-      }
-      if (!(await tdsDraftService.saveDocumentsDraft(latestDocs))) {
-        throw new Error("Could not write the TDS documents draft");
-      }
-      saveTdsDraft?.({
-        formData: localForm as any,
-        documents: latestDocs as any,
-        step: resumeStep,
-        updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-      const serverSync = (async () => {
-        const tdsRefundId = await getOrFetchRefundId();
-        if (tdsRefundId) await tdsApiService.saveDocuments(latestDocs, tdsRefundId);
-      })().catch((err) => {
-        console.warn("[TDS Docs Screen] Draft save to backend warning:", err);
-      });
-      await Promise.race([serverSync, new Promise((resolve) => setTimeout(resolve, 4000))]);
-    },
-    isBusy: () => isSaving,
   });
 
   // Functional count of uploaded documents - zero loops
@@ -328,15 +314,13 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     // Navigate to next screen: return to estimate when editing, push when first-time
     if (isEditingFromEstimate) {
       markSubmitted();
-      // Leaving on purpose after saving: do not let Back handling save again.
-      backSave.disable();
       router.back();
     } else {
       router.push("/service/tds-estimate" as any);
     }
   };
 
-  // The draft is saved by useTdsBackDraftSave, which intercepts every way of leaving this screen.
+  // The draft guard intercepts every way of leaving this screen and shows the Save / Discard prompt.
   const handleBackPress = () => {
     if (router.canGoBack()) {
       router.back();
