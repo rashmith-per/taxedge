@@ -283,12 +283,25 @@ export function matchesSearchQuery(
 }
 
 export function getResumeRoute(app: Application): string {
-  return (
-    (app.formData?.resumeRoute as string) ||
-    (app.serviceId === "tds-refund"
-      ? "/service/tds-form"
-      : `/service/${app.serviceId || "itr"}`)
-  );
+  if (app.formData?.resumeRoute) return app.formData.resumeRoute as string;
+
+  if (app.serviceId === "tds-refund") {
+    const step = (app.formData?.savedStep || app.formData?.step || (app as any).savedStep || (app as any).step) as string;
+    const s = String(step || "").toUpperCase();
+    if (s === "DOCUMENTS") return "/service/tds-checklist";
+    if (s === "ESTIMATE" || s === "PAYMENT" || s === "REVIEW") return "/service/tds-estimate";
+    return "/service/tds-form";
+  }
+
+  if (app.serviceId === "itr-filing" || app.serviceId === "itr") {
+    const step = app.formData?.savedStep ?? app.formData?.step ?? app.formData?.stepIndex ?? (app as any).savedStep;
+    const s = typeof step === "number" ? step : typeof step === "string" ? parseInt(step, 10) : undefined;
+    return typeof s === "number" && !isNaN(s)
+      ? `/service/itr-filing?step=${s}&resume=true`
+      : "/service/itr-filing?resume=true";
+  }
+
+  return `/service/${app.serviceId || "itr"}`;
 }
 
 

@@ -10,7 +10,7 @@ import {
 import { BrandColors } from "@/shared/theme";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Step0CategorySelect } from "../../components/Step0CategorySelect/Step0CategorySelect";
@@ -29,6 +29,7 @@ import { styles } from "./ItrFilingScreen.styles";
 export const ItrFilingScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ step?: string; resume?: string }>();
   const scrollViewRef = useRef<any>(null);
   const targetSectionRef = useRef<string | null>(null);
   const step1ContainerYRef = useRef<number | null>(null);
@@ -37,6 +38,7 @@ export const ItrFilingScreen: React.FC = () => {
   // Never set by auto-populated profile data, so it is safe to use as the sole
   // dirty indicator for the category selection screen.
   const categorySelectedRef = useRef(false);
+  const hasUserEditedRef = useRef(false);
   const scrollAnimFrameRef = useRef<number | null>(null);
 
   // Store bindings
@@ -76,10 +78,94 @@ export const ItrFilingScreen: React.FC = () => {
   const handleSelectCategory = useCallback(
     (category: Parameters<typeof setCategory>[0]) => {
       categorySelectedRef.current = true;
+      hasUserEditedRef.current = true;
       setCategory(category);
     },
     [setCategory]
   );
+
+  const handleUpdatePersonalInfo = useCallback((info: Parameters<typeof setPersonalInfo>[0]) => {
+    hasUserEditedRef.current = true;
+    setPersonalInfo(info);
+  }, [setPersonalInfo]);
+
+  const handleSelectRefundBank = useCallback((bank: Parameters<typeof selectRefundBank>[0]) => {
+    hasUserEditedRef.current = true;
+    selectRefundBank(bank);
+  }, [selectRefundBank]);
+
+  const handleAddBankAccount = useCallback((account: Parameters<typeof addBankAccount>[0]) => {
+    hasUserEditedRef.current = true;
+    addBankAccount(account);
+  }, [addBankAccount]);
+
+  const handleUpdateBankAccount = useCallback((account: Parameters<typeof updateBankAccount>[0]) => {
+    hasUserEditedRef.current = true;
+    updateBankAccount(account);
+  }, [updateBankAccount]);
+
+  const handleUpdatePriorItrNotice = useCallback((notice: Parameters<typeof setPriorItrNotice>[0]) => {
+    hasUserEditedRef.current = true;
+    setPriorItrNotice(notice);
+  }, [setPriorItrNotice]);
+
+  const handleImportPriorItrData = useCallback((data: Parameters<typeof importPriorItrData>[0]) => {
+    hasUserEditedRef.current = true;
+    importPriorItrData(data);
+  }, [importPriorItrData]);
+
+  const handleUpdateSalary = useCallback((s: Parameters<typeof setIncomeSalary>[0]) => {
+    hasUserEditedRef.current = true;
+    setIncomeSalary(s);
+  }, [setIncomeSalary]);
+
+  const handleUpdateHouseProperty = useCallback((hp: Parameters<typeof setIncomeHouseProperty>[0]) => {
+    hasUserEditedRef.current = true;
+    setIncomeHouseProperty(hp);
+  }, [setIncomeHouseProperty]);
+
+  const handleUpdateBusiness = useCallback((b: Parameters<typeof setIncomeBusiness>[0]) => {
+    hasUserEditedRef.current = true;
+    setIncomeBusiness(b);
+  }, [setIncomeBusiness]);
+
+  const handleUpdateCapitalGains = useCallback((cg: Parameters<typeof setIncomeCapitalGains>[0]) => {
+    hasUserEditedRef.current = true;
+    setIncomeCapitalGains(cg);
+  }, [setIncomeCapitalGains]);
+
+  const handleUpdateOtherSources = useCallback((os: Parameters<typeof setIncomeOtherSources>[0]) => {
+    hasUserEditedRef.current = true;
+    setIncomeOtherSources(os);
+  }, [setIncomeOtherSources]);
+
+  const handleUpdateDocument = useCallback((docId: string, fileInfo: any) => {
+    hasUserEditedRef.current = true;
+    updateDocument(docId, fileInfo);
+  }, [updateDocument]);
+
+  const isFormDirty = useCallback(() => {
+    if (hasUserEditedRef.current || categorySelectedRef.current) return true;
+    if (!isCategoryConfirmed) return categorySelectedRef.current;
+    const p = formData.personalInfo;
+    const hasAnyPersonal = Boolean(
+      p.fatherSpouseName || p.gender || p.pan || p.aadhaar ||
+      p.name || p.mobile || p.email || p.address || p.residentialStatus || p.filingType
+    );
+    const hasAnyBank = Boolean(
+      formData.bankDetails?.accountNumber ||
+      formData.bankDetails?.ifscCode ||
+      formData.bankDetails?.bankName ||
+      formData.bankAccountsList?.length > 0
+    );
+    const hasAnyIncome = (formData.calculation?.grossTotalIncome ?? 0) > 0 ||
+      Boolean(formData.incomeSources?.salary?.grossSalary) ||
+      Boolean(formData.incomeSources?.houseProperty?.annualRentReceived) ||
+      Boolean(formData.incomeSources?.business?.grossTurnover) ||
+      Boolean(formData.incomeSources?.otherSources?.savingsInterest);
+    const hasAnyDocs = formData.documents.some((d) => Boolean(d.fileUri));
+    return hasAnyPersonal || hasAnyBank || hasAnyIncome || hasAnyDocs || currentStep > 0;
+  }, [formData, isCategoryConfirmed, currentStep]);
 
   // Universal Draft Guard Hook
   const {
@@ -90,23 +176,7 @@ export const ItrFilingScreen: React.FC = () => {
     handleDiscardAndExit,
     handleCancel,
   } = useUniversalDraftGuard({
-    isDirty: () => {
-      if (!isCategoryConfirmed) {
-        // Category selection screen: dirty only when the user explicitly tapped a card.
-        // Auto-populated personal info (name, PAN, etc.) must NOT trigger the guard.
-        return categorySelectedRef.current;
-      }
-      // Multi-step form: dirty when income entered, docs uploaded, or beyond step 0.
-      const hasIncome = formData.calculation.grossTotalIncome > 0;
-      const hasDocs = formData.documents.some((d) => Boolean(d.fileUri));
-      const hasCategory = Boolean(formData.category);
-      const hasPersonal = Boolean(
-        formData.personalInfo.assessmentYear ||
-        formData.personalInfo.residentialStatus ||
-        formData.personalInfo.filingType
-      );
-      return hasIncome || hasDocs || currentStep > 0 || isCategoryConfirmed || hasCategory || hasPersonal;
-    },
+    isDirty: isFormDirty,
     onSaveDraft: async () => {
       try {
         await saveItrDraft();
@@ -242,7 +312,11 @@ export const ItrFilingScreen: React.FC = () => {
         if (!isMounted) return;
         if (restored) {
           setIsCategoryConfirmed(true);
-          setStep(0);
+          const state = useITRStore.getState();
+          const targetStep = params.step !== undefined && !isNaN(Number(params.step))
+            ? Number(params.step)
+            : (state.currentStep ?? 0);
+          setStep(targetStep);
         } else {
           useITRStore.getState().resetForm();
           setIsCategoryConfirmed(false);
@@ -262,13 +336,11 @@ export const ItrFilingScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [params.step, setStep]);
 
   const handleBack = useCallback(() => {
     if (!isCategoryConfirmed) {
-      // Show draft popup only if the user has explicitly selected a category card.
-      // categorySelectedRef is a ref, so it is always current even inside this callback.
-      if (categorySelectedRef.current) {
+      if (isFormDirty()) {
         openDraftModal();
       } else {
         router.back();
@@ -278,30 +350,40 @@ export const ItrFilingScreen: React.FC = () => {
     if (currentStep > 0) {
       setStep(currentStep - 1);
     } else {
-      setIsCategoryConfirmed(false);
+      // Step 1: user wants to go back / exit the application.
+      // If dirty, prompt Save as Draft modal!
+      if (isFormDirty()) {
+        openDraftModal();
+      } else {
+        setIsCategoryConfirmed(false);
+      }
     }
-  }, [isCategoryConfirmed, openDraftModal, router, currentStep, setStep]);
+  }, [isCategoryConfirmed, isFormDirty, openDraftModal, router, currentStep, setStep]);
 
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         if (!isCategoryConfirmed) {
-          // Category selection screen: show popup only if user selected a card.
-          // categorySelectedRef is a ref — always current inside this closure.
-          if (categorySelectedRef.current) {
+          if (isFormDirty()) {
             openDraftModal();
             return true;
           }
           return false;
         }
-        // Multi-step form: always prompt to save before leaving.
-        openDraftModal();
-        return true;
+        if (currentStep > 0) {
+          setStep(currentStep - 1);
+          return true;
+        }
+        if (isFormDirty()) {
+          openDraftModal();
+          return true;
+        }
+        return false;
       };
 
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
       return () => subscription.remove();
-    }, [currentStep, isCategoryConfirmed, openDraftModal])
+    }, [currentStep, isCategoryConfirmed, isFormDirty, openDraftModal, setStep])
   );
 
   if (isHydrating) {
@@ -377,6 +459,7 @@ export const ItrFilingScreen: React.FC = () => {
         stepTitle={formData.determinedForm.form}
         hideBackButton={maxStepReached >= 3 && currentStep < 3}
         onBack={handleBack}
+        onSaveDraft={openDraftModal}
         onSettings={() => Alert.alert("Finsolz Support", "Need help with your ITR? Contact support@finsolz.in")}
       />
 
@@ -396,15 +479,15 @@ export const ItrFilingScreen: React.FC = () => {
               isLoading={isSubmitting}
               isEditing={maxStepReached >= 3}
               personalInfo={formData.personalInfo}
-              onUpdatePersonalInfo={setPersonalInfo}
+              onUpdatePersonalInfo={handleUpdatePersonalInfo}
               bankDetails={formData.bankDetails}
               bankAccountsList={formData.bankAccountsList}
-              onSelectRefundBank={selectRefundBank}
-              onAddBankAccount={addBankAccount}
-              onUpdateBankAccount={updateBankAccount}
+              onSelectRefundBank={handleSelectRefundBank}
+              onAddBankAccount={handleAddBankAccount}
+              onUpdateBankAccount={handleUpdateBankAccount}
               priorItrNotice={formData.priorItrNotice}
-              onUpdatePriorItrNotice={setPriorItrNotice}
-              onImportPriorItrData={importPriorItrData}
+              onUpdatePriorItrNotice={handleUpdatePriorItrNotice}
+              onImportPriorItrData={handleImportPriorItrData}
               onContinue={handleStep1Continue}
               onUpdateAndContinue={handleStep1Update}
               onSectionLayout={handleSectionLayout}
@@ -421,12 +504,12 @@ export const ItrFilingScreen: React.FC = () => {
             determinedForm={formData.determinedForm}
             gstReconciliation={formData.gstReconciliation}
             category={formData.category}
-            onSwitchCategory={setCategory}
-            onUpdateSalary={setIncomeSalary}
-            onUpdateHouseProperty={setIncomeHouseProperty}
-            onUpdateBusiness={setIncomeBusiness}
-            onUpdateCapitalGains={setIncomeCapitalGains}
-            onUpdateOtherSources={setIncomeOtherSources}
+            onSwitchCategory={handleSelectCategory}
+            onUpdateSalary={handleUpdateSalary}
+            onUpdateHouseProperty={handleUpdateHouseProperty}
+            onUpdateBusiness={handleUpdateBusiness}
+            onUpdateCapitalGains={handleUpdateCapitalGains}
+            onUpdateOtherSources={handleUpdateOtherSources}
             onContinue={handleStep2Continue}
             onUpdateAndContinue={handleStep2Update}
           />
@@ -438,7 +521,7 @@ export const ItrFilingScreen: React.FC = () => {
             isLoading={isSubmitting}
             isEditing={maxStepReached >= 3}
             documents={formData.documents}
-            onUpdateDocument={updateDocument}
+            onUpdateDocument={handleUpdateDocument}
             onContinue={handleStep3Continue}
             onUpdateAndContinue={handleStep3Update}
           />

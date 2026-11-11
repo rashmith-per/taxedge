@@ -1,14 +1,15 @@
-import React, { useRef } from "react";
+import React, { useRef, useCallback } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  BackHandler,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
 import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { BrandColors } from "@/shared/theme";
@@ -34,6 +35,7 @@ export const TdsRefundFormScreen: React.FC = () => {
     handleBlurField,
     handleContinue,
     handleBack,
+    isDirtyNow,
     draftGuard,
     documents,
     handleUploadSuccess,
@@ -46,11 +48,25 @@ export const TdsRefundFormScreen: React.FC = () => {
 
   const {
     showDraftModal,
-    openDraftModal: _openDraftModal,
+    openDraftModal,
     handleSaveAndExit,
     handleDiscardAndExit,
     handleCancel,
   } = draftGuard;
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (isDirtyNow()) {
+          openDraftModal();
+          return true;
+        }
+        return false;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [isDirtyNow, openDraftModal])
+  );
 
   // Bank Input refs
   const accHolderRef = useRef<TextInput>(null);
@@ -75,17 +91,13 @@ export const TdsRefundFormScreen: React.FC = () => {
 
       {/* Top Header Bar */}
       <View style={[styles.headerBar, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
-        {!isEditing ? (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleBack}
-            style={styles.backButton}
-          >
-            <Ionicons name="chevron-back" size={20} color={BrandColors.PRIMARY_BLUE_DARK} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 36, height: 36 }} />
-        )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleBack}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={20} color={BrandColors.PRIMARY_BLUE_DARK} />
+        </TouchableOpacity>
 
         <View style={styles.headerTitleGroup}>
           <Text style={styles.headerTitle}>TDS Refund</Text>

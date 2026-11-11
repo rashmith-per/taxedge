@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTdsProgressStore } from "../../store/tdsProgressStore";
 import {
   View,
@@ -7,9 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { TdsDocumentItem, DocumentUploadPayload } from "../../types/tdsDocuments.types";
@@ -123,17 +124,23 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     await Promise.race([serverSync, new Promise((resolve) => setTimeout(resolve, 4000))]);
   };
 
+  const isDirty = useCallback(
+    () =>
+      !useTdsProgressStore.getState().isSubmitted &&
+      documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded")),
+    [documents]
+  );
+
   // Universal Draft Guard: Back (header, Android hardware Back, back gesture) asks to save the draft.
   const {
     showDraftModal,
+    openDraftModal,
     markSubmitted,
     handleSaveAndExit,
     handleDiscardAndExit: discardDraft,
     handleCancel: cancelExit,
   } = useUniversalDraftGuard({
-    isDirty: () =>
-      !useTdsProgressStore.getState().isSubmitted &&
-      documents.some((d: any) => Boolean(d.fileUri || d.status === "uploaded")),
+    isDirty,
     onSaveDraft: async () => {
       try {
         await persistDraftOnBack();
@@ -320,14 +327,29 @@ export const TdsDocumentChecklistScreen: React.FC = () => {
     }
   };
 
-  // The draft guard intercepts every way of leaving this screen and shows the Save / Discard prompt.
-  const handleBackPress = () => {
-    if (router.canGoBack()) {
+  const handleBackPress = useCallback(() => {
+    if (isDirty()) {
+      openDraftModal();
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/service/itr" as any);
     }
-  };
+  }, [isDirty, openDraftModal, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (isDirty()) {
+          openDraftModal();
+          return true;
+        }
+        return false;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [isDirty, openDraftModal])
+  );
 
   const containerInsetsStyle = getContainerInsetsStyle(insets.top);
   const scrollContentInsetsStyle = getScrollContentInsetsStyle(insets.bottom);

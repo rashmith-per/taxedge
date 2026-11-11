@@ -20,7 +20,7 @@ export default function TdsRefundRoute() {
         if (cancelled) return;
         if (meta?.step === "DOCUMENTS") {
           router.replace("/service/tds-checklist" as any);
-        } else if (meta?.step === "ESTIMATE" || meta?.step === "PAYMENT") {
+        } else if (meta?.step === "ESTIMATE" || meta?.step === "PAYMENT" || meta?.step === "REVIEW") {
           router.replace("/service/tds-estimate" as any);
         } else {
           router.replace("/service/tds-form" as any);

@@ -51,6 +51,7 @@ export const useTdsRefundForm = () => {
 
   const initialSnapshotRef = useRef<string | null>(null);
   const [hasUserEdited, setHasUserEdited] = useState(false);
+  const hasUserEditedRef = useRef(false);
   const isSavingRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   // False until the draft stored on the device has been applied. The form is not shown before that,
@@ -73,10 +74,20 @@ export const useTdsRefundForm = () => {
   formDataRef.current = formData;
 
   const isDirtyNow = () => {
-    if (hasUserEdited) return true;
+    if (hasUserEditedRef.current || hasUserEdited) return true;
+    const b = formData.business;
+    const bank = formData.bank;
+    const hasAnyBusiness = Boolean(
+      b.legalName || b.pan || b.aadhaar || b.mobileNumber
+    );
+    const hasAnyBank = Boolean(
+      bank.accountHolderName || bank.accountNumber || bank.ifscCode || bank.bankName
+    );
+    const hasAnyDocs = documents.some((d) => Boolean(d.fileUri) || d.status === "uploaded");
+    if (hasAnyBusiness || hasAnyBank || hasAnyDocs) return true;
     if (!initialSnapshotRef.current) return false;
     return (
-      JSON.stringify({ bank: formData.bank, income: formData.income }) !== initialSnapshotRef.current
+      JSON.stringify({ bank: formData.bank, income: formData.income, business: formData.business }) !== initialSnapshotRef.current
     );
   };
 
@@ -391,6 +402,7 @@ export const useTdsRefundForm = () => {
   };
 
   const updateBank: UpdateBankField = (field, value) => {
+    hasUserEditedRef.current = true;
     setHasUserEdited(true);
     editedFieldsRef.current.bank.add(field);
     setFormData((prev) => ({
@@ -415,10 +427,12 @@ export const useTdsRefundForm = () => {
 
 
   const handleIfscChange = (val: string) => {
+    hasUserEditedRef.current = true;
     updateBank("ifscCode", cleanIfsc(val));
   };
 
   const updateBusiness = (field: string, value: string) => {
+    hasUserEditedRef.current = true;
     setHasUserEdited(true);
     editedFieldsRef.current.business.add(field);
     setFormData((prev) => ({
@@ -442,6 +456,7 @@ export const useTdsRefundForm = () => {
 
   const handleUploadSuccess = (id: string, payload: any) => {
     documentsChangedRef.current = true;
+    hasUserEditedRef.current = true;
     setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "uploaded", errorMessage: undefined, fileUri: payload.uri, fileName: payload.name, fileSize: payload.size, mimeType: payload.mimeType, fileTypeLabel: payload.fileTypeLabel } : doc);
@@ -450,6 +465,7 @@ export const useTdsRefundForm = () => {
     });
   };
   const handleUploadError = (id: string, errorMessage: string) => {
+    hasUserEditedRef.current = true;
     setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", errorMessage } : doc);
@@ -459,6 +475,7 @@ export const useTdsRefundForm = () => {
   };
   const handleRemove = (id: string) => {
     documentsChangedRef.current = true;
+    hasUserEditedRef.current = true;
     setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", fileUri: undefined, fileName: undefined, fileSize: undefined, mimeType: undefined, fileTypeLabel: undefined, errorMessage: undefined } : doc);
@@ -575,10 +592,13 @@ export const useTdsRefundForm = () => {
     }
   };
 
-  // Header Back. The draft guard intercepts every way of leaving this screen (this button, Android
-  // hardware Back and the back gesture) and shows the Save / Discard prompt, so this only navigates.
+  // Header Back / Android Back. Prompts to save draft if the user entered/edited anything.
   const handleBack = () => {
-    router.back();
+    if (isDirtyNow()) {
+      draftGuard.openDraftModal();
+    } else {
+      router.back();
+    }
   };
 
   return {
@@ -595,6 +615,7 @@ export const useTdsRefundForm = () => {
     handleBlurField,
     handleContinue,
     handleBack,
+    isDirtyNow,
     isSaving,
     isHydrating,
     draftGuard,

@@ -36,9 +36,17 @@ export function getDraftResumeRoute(serviceKey: string, step: unknown): string {
     const routeMap: Record<string, string> = {
       DOCUMENTS: "/service/tds-checklist",
       ESTIMATE: "/service/tds-estimate",
-      PAYMENT: "/service/tds-payment",
+      REVIEW: "/service/tds-estimate",
+      PAYMENT: "/service/tds-estimate",
     };
     return routeMap[String(step || "").toUpperCase()] || "/service/tds-form";
+  }
+
+  if (serviceKey === "itr-filing" || serviceKey === "itr") {
+    const s = typeof step === "number" ? step : typeof step === "string" ? parseInt(step, 10) : undefined;
+    return typeof s === "number" && !isNaN(s)
+      ? `/service/itr-filing?step=${s}&resume=true`
+      : "/service/itr-filing?resume=true";
   }
 
   if (serviceKey === "gst-registration") {

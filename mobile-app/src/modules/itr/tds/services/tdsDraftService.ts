@@ -146,13 +146,17 @@ export const tdsDraftService = {
       await AsyncStorage.setItem(getStorageKeyDocs(), JSON.stringify(documents));
       const raw = await AsyncStorage.getItem(getStorageKeyForm());
       const existing = raw ? JSON.parse(raw) : {};
+      const targetStep =
+        existing.step === "ESTIMATE" || existing.step === "PAYMENT" || existing.step === "REVIEW"
+          ? existing.step
+          : "DOCUMENTS";
       await AsyncStorage.setItem(
         getStorageKeyForm(),
         JSON.stringify({
           serviceKey: "tds-refund",
           serviceName: "TDS Refund",
           category: "ITR",
-          step: existing.step || "DOCUMENTS",
+          step: targetStep,
           formData: existing.formData || {},
           documents,
           updatedAt: new Date().toISOString().split("T")[0],

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from "react-native";
 import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
 import { useUniversalDraftGuard } from "@/shared/hooks/useUniversalDraftGuard";
@@ -64,6 +65,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
 
   const {
     showDraftModal,
+    openDraftModal,
     markSubmitted,
     handleSaveAndExit,
     handleDiscardAndExit,
@@ -87,6 +89,21 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     },
     isSubmitted: () => isSubmitting || useTdsProgressStore.getState().isSubmitted,
   });
+
+  const handleBack = useCallback(() => {
+    openDraftModal();
+  }, [openDraftModal]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        openDraftModal();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [openDraftModal])
+  );
 
   // Set when the user opens a section edit. Update & Continue has already saved the new values to
   // the draft and the server, so the next focus only re-reads the draft instead of repeating every
@@ -294,7 +311,13 @@ export const TdsRefundEstimateScreen: React.FC = () => {
 
       {/* Screen Header */}
       <View style={[styles.headerBar, { paddingTop: Math.max(insets.top, 12) + 6 }]}>
-        <View style={{ width: 38, height: 38 }} />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleBack}
+          style={{ width: 38, height: 38, justifyContent: "center", alignItems: "center" }}
+        >
+          <Ionicons name="chevron-back" size={20} color={BrandColors.PRIMARY_BLUE_DARK} />
+        </TouchableOpacity>
 
         <View style={styles.headerTitleGroup}>
           <Text style={styles.headerTitle}>Review Application</Text>

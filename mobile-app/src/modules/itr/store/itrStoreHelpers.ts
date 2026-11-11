@@ -137,6 +137,9 @@ export const buildApplicationDraftPayload = (
 ) => ({
   id: draftId,
   stepIndex: currentStep,
+  step: currentStep,
+  savedStep: currentStep,
+  resumeRoute: `/service/itr-filing?step=${currentStep}&resume=true`,
   category: formData.category || "salaried",
   categoryTitle: formData.determinedForm?.formTitle || "ITR Filing",
   formType: formData.determinedForm?.form || "ITR-1",

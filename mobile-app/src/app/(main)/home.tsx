@@ -107,6 +107,7 @@ export default function HomeScreen() {
   const gstDraft = useApplicationStore((s) => s.gstDraft);
   const gstFilingDraft = useApplicationStore((s) => s.gstFilingDraft);
   const itrDraft = useApplicationStore((s) => s.itrDraft);
+  const tdsDraft = useApplicationStore((s) => s.tdsDraft);
 
   const isProfileCompleted = isProfileComplete({
     profileCompleted,
@@ -258,7 +259,7 @@ export default function HomeScreen() {
             <DraftBanner
               updatedAt={itrDraft.updatedAt}
               stepIndex={itrDraft.stepIndex || 0}
-              totalSteps="5"
+              totalSteps="4"
               accentColor={colors.orange}
               lightBg="#FEF0E6"
               lightBorder="#FFD8BF"
@@ -268,7 +269,30 @@ export default function HomeScreen() {
               resumeLabel="Resume Application"
               isDark={isDark}
               colors={colors}
-              onPress={() => accessService("/service/itr-filing")}
+              onPress={() => accessService(itrDraft.stepIndex !== undefined ? `/service/itr-filing?step=${itrDraft.stepIndex}&resume=true` : "/service/itr-filing")}
+            />
+          )}
+          {tdsDraft && (
+            <DraftBanner
+              updatedAt={tdsDraft.updatedAt}
+              stepIndex={tdsDraft.step === "ESTIMATE" || tdsDraft.step === "PAYMENT" || tdsDraft.step === "REVIEW" ? 1 : 0}
+              totalSteps="2"
+              accentColor={colors.primary}
+              lightBg="#EAF1FE"
+              lightBorder="#BFDBFE"
+              tagLabel="INCOMPLETE APPLICATION"
+              title="TDS Refund"
+              subtitle="Pick up right where you left off"
+              resumeLabel="Resume Application"
+              isDark={isDark}
+              colors={colors}
+              onPress={() => accessService(
+                tdsDraft.step === "DOCUMENTS"
+                  ? "/service/tds-checklist"
+                  : tdsDraft.step === "ESTIMATE" || tdsDraft.step === "PAYMENT" || tdsDraft.step === "REVIEW"
+                  ? "/service/tds-estimate"
+                  : "/service/tds-form"
+              )}
             />
           )}
 
