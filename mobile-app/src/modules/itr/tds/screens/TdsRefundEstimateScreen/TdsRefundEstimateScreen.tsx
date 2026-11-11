@@ -72,9 +72,11 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     saveDraft: async () => {
       const latestForm = formDataRef.current;
       const latestDocs = documentsRef.current;
-      await tdsDraftService.saveFormDraft(latestForm, "ESTIMATE");
-      if (latestDocs.length > 0) {
-        await tdsDraftService.saveDocumentsDraft(latestDocs as any);
+      if (!(await tdsDraftService.saveFormDraft(latestForm, "ESTIMATE"))) {
+        throw new Error("Could not write the TDS form draft");
+      }
+      if (latestDocs.length > 0 && !(await tdsDraftService.saveDocumentsDraft(latestDocs as any))) {
+        throw new Error("Could not write the TDS documents draft");
       }
       useApplicationStore.getState().saveTdsDraft({
         formData: latestForm,

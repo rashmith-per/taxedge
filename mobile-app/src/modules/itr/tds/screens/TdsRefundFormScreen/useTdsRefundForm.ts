@@ -84,9 +84,9 @@ export const useTdsRefundForm = () => {
   const draftGuard = useUniversalDraftGuard({
     saveDestination: "/service/itr",
     discardDestination: "/service/itr",
-    // Editing a single section from Review keeps the existing Save / Discard prompt.
-    // Back from the first screen saves automatically (see useTdsBackDraftSave below).
-    isDirty: () => isEditing && isDirtyNow(),
+    // Back never opens the Save / Discard prompt any more: first visits and edits from Review both
+    // save automatically (see useTdsBackDraftSave below). The guard stays for markSubmitted().
+    isDirty: () => false,
     onSaveDraft: async () => {
       await tdsDraftService.saveFormDraft(formDataRef.current);
       await tdsDraftService.saveDocumentsDraft(documentsRef.current);
@@ -102,17 +102,22 @@ export const useTdsRefundForm = () => {
   const persistDraftOnBack = async () => {
     const latestForm = formDataRef.current;
     const latestDocs = documentsRef.current;
-    await tdsDraftService.saveFormDraft(latestForm, "FORM");
+    // Editing from Review resumes at Review; a first visit resumes at this form. The application id
+    // is stored separately and is not touched here.
+    const resumeStep = isEditing ? "ESTIMATE" : "FORM";
+    if (!(await tdsDraftService.saveFormDraft(latestForm, resumeStep))) {
+      throw new Error("Could not write the TDS form draft");
+    }
     // Never overwrite stored documents with an empty list if they have not been loaded.
-    if (latestDocs.length > 0) {
-      await tdsDraftService.saveDocumentsDraft(latestDocs);
+    if (latestDocs.length > 0 && !(await tdsDraftService.saveDocumentsDraft(latestDocs))) {
+      throw new Error("Could not write the TDS documents draft");
     }
     try {
       const appStore = (await import("@/store/applicationStore")).useApplicationStore.getState();
       appStore.saveTdsDraft?.({
         formData: latestForm,
         documents: latestDocs as any,
-        step: "FORM",
+        step: resumeStep,
         updatedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
     } catch (storeErr) {
@@ -120,8 +125,8 @@ export const useTdsRefundForm = () => {
     }
   };
 
-  useTdsBackDraftSave({
-    shouldSave: !isEditing && !isHydrating && !useTdsProgressStore.getState().isSubmitted && isDirtyNow(),
+  const backSave = useTdsBackDraftSave({
+    shouldSave: !isHydrating && !useTdsProgressStore.getState().isSubmitted && isDirtyNow(),
     saveDraft: persistDraftOnBack,
     isBusy: () => isSavingRef.current,
   });
@@ -562,6 +567,8 @@ export const useTdsRefundForm = () => {
       useTdsProgressStore.getState().setMaxStepReached(3);
     }
     if (isEditing) {
+      // Leaving on purpose after a successful update: do not let Back handling save again.
+      backSave.disable();
       router.back();
     } else {
       router.push("/service/tds-estimate" as any);

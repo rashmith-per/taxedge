@@ -86,7 +86,8 @@ export const INITIAL_TDS_FORM_DATA: TdsCustomerIncomeFormData = {
 };
 
 export const tdsDraftService = {
-  saveFormDraft: async (formData: TdsCustomerIncomeFormData, step: string = "FORM"): Promise<void> => {
+  /** Resolves true when the draft was written, false when storage failed (callers that ignore it behave as before). */
+  saveFormDraft: async (formData: TdsCustomerIncomeFormData, step: string = "FORM"): Promise<boolean> => {
     try {
       const cleanMobile = getCleanMobile();
       const payload = {
@@ -99,8 +100,10 @@ export const tdsDraftService = {
       };
       await AsyncStorage.setItem(getStorageKeyForm(), JSON.stringify(payload));
       await addDraftToIndex(cleanMobile, "tds-refund");
+      return true;
     } catch (err) {
       console.error("Failed to save TDS form draft:", err);
+      return false;
     }
   },
 
@@ -137,7 +140,7 @@ export const tdsDraftService = {
     return null;
   },
 
-  saveDocumentsDraft: async (documents: any[]): Promise<void> => {
+  saveDocumentsDraft: async (documents: any[]): Promise<boolean> => {
     try {
       const cleanMobile = getCleanMobile();
       await AsyncStorage.setItem(getStorageKeyDocs(), JSON.stringify(documents));
@@ -156,8 +159,10 @@ export const tdsDraftService = {
         }),
       );
       await addDraftToIndex(cleanMobile, "tds-refund");
+      return true;
     } catch (err) {
       console.error("Failed to save TDS documents draft:", err);
+      return false;
     }
   },
 

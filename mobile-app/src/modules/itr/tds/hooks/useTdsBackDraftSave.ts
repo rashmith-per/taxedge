@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert } from "react-native";
 import { usePreventRemove } from "expo-router";
 
 export interface UseTdsBackDraftSaveOptions {
@@ -19,6 +20,8 @@ export interface UseTdsBackDraftSaveOptions {
  *
  * `usePreventRemove` blocks the removal, `saveDraft` runs once, and `repeat()` replays the original
  * navigation action. A second Back while the save runs is ignored, so only one save is in flight.
+ * If the save fails the user is offered Try Again, Stay or Leave Without Saving; data is never dropped
+ * silently.
  * Call the returned `disable()` right before navigating away on purpose (for example after a
  * successful submit) so that navigation is not intercepted.
  */
@@ -40,17 +43,33 @@ export function useTdsBackDraftSave({ shouldSave, saveDraft, isBusy }: UseTdsBac
       if (savingRef.current) return;
       if (isBusyRef.current?.()) return;
       savingRef.current = true;
-      Promise.resolve()
-        .then(() => saveDraftRef.current())
-        .catch((err) => {
-          // A failed save must never trap the user on the screen.
-          console.warn("[TDS] Saving draft on back failed:", err);
-        })
-        .finally(() => {
-          savingRef.current = false;
-          setExited(true);
-          repeat();
-        });
+
+      const leave = () => {
+        savingRef.current = false;
+        setExited(true);
+        repeat();
+      };
+
+      const attempt = () => {
+        Promise.resolve()
+          .then(() => saveDraftRef.current())
+          .then(leave)
+          .catch((err) => {
+            // The draft could not be written. Tell the user instead of silently dropping their data.
+            console.warn("[TDS] Saving draft on back failed:", err);
+            Alert.alert(
+              "Could not save your progress",
+              "Your changes could not be saved as a draft. You can try again, stay on this screen, or leave and lose the unsaved changes.",
+              [
+                { text: "Stay", style: "cancel", onPress: () => { savingRef.current = false; } },
+                { text: "Try Again", onPress: attempt },
+                { text: "Leave Without Saving", style: "destructive", onPress: leave },
+              ],
+              { cancelable: false }
+            );
+          });
+      };
+      attempt();
     }, [])
   );
 
