@@ -321,9 +321,11 @@ export async function syncApplicationBackend(
   targetId: string | undefined,
   custId: string,
   formData: TdsCustomerIncomeFormData,
-  activeDocs: any[]
+  activeDocs: any[],
+  options: { saveIncome?: boolean; saveDocuments?: boolean } = {}
 ): Promise<string> {
   const { tdsApiService } = await import("../../services/tdsApiService");
+  const { saveIncome = true, saveDocuments = true } = options;
 
   if (isEditing && targetId) {
     console.log(`🌐 [TDS Form] Updating record via PUT /tds-refund/update/${targetId}`);
@@ -336,26 +338,32 @@ export async function syncApplicationBackend(
       formData.personal,
     );
 
-    try {
-      await tdsApiService.saveIncomeTaxInfo(formData.income, targetId);
-    } catch (e) {
-      console.warn("[TDS Form] saveIncomeTaxInfo auxiliary update warning:", e);
-    }
-    try {
-      await tdsApiService.saveTdsTaxesPaid(formData.income, custId, targetId);
-    } catch (e) {
-      console.warn("[TDS Form] saveTdsTaxesPaid auxiliary update warning:", e);
+    // The follow-up saves do not depend on each other, so they run together instead of one after the
+    // other. Each failure is only logged, as before. Income and taxes are skipped when the user did
+    // not touch them, and documents are skipped when none changed (the PAN and Aadhaar files already
+    // travel in the update request above), so editing one field no longer re-uploads every file.
+    const followUps: Promise<unknown>[] = [];
+    if (saveIncome) {
+      followUps.push(
+        tdsApiService.saveIncomeTaxInfo(formData.income, targetId).catch((e: unknown) => {
+          console.warn("[TDS Form] saveIncomeTaxInfo auxiliary update warning:", e);
+        }),
+        tdsApiService.saveTdsTaxesPaid(formData.income, custId, targetId).catch((e: unknown) => {
+          console.warn("[TDS Form] saveTdsTaxesPaid auxiliary update warning:", e);
+        })
+      );
     }
     const hasUploadedDocs = (activeDocs as any[]).some(
       (d) => d.status === "uploaded" || Boolean(d.fileUri),
     );
-    if (hasUploadedDocs) {
-      try {
-        await tdsApiService.saveDocuments(activeDocs as any, targetId);
-      } catch (e) {
-        console.warn("[TDS Form] saveDocuments auxiliary update warning:", e);
-      }
+    if (saveDocuments && hasUploadedDocs) {
+      followUps.push(
+        tdsApiService.saveDocuments(activeDocs as any, targetId).catch((e: unknown) => {
+          console.warn("[TDS Form] saveDocuments auxiliary update warning:", e);
+        })
+      );
     }
+    await Promise.all(followUps);
     return savedTdsId || targetId;
   }
 

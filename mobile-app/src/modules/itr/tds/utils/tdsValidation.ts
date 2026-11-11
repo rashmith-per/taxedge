@@ -18,7 +18,10 @@ export {
   getNameValidationError,
 } from "@/shared/validators/nameValidator";
 
-export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB standard
+/** Maximum size of one TDS Refund document. Every TDS upload path uses this limit. */
+export const MAX_FILE_SIZE_MB = 10;
+export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+export const FILE_TOO_LARGE_MESSAGE = `This file is larger than ${MAX_FILE_SIZE_MB} MB. Please choose a file of ${MAX_FILE_SIZE_MB} MB or less.`;
 export const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
 
 export function isValidPan(pan: string): boolean {

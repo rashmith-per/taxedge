@@ -1,4 +1,7 @@
 import React from "react";
+import { Alert } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import { MAX_FILE_SIZE_BYTES, FILE_TOO_LARGE_MESSAGE, isFileSizeValid } from "../../../utils/tdsValidation";
 import { TdsDocumentItem, DocumentUploadPayload } from "../../../types/tdsDocuments.types";
 import { SharedItrDocumentCard } from "@/modules/itr/components/documents/SharedItrDocumentCard/SharedItrDocumentCard";
 
@@ -32,7 +35,21 @@ export const TdsDocumentCard: React.FC<TdsDocumentCardProps & { variant?: "defau
         errorMessage: item.errorMessage,
         iconType: item.iconType,
       }}
-      onUploadSuccess={(id, payload) => {
+      maxSizeBytes={MAX_FILE_SIZE_BYTES}
+      onUploadSuccess={async (id, payload) => {
+        // The shared card rejects files whose size the picker reports. Camera and gallery photos
+        // can arrive without a size, so measure the real file before accepting it. A file over the
+        // limit is never passed on, so it is neither saved to the draft nor uploaded.
+        try {
+          const info = await FileSystem.getInfoAsync(payload.uri);
+          const actualBytes = info.exists ? (info as { size?: number }).size : undefined;
+          if (!isFileSizeValid(actualBytes, MAX_FILE_SIZE_BYTES)) {
+            Alert.alert("File Too Large", FILE_TOO_LARGE_MESSAGE);
+            return;
+          }
+        } catch {
+          // The size could not be read (some content:// URIs). The picker-side check still applied.
+        }
         // Map the shared payload back to the TDS specific DocumentUploadPayload
         onUploadSuccess(id, {
           uri: payload.uri,

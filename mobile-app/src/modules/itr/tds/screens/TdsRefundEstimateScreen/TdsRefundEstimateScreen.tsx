@@ -86,9 +86,15 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     isBusy: () => isSubmitting,
   });
 
+  // Set when the user opens a section edit. Update & Continue has already saved the new values to
+  // the draft and the server, so the next focus only re-reads the draft instead of repeating every
+  // server request.
+  const skipRemoteRefreshRef = useRef(false);
+
   const loadReviewData = useCallback(async () => {
     const loadId = ++loadCountRef.current;
-    setIsLoading(true);
+    // Returning from an edit only re-reads the saved draft, which is instant, so no loader is shown.
+    if (!skipRemoteRefreshRef.current) setIsLoading(true);
     const apply = (data: Awaited<ReturnType<typeof loadTdsReviewData>>) => {
       if (data.appId) {
         setCurrentAppId(data.appId);
@@ -106,6 +112,11 @@ export const TdsRefundEstimateScreen: React.FC = () => {
         setIsLoading(false);
       } catch (localErr) {
         console.warn("[TDS Estimate] Local draft load warning:", localErr);
+      }
+
+      if (skipRemoteRefreshRef.current) {
+        skipRemoteRefreshRef.current = false;
+        return;
       }
 
       const data = await loadTdsReviewData(routeId, routeAppId);
@@ -138,6 +149,7 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     } catch (e) {
       console.warn("[TDS Review] Error saving draft before edit navigation:", e);
     }
+    skipRemoteRefreshRef.current = true;
     router.push({
       pathname: "/service/tds-form" as any,
       params: {
@@ -161,9 +173,16 @@ export const TdsRefundEstimateScreen: React.FC = () => {
     } catch (e) {
       console.warn("[TDS Review] Error saving docs draft before edit navigation:", e);
     }
+    // Documents are edited on the screen where they were uploaded (the first application screen),
+    // not on a separate document screen. Update & Continue there returns to this Review page.
+    skipRemoteRefreshRef.current = true;
     router.push({
-      pathname: "/service/tds-checklist" as any,
-      params: { isEditing: "true", id: currentAppId || routeId || routeAppId || "" },
+      pathname: "/service/tds-form" as any,
+      params: {
+        isEditing: "true",
+        id: currentAppId || routeId || routeAppId || "",
+        section: "documents",
+      },
     });
   };
 

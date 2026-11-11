@@ -1,14 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   Modal,
   Image,
+  ActivityIndicator,
+  Alert,
   TouchableWithoutFeedback,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { PdfViewerModal } from "@/shared/components/PdfViewerModal";
+import {
+  PDF_APP_MISSING_MESSAGE,
+  PDF_VIEWER_UNAVAILABLE_NOTICE,
+  isInAppPdfViewerAvailable,
+  openPdfInAnotherApp,
+} from "../../../utils/tdsPdfViewing";
 import { styles } from "./ViewDocumentModal.styles";
 
 interface ViewDocumentModalProps {
@@ -58,8 +66,23 @@ export const ViewDocumentModal: React.FC<ViewDocumentModalProps> = ({
   const isImage = resolveIsImage(fileUri, mimeType, fileTypeLabel);
   const isPdf = !isImage && resolveIsPdf(fileUri, mimeType, fileName);
 
-  if (isPdf && fileUri) {
-    // PDFs open in the in-app viewer; this never hands the file to the system share sheet.
+  const [openingExternally, setOpeningExternally] = useState(false);
+  const inAppPdfAvailable = isPdf ? isInAppPdfViewerAvailable() : true;
+
+  const handleOpenExternally = async () => {
+    if (!fileUri || openingExternally) return;
+    setOpeningExternally(true);
+    const result = await openPdfInAnotherApp(fileUri, title);
+    setOpeningExternally(false);
+    if (result === "no-app") {
+      Alert.alert("No PDF App Found", PDF_APP_MISSING_MESSAGE);
+    } else if (result === "failed") {
+      Alert.alert("Could Not Open PDF", "The file could not be opened. It may have been moved or deleted.");
+    }
+  };
+
+  if (isPdf && fileUri && inAppPdfAvailable) {
+    // PDFs open in the in-app viewer. Viewing never hands the file to the system share sheet.
     return (
       <PdfViewerModal
         visible={visible}
@@ -127,6 +150,30 @@ export const ViewDocumentModal: React.FC<ViewDocumentModalProps> = ({
                   ) : null}
                 </View>
               )}
+
+              {/* This build has no in-app PDF viewer: explain and offer an explicit external open */}
+              {isPdf && fileUri && !inAppPdfAvailable ? (
+                <>
+                  <Text style={[styles.fileMetaText, { textAlign: "center", marginTop: 12 }]}>
+                    {PDF_VIEWER_UNAVAILABLE_NOTICE}
+                  </Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleOpenExternally}
+                    disabled={openingExternally}
+                    style={styles.openPdfButton}
+                  >
+                    {openingExternally ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="open-outline" size={16} color="#FFFFFF" />
+                        <Text style={styles.openPdfButtonText}>Open in another app</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : null}
 
               {/* Done Button */}
               <TouchableOpacity

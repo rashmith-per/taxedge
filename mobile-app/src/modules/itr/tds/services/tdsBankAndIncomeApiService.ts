@@ -58,12 +58,10 @@ export const tdsBankAndIncomeApiService = {
       const panUri = panDoc?.fileUri || (panDoc as any)?.uri || (panDoc as any)?.fileUrl || (panDoc as any)?.url;
       const aadhaarUri = aadhaarDoc?.fileUri || (aadhaarDoc as any)?.uri || (aadhaarDoc as any)?.fileUrl || (aadhaarDoc as any)?.url;
 
-      if (panUri) {
-        panBase64 = await readFileAsBase64(panUri);
-      }
-      if (aadhaarUri) {
-        aadhaarBase64 = await readFileAsBase64(aadhaarUri);
-      }
+      [panBase64, aadhaarBase64] = await Promise.all([
+        panUri ? readFileAsBase64(panUri) : Promise.resolve(null),
+        aadhaarUri ? readFileAsBase64(aadhaarUri) : Promise.resolve(null),
+      ]);
     }
 
     // Fallback: check saved draft storage if not in memory

@@ -63,6 +63,9 @@ export const useTdsRefundForm = () => {
     bank: new Set(),
   });
   const personalEditedRef = useRef(false);
+  // What the user changed since the screen opened, so Update & Continue only saves what changed.
+  const documentsChangedRef = useRef(false);
+  const initialIncomeRef = useRef<string | null>(null);
 
   const [documents, setDocuments] = useState<any[]>([]);
   const documentsRef = useRef<any[]>([]);
@@ -228,6 +231,11 @@ export const useTdsRefundForm = () => {
         useTdsProgressStore.getState().reset();
       }
 
+      const localBusiness = mergeNonEmptyFields(INITIAL_TDS_FORM_DATA.business, storeDraftForm?.business, draftBusiness);
+      const localBank = mergeNonEmptyFields(INITIAL_TDS_FORM_DATA.bank, storeDraftForm?.bank, draftBank);
+      const localIncome = mergeNonEmptyFields(INITIAL_TDS_FORM_DATA.income, storeDraftForm?.income, draftIncome);
+      const localPersonal = mergeNonEmptyFields(INITIAL_TDS_FORM_DATA.personal, storeDraftForm?.personal, draftPersonal);
+
       setFormData((prev) => ({
         ...prev,
         business: mergeNonEmptyFields(prev.business, storeDraftForm?.business, draftBusiness),
@@ -238,6 +246,17 @@ export const useTdsRefundForm = () => {
       setDocuments(docs);
       documentsRef.current = docs;
       setIsHydrating(false);
+
+      // Edit opened from the Review page: Review has just loaded the application from the server and
+      // saved the result as this draft, so the values are already complete. Repeating the profile
+      // and application requests only delays the screen and risks replacing them, so skip them.
+      if (isEditingParam === "true" && localBusiness.legalName && localBank.accountNumber) {
+        const editAppId = routeAppId || knownAppId;
+        if (editAppId) await tdsDraftService.saveApplicationId(editAppId);
+        initialSnapshotRef.current = JSON.stringify({ bank: localBank, income: localIncome });
+        initialIncomeRef.current = JSON.stringify(localIncome);
+        return;
+      }
 
       // Phase 2: refresh from the server in the background. The profile and application requests
       // run in parallel and never block or overwrite what the user is already doing.
@@ -308,6 +327,7 @@ export const useTdsRefundForm = () => {
 
           // BUG_B23_001: snapshot keys must match isDirty keys ({bank, income}) — business excluded
           initialSnapshotRef.current = JSON.stringify({ bank: mergedBank, income: mergedIncome });
+          initialIncomeRef.current = JSON.stringify(mergedIncome);
 
           return {
             ...prev,
@@ -414,6 +434,7 @@ export const useTdsRefundForm = () => {
   };
 
   const handleUploadSuccess = (id: string, payload: any) => {
+    documentsChangedRef.current = true;
     setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "uploaded", errorMessage: undefined, fileUri: payload.uri, fileName: payload.name, fileSize: payload.size, mimeType: payload.mimeType, fileTypeLabel: payload.fileTypeLabel } : doc);
@@ -430,6 +451,7 @@ export const useTdsRefundForm = () => {
     });
   };
   const handleRemove = (id: string) => {
+    documentsChangedRef.current = true;
     setHasUserEdited(true);
     setDocuments((prev) => {
       const next = prev.map((doc) => doc.id === id ? { ...doc, status: "not_uploaded", fileUri: undefined, fileName: undefined, fileSize: undefined, mimeType: undefined, fileTypeLabel: undefined, errorMessage: undefined } : doc);
@@ -449,7 +471,9 @@ export const useTdsRefundForm = () => {
       ? validateSection(paramSection, formData)
       : validateCustomerIncomeForm(formData);
 
-    const hasMissingMandatoryDocs = !isEditing && activeDocs.some((doc) => doc.isMandatory && doc.status !== 'uploaded');
+    // Mandatory documents are required on first entry, and again when the edit is about documents.
+    const mustCheckDocs = !isEditing || paramSection === "documents";
+    const hasMissingMandatoryDocs = mustCheckDocs && activeDocs.some((doc) => doc.isMandatory && doc.status !== 'uploaded' && doc.status !== 'verified');
 
     if (!validation.isValid || hasMissingMandatoryDocs) {
       if (!validation.isValid) {
@@ -505,12 +529,22 @@ export const useTdsRefundForm = () => {
 
       console.log(`🚀 [TDS Form] handleContinue -> isEditing: ${isEditing}, targetId: ${targetId}`);
 
+      // When editing one section from Review, only save the parts that actually changed.
+      const incomeUntouched =
+        isEditing &&
+        paramSection !== "income" &&
+        initialIncomeRef.current !== null &&
+        JSON.stringify(formData.income) === initialIncomeRef.current;
       const savedTdsId = await syncApplicationBackend(
         isEditing,
         targetId,
         custId,
         formData,
         activeDocs,
+        {
+          saveIncome: !incomeUntouched,
+          saveDocuments: !isEditing || documentsChangedRef.current || paramSection === "documents",
+        },
       );
       await tdsDraftService.saveApplicationId(savedTdsId || targetId || "");
     } catch (err) {

@@ -9,6 +9,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import { TdsChecklistItem } from "../../../types/checklist.types";
 import { ChecklistDocumentIcon } from "../ChecklistDocumentIcons";
+import { MAX_FILE_SIZE_BYTES, FILE_TOO_LARGE_MESSAGE, isFileSizeValid } from "../../../utils/tdsValidation";
 import { styles } from "./ChecklistDocumentCard.styles";
 
 interface ChecklistDocumentCardProps {
@@ -36,9 +37,8 @@ export const ChecklistDocumentCard: React.FC<ChecklistDocumentCardProps> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
 
-        // 10 MB limit check (10 * 1024 * 1024 bytes)
-        if (asset.size && asset.size > 10 * 1024 * 1024) {
-          Alert.alert("File Too Large", "Maximum supported file size is 10 MB.");
+        if (!isFileSizeValid(asset.size, MAX_FILE_SIZE_BYTES)) {
+          Alert.alert("File Too Large", FILE_TOO_LARGE_MESSAGE);
           return;
         }
 
