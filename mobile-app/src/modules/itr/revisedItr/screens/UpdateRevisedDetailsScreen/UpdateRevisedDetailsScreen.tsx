@@ -14,12 +14,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
 import { RevisedItrHeader, RevisedItrAckInfoIcon } from "../../components/common";
 import { RevisedFormField } from "../../components/update";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useRevisedItrDraft } from "../../hooks/useRevisedItrDraft";
 import { DEFAULT_REVISED_FORM_FIELDS } from "../../mock/revisedItrData";
 import { RevisedFormFields } from "../../types/revisedItr.types";
 import { formatIndianAmount } from "@/shared/formatters/currencyFormatter";
 import {
   validateSingleField,
   validateAllRevisedFields,
+  buildIsolatedPayload,
 } from "../../utils/revisedFieldValidation";
 import {
   styles,
@@ -38,10 +41,19 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
     otherReasonText?: string;
     revisedDetails?: string;
     isEditing?: string;
+    fromReasonEdit?: string;
   }>();
 
+  const isDirectEditing = params.isEditing === "true" && params.fromReasonEdit !== "true";
   const reason = params.revisionReason || "missed_income";
   const originalValues: RevisedFormFields = DEFAULT_REVISED_FORM_FIELDS;
+
+  const draftGuard = useRevisedItrDraft({
+    step: 3,
+    acknowledgementNumber: params.acknowledgementNumber,
+    assessmentYear: params.assessmentYear,
+    isEditing: Boolean(params.isEditing === "true"),
+  });
 
   const storeFormData = useRevisedProgressStore((s) => s.formData);
   const setStoreFormData = useRevisedProgressStore((s) => s.setFormData);
@@ -76,9 +88,29 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
   const [errors, setErrors] = useState<Partial<Record<keyof RevisedFormFields, string>>>({});
 
+  const STATUTORY_LIMITS: Partial<Record<keyof RevisedFormFields, number>> = {
+    sec80c: 150000,
+    sec80d: 100000,
+    homeLoanInterest: 200000,
+  };
+
   const handleChange = (field: keyof RevisedFormFields, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    const fieldError = validateSingleField(field, value, reason);
+    let finalValue = value;
+
+    // Strict amount limit for deduction fields — cannot exceed statutory limits
+    if (STATUTORY_LIMITS[field] !== undefined) {
+      const cleanNumeric = value.replace(/,/g, "").trim();
+      if (cleanNumeric) {
+        const num = Number(cleanNumeric);
+        const maxLimit = STATUTORY_LIMITS[field]!;
+        if (!isNaN(num) && num > maxLimit) {
+          finalValue = String(maxLimit);
+        }
+      }
+    }
+
+    setForm((prev) => ({ ...prev, [field]: finalValue }));
+    const fieldError = validateSingleField(field, finalValue, reason);
     setErrors((prev) => ({ ...prev, [field]: fieldError }));
   };
 
@@ -102,21 +134,15 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const payload = {
-        revisedItrId,
-        salaryBusinessIncome: form.salaryBusinessIncome || "0",
-        otherIncome: form.otherIncome || "0",
-        deduction80C: form.sec80c || "0",
-        deduction80D: form.sec80d || "0",
-        homeLoanInterest: form.homeLoanInterest || "0",
-        taxableIncome: form.taxableIncome || "0",
-        bankAccountForRefund: form.bankAccount || "1234567890",
-        ifscCode: form.ifsc || "SBIN0001234",
-      };
+      const payload = buildIsolatedPayload(reason, form, revisedItrId);
 
-      const response = await RevisedItrApiService.saveRevisedDetails(payload);
-      if (response && response.detailsId) {
-        setBackendIds({ detailsId: response.detailsId });
+      if (detailsId) {
+        await RevisedItrApiService.updateRevisedDetails(detailsId, payload);
+      } else {
+        const response = await RevisedItrApiService.saveRevisedDetails(payload);
+        if (response && response.detailsId) {
+          setBackendIds({ detailsId: response.detailsId });
+        }
       }
       setMaxStepReached(4);
 
@@ -128,6 +154,8 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
           assessmentYear: params.assessmentYear || "AY 2026-27",
           revisionReason: params.revisionReason,
           revisedDetails: JSON.stringify(form),
+          fromReasonEdit: params.fromReasonEdit,
+          isEditing: params.isEditing,
         },
       });
     } catch (e) {
@@ -149,17 +177,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const payload = {
-        revisedItrId,
-        salaryBusinessIncome: form.salaryBusinessIncome || "0",
-        otherIncome: form.otherIncome || "0",
-        deduction80C: form.sec80c || "0",
-        deduction80D: form.sec80d || "0",
-        homeLoanInterest: form.homeLoanInterest || "0",
-        taxableIncome: form.taxableIncome || "0",
-        bankAccountForRefund: form.bankAccount || "1234567890",
-        ifscCode: form.ifsc || "SBIN0001234",
-      };
+      const payload = buildIsolatedPayload(reason, form, revisedItrId);
 
       await RevisedItrApiService.updateRevisedDetails(detailsId, payload);
 
@@ -190,7 +208,16 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
         subtitle="Update Revised Details"
         currentStep={3}
         totalSteps={5}
-        hideBackButton={params.isEditing === "true"}
+        hideBackButton={Boolean(params.isEditing === "true" || isDirectEditing)}
+        onBack={() => {
+          router.push({
+            pathname: "/service/revised-itr-reason" as any,
+            params: {
+              acknowledgementNumber: params.acknowledgementNumber,
+              assessmentYear: params.assessmentYear,
+            },
+          });
+        }}
       />
 
       {/* Main Content */}
@@ -316,7 +343,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
                   : undefined
               }
               onChangeText={(val) => handleChange("sec80c", val)}
-              maxLength={12}
+              maxLength={6}
               isAmount
               placeholder="Enter amount"
               error={errors.sec80c}
@@ -335,7 +362,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
                   : undefined
               }
               onChangeText={(val) => handleChange("sec80d", val)}
-              maxLength={12}
+              maxLength={6}
               isAmount
               placeholder="Enter amount"
               error={errors.sec80d}
@@ -354,7 +381,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
                   : undefined
               }
               onChangeText={(val) => handleChange("homeLoanInterest", val)}
-              maxLength={12}
+              maxLength={6}
               isAmount
               placeholder="Enter amount"
               error={errors.homeLoanInterest}
@@ -407,22 +434,23 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
               label="Bank account for refund"
               value={form.bankAccount}
               originalValue={originalValues.bankAccount}
-              onChangeText={(val) => handleChange("bankAccount", val)}
+              onChangeText={(val) => handleChange("bankAccount", val.replace(/\D/g, ""))}
               maxLength={18}
+              keyboardType="numeric"
               isMandatory
               placeholder="Enter bank account number"
               error={errors.bankAccount}
             />
 
             <RevisedFormField
-              label="IFSC"
+              label="IFSC Code"
               value={form.ifsc}
               originalValue={originalValues.ifsc}
               onChangeText={(val) => handleChange("ifsc", val.toUpperCase())}
               maxLength={11}
               isMandatory
               autoCapitalize="characters"
-              placeholder="Enter 11-digit IFSC"
+              placeholder="Enter 11-character IFSC code"
               error={errors.ifsc}
             />
           </View>
@@ -430,7 +458,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
 
         {/* Action Button — In Scroll Flow (Matching GST Filing) */}
         <View style={styles.buttonWrapper}>
-          {params.isEditing === "true" ? (
+          {isDirectEditing ? (
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={handleUpdateAndContinue}
@@ -459,6 +487,14 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
           )}
         </View>
       </KeyboardAwareScrollView>
+
+      {/* Universal Draft Modal */}
+      <UniversalDraftModal
+        visible={draftGuard.showDraftModal}
+        onSaveAndExit={draftGuard.handleSaveAndExit}
+        onDiscardAndExit={draftGuard.handleDiscardAndExit}
+        onCancel={draftGuard.handleKeepEditing}
+      />
     </View>
   );
 };

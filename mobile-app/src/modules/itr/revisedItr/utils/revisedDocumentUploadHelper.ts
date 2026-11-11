@@ -249,7 +249,9 @@ export async function createBlobFromFileUri(
           const typedBlob =
             rawBlob.type && rawBlob.type === cleanMime
               ? rawBlob
-              : new Blob([rawBlob], { type: cleanMime });
+              : typeof (rawBlob as any).slice === "function"
+                ? (rawBlob as any).slice(0, rawBlob.size, cleanMime)
+                : rawBlob;
           if (fileName) {
             try {
               Object.defineProperty(typedBlob, "name", { value: fileName, writable: true });
@@ -345,6 +347,15 @@ export function describeUploadError(error: any): string {
     const cleanDetails = detailsMatch[1].trim();
     if (cleanDetails && !cleanDetails.startsWith("<")) {
       return cleanDetails;
+    }
+  }
+
+  // Extract message from executeXhrUpload GstApiUploadError
+  const statusMatch = raw.match(/Upload failed with status \d+:\s*(.+)$/i);
+  if (statusMatch && statusMatch[1]) {
+    const cleanStatusMsg = statusMatch[1].trim();
+    if (cleanStatusMsg && !cleanStatusMsg.startsWith("<")) {
+      return cleanStatusMsg;
     }
   }
 

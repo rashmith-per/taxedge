@@ -1,8 +1,11 @@
+import { Platform } from "react-native";
 import { tokenManager } from "@/core/authentication/tokenManager";
 import { getDefaultBaseUrl, getActiveBaseUrl } from "@/core/api/apiConfig";
 import { apiClient } from "@/core/api/apiClient";
 import { useApplicationStore } from "@/store/applicationStore";
 import { applicationService } from "@/modules/applications/services/applicationService";
+import { appendFilePart } from "@/shared/utils/formDataFile";
+import { normalizeDocumentUri, executeXhrUpload } from "@/modules/gst/services/gstUploadHelper";
 import { OriginalReturnDetails } from "../types/revisedItr.types";
 import {
   REVISED_DOCUMENT_FIELD_MAP,
@@ -197,9 +200,17 @@ export const RevisedItrApiService = {
           const mimeType = resolveMimeType(fileName, doc.mimeType);
 
           const { localUri } = await prepareLocalFileForUpload(doc.fileUri, fileName);
-          const fileBlob = await createBlobFromFileUri(localUri, fileName, mimeType);
 
-          formData.append(paramName, fileBlob, fileName);
+          if (Platform.OS !== "web") {
+            appendFilePart(formData, paramName, {
+              uri: normalizeDocumentUri(localUri || doc.fileUri),
+              name: fileName,
+              type: mimeType,
+            });
+          } else {
+            const fileBlob = await createBlobFromFileUri(localUri || doc.fileUri, fileName, mimeType);
+            formData.append(paramName, fileBlob, fileName);
+          }
 
           hasUploadedAny = true;
         }
@@ -209,40 +220,8 @@ export const RevisedItrApiService = {
         throw new Error("At least one document is required before proceeding.");
       }
 
-      let token = await tokenManager.getAccessToken();
       const targetUrl = await getApiUrl(`/${cleanId}/document/register`);
-      let response = await fetch(targetUrl, {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      });
-
-      if (response.status === 401) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { tokenRefreshManager } = require("@/core/authentication/tokenRefreshManager");
-          const refreshed = await tokenRefreshManager.attemptRefresh();
-          if (refreshed) {
-            token = await tokenManager.getAccessToken();
-            response = await fetch(targetUrl, {
-              method: "POST",
-              headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: formData,
-            });
-          }
-        } catch {
-          // Silent refresh failed; proceed to evaluate response
-        }
-      }
-
-      const responseText = await response.text();
-      if (!response.ok) {
-        throw new Error(responseText || `Document upload failed with status ${response.status}`);
-      }
+      const responseText = await executeXhrUpload(targetUrl, "POST", formData);
 
       return { documentId: extractId(responseText) };
     } catch (error) {
@@ -268,9 +247,17 @@ export const RevisedItrApiService = {
           const mimeType = resolveMimeType(fileName, doc.mimeType);
 
           const { localUri } = await prepareLocalFileForUpload(doc.fileUri, fileName);
-          const fileBlob = await createBlobFromFileUri(localUri, fileName, mimeType);
 
-          formData.append(paramName, fileBlob, fileName);
+          if (Platform.OS !== "web") {
+            appendFilePart(formData, paramName, {
+              uri: normalizeDocumentUri(localUri || doc.fileUri),
+              name: fileName,
+              type: mimeType,
+            });
+          } else {
+            const fileBlob = await createBlobFromFileUri(localUri || doc.fileUri, fileName, mimeType);
+            formData.append(paramName, fileBlob, fileName);
+          }
 
           hasUploadedAny = true;
         }
@@ -280,40 +267,8 @@ export const RevisedItrApiService = {
         throw new Error("At least one document is required before proceeding.");
       }
 
-      let token = await tokenManager.getAccessToken();
       const targetUrl = await getApiUrl(`/document/update/${cleanId}`);
-      let response = await fetch(targetUrl, {
-        method: "PUT",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      });
-
-      if (response.status === 401) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { tokenRefreshManager } = require("@/core/authentication/tokenRefreshManager");
-          const refreshed = await tokenRefreshManager.attemptRefresh();
-          if (refreshed) {
-            token = await tokenManager.getAccessToken();
-            response = await fetch(targetUrl, {
-              method: "PUT",
-              headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: formData,
-            });
-          }
-        } catch {
-          // Silent refresh failed; proceed to evaluate response
-        }
-      }
-
-      const responseText = await response.text();
-      if (!response.ok) {
-        throw new Error(responseText || `Document update failed with status ${response.status}`);
-      }
+      const responseText = await executeXhrUpload(targetUrl, "PUT", formData);
 
       return responseText;
     } catch (error) {

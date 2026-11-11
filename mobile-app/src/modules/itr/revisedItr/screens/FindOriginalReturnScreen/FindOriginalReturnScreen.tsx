@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RevisedItrHeader, RevisedItrAckInfoIcon } from "../../components/common";
 import { GstSelectModal } from "@/modules/gst/components/common/GstSelectModal";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useRevisedItrDraft, useRevisedItrDraftRestore } from "../../hooks/useRevisedItrDraft";
 import { useAuthStore } from "@/modules/authentication/store/authStore";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
 import { getPastAssessmentYears } from "@/modules/itr/taxRules";
@@ -61,12 +63,21 @@ export const FindOriginalReturnScreen: React.FC = () => {
   const [ayError, setAyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  useEffect(() => {
-    // Clear store state from earlier completed sessions when starting afresh
-    if (params.isEditing !== "true" && !params.acknowledgementNumber) {
-      useRevisedProgressStore.getState().reset();
+  const draftGuard = useRevisedItrDraft({
+    step: 1,
+    acknowledgementNumber: ackNumber,
+    assessmentYear,
+    isEditing: params.isEditing === "true",
+  });
+
+  useRevisedItrDraftRestore(!params.isEditing && !params.acknowledgementNumber, (draft) => {
+    if (draft.acknowledgementNumber) {
+      setAckNumber(draft.acknowledgementNumber);
     }
-  }, [params.isEditing, params.acknowledgementNumber]);
+    if (draft.assessmentYear) {
+      setAssessmentYear(draft.assessmentYear);
+    }
+  });
 
   const handleAckNumberChange = (val: string) => {
     // Real-time numeric filtering: reject letters, emojis, spaces, commas, and special characters
@@ -229,7 +240,15 @@ export const FindOriginalReturnScreen: React.FC = () => {
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header with Step Indicator */}
-      <RevisedItrHeader subtitle="Find Original Return" currentStep={1} totalSteps={5} />
+      <RevisedItrHeader
+        subtitle="Find Original Return"
+        currentStep={1}
+        totalSteps={5}
+        hideBackButton={params.isEditing === "true"}
+        onBack={() => {
+          draftGuard.openDraftModal();
+        }}
+      />
 
       {/* Main Content */}
       <KeyboardAwareScrollView
@@ -384,6 +403,14 @@ export const FindOriginalReturnScreen: React.FC = () => {
           setAyError(null);
         }}
         onClose={() => setShowAyModal(false)}
+      />
+
+      {/* Universal Draft Modal */}
+      <UniversalDraftModal
+        visible={draftGuard.showDraftModal}
+        onSaveAndExit={draftGuard.handleSaveAndExit}
+        onDiscardAndExit={draftGuard.handleDiscardAndExit}
+        onCancel={draftGuard.handleKeepEditing}
       />
     </View>
   );

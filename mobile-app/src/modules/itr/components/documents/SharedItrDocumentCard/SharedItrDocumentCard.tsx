@@ -196,8 +196,15 @@ export const SharedItrDocumentCard: React.FC<SharedItrDocumentCardProps> = ({
 
       const asset = result.assets[0];
       const safeId = item.id.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const fallbackName = `${safeId}_gallery_${Date.now()}.jpg`;
-      const fileName = asset.fileName || fallbackName;
+      const isPng =
+        (asset.mimeType || "").includes("png") ||
+        (asset.fileName || "").toLowerCase().endsWith(".png");
+      const ext = isPng ? "png" : "jpg";
+      const fallbackName = `${safeId}_gallery_${Date.now()}.${ext}`;
+      let fileName = asset.fileName || fallbackName;
+      if (!fileName.includes(".")) {
+        fileName = `${fileName}.${ext}`;
+      }
       const rawBytes =
         typeof asset.fileSize === "number" && Number.isFinite(asset.fileSize)
           ? asset.fileSize
@@ -208,7 +215,7 @@ export const SharedItrDocumentCard: React.FC<SharedItrDocumentCardProps> = ({
           uri: asset.uri,
           name: fileName,
           size: rawBytes,
-          mimeType: asset.mimeType || "image/jpeg",
+          mimeType: asset.mimeType || (isPng ? "image/png" : "image/jpeg"),
         },
         fileName
       );

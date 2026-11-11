@@ -40,14 +40,14 @@ export const validateSingleField = (
   }
 
   if (field === "ifsc" && (reason === "incorrect_bank" || reason === "other")) {
-    return validators.ifsc("IFSC")(val) || undefined;
+    return validators.ifsc("IFSC Code")(val) || undefined;
   }
 
   return undefined;
 };
 
 export const validateAllRevisedFields = (
-  form: RevisedFormFields,
+  form: Partial<RevisedFormFields>,
   reason: RevisionReasonId | string
 ): Partial<Record<keyof RevisedFormFields, string>> => {
   const errors: Partial<Record<keyof RevisedFormFields, string>> = {};
@@ -98,3 +98,84 @@ export const validateAllRevisedFields = (
 
   return errors;
 };
+
+export interface IsolatedRevisedDetailsPayload {
+  revisedItrId?: string;
+  salaryBusinessIncome: string | null;
+  otherIncome: string | null;
+  deduction80C: string | null;
+  deduction80D: string | null;
+  homeLoanInterest: string | null;
+  taxableIncome: string | null;
+  bankAccountForRefund: string | null;
+  ifscCode: string | null;
+}
+
+/**
+ * Builds an isolated backend payload based on the selected revision reason.
+ * Unrelated fields are explicitly set to null so database columns are cleared
+ * when a user updates their revision reason.
+ */
+export const buildIsolatedPayload = (
+  reason: string,
+  form: Partial<RevisedFormFields>,
+  revisedItrId?: string
+): IsolatedRevisedDetailsPayload => {
+  const cleanReason = String(reason || "").trim().toLowerCase();
+
+  if (cleanReason === "missed_income") {
+    return {
+      revisedItrId,
+      salaryBusinessIncome: form.salaryBusinessIncome?.trim() || "0",
+      otherIncome: form.otherIncome?.trim() || "0",
+      taxableIncome: form.taxableIncome?.trim() || "0",
+      deduction80C: null,
+      deduction80D: null,
+      homeLoanInterest: null,
+      bankAccountForRefund: null,
+      ifscCode: null,
+    };
+  }
+
+  if (cleanReason === "wrong_deduction") {
+    return {
+      revisedItrId,
+      salaryBusinessIncome: null,
+      otherIncome: null,
+      deduction80C: form.sec80c?.trim() || "0",
+      deduction80D: form.sec80d?.trim() || "0",
+      homeLoanInterest: form.homeLoanInterest?.trim() || "0",
+      taxableIncome: form.taxableIncome?.trim() || "0",
+      bankAccountForRefund: null,
+      ifscCode: null,
+    };
+  }
+
+  if (cleanReason === "incorrect_bank") {
+    return {
+      revisedItrId,
+      salaryBusinessIncome: null,
+      otherIncome: null,
+      deduction80C: null,
+      deduction80D: null,
+      homeLoanInterest: null,
+      taxableIncome: null,
+      bankAccountForRefund: form.bankAccount?.trim() || null,
+      ifscCode: form.ifsc?.trim() || null,
+    };
+  }
+
+  // "other"
+  return {
+    revisedItrId,
+    salaryBusinessIncome: form.salaryBusinessIncome?.trim() || null,
+    otherIncome: form.otherIncome?.trim() || null,
+    deduction80C: form.sec80c?.trim() || null,
+    deduction80D: form.sec80d?.trim() || null,
+    homeLoanInterest: form.homeLoanInterest?.trim() || null,
+    taxableIncome: form.taxableIncome?.trim() || null,
+    bankAccountForRefund: form.bankAccount?.trim() || null,
+    ifscCode: form.ifsc?.trim() || null,
+  };
+};
+

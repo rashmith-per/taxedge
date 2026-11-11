@@ -26,6 +26,10 @@ import { useCustomerStore } from "@/modules/customer/store/customerStore";
 import { useApplicationStore } from "@/store/applicationStore";
 import { DEFAULT_REVISED_FORM_FIELDS } from "../../mock/revisedItrData";
 import { RevisedFormFields } from "../../types/revisedItr.types";
+import { BrandColors } from "@/shared/theme";
+import { GstViewDocumentModal } from "@/modules/gst/components/GstDocumentCard";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useRevisedItrDraft } from "../../hooks/useRevisedItrDraft";
 
 export const ReviewRevisedComputationScreen: React.FC = () => {
   React.useEffect(() => {
@@ -35,11 +39,20 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [selectedPreviewDoc, setSelectedPreviewDoc] = React.useState<{
+    title?: string;
+    fileUri?: string;
+    fileName?: string;
+    fileSize?: string;
+    fileTypeLabel?: string;
+    mimeType?: string;
+  } | null>(null);
   const storeIsSubmitted = useRevisedProgressStore((s) => s.isSubmitted);
   const params = useLocalSearchParams<{
     acknowledgementNumber?: string;
     assessmentYear?: string;
     revisionReason?: string;
+    otherReasonText?: string;
     revisedDetails?: string;
     uploadedDocsCount?: string;
     totalDocsCount?: string;
@@ -48,6 +61,12 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
 
   const assessmentYear = params.assessmentYear || "AY 2026-27";
   const ackNo = params.acknowledgementNumber || "";
+
+  const draftGuard = useRevisedItrDraft({
+    step: 5,
+    acknowledgementNumber: ackNo,
+    assessmentYear,
+  });
 
   // Compute live from store so doc count stays accurate after editing income/Changes
   const storeDocumentsForCount = useRevisedProgressStore((s) => s.documents);
@@ -91,19 +110,36 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
+        otherReasonText: params.otherReasonText,
         revisedDetails: params.revisedDetails,
         isEditing: "true",
       },
     });
   };
 
-  const handleEditChanges = () => {
+  const handleEditReason = () => {
+    router.push({
+      pathname: "/service/revised-itr-reason" as any,
+      params: {
+        acknowledgementNumber: ackNo,
+        assessmentYear,
+        revisionReason: params.revisionReason,
+        otherReasonText: params.otherReasonText,
+        revisedDetails: params.revisedDetails,
+        isEditing: "true",
+        fromReview: "true",
+      },
+    });
+  };
+
+  const handleEditRevisedDetails = () => {
     router.push({
       pathname: "/service/revised-itr-update" as any,
       params: {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
+        otherReasonText: params.otherReasonText,
         revisedDetails: params.revisedDetails,
         isEditing: "true",
       },
@@ -117,6 +153,7 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         acknowledgementNumber: ackNo,
         assessmentYear,
         revisionReason: params.revisionReason,
+        otherReasonText: params.otherReasonText,
         revisedDetails: params.revisedDetails,
         isEditing: "true",
       },
@@ -254,8 +291,10 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
         console.warn("[Revised ITR Submit] Notification dispatch warning:", notifErr);
       }
 
-      // 5. Update submission state
+      // 5. Update submission state & clear drafts
       try {
+        draftGuard.markSubmitted();
+        draftGuard.clearRevisedItrDraft();
         useRevisedProgressStore.getState().setIsSubmitted(true);
       } catch { }
 
@@ -332,147 +371,186 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
               <Text style={styles.editBtnText}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Ack Number</Text>
-              <Text style={styles.infoVal}>{ackNo}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Assessment Year</Text>
-              <Text style={styles.infoVal}>{assessmentYear}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>ITR Form</Text>
-              <Text style={styles.infoVal}>ITR-1</Text>
-            </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Acknowledgement Number</Text>
+            <Text style={styles.infoVal}>{ackNo || "—"}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Assessment Year</Text>
+            <Text style={styles.infoVal}>{assessmentYear}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>ITR Form</Text>
+            <Text style={styles.infoVal}>ITR-1</Text>
           </View>
         </View>
 
-        {/* 2. Changes Section — Displaying ALL Step 3 Fields */}
+        {/* 2. Reason for Revision Card */}
         <View style={styles.reviewCard}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Changes</Text>
+            <Text style={styles.cardTitle}>Reason for Revision</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleEditChanges}
+              onPress={handleEditReason}
               style={styles.editBtn}
             >
               <Text style={styles.editBtnText}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.infoList}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Selected Reason</Text>
+            <Text style={styles.infoVal}>{getReasonLabel(params.revisionReason)}</Text>
+          </View>
+          {params.otherReasonText ? (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Revision Reason</Text>
-              <Text style={styles.infoVal}>{getReasonLabel(params.revisionReason)}</Text>
+              <Text style={styles.infoLabel}>Reason Details</Text>
+              <Text style={styles.infoVal}>{params.otherReasonText}</Text>
             </View>
+          ) : null}
+        </View>
 
-            {/* Income Fields (for missed_income or other) */}
-            {(params.revisionReason === "missed_income" || params.revisionReason === "other") && (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised Salary / Business</Text>
-                  <Text style={styles.infoVal}>{formatAmount(formDetails.salaryBusinessIncome)}</Text>
-                </View>
+        {/* 3. Revised Return Details Card */}
+        <View style={styles.reviewCard}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Revised Return Details</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleEditRevisedDetails}
+              style={styles.editBtn}
+            >
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Income Fields (for missed_income or other) */}
+          {(params.revisionReason === "missed_income" || params.revisionReason === "other" || !params.revisionReason) && (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised Salary / Business</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.salaryBusinessIncome)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised Other Income</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.otherIncome)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised Taxable Income</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.taxableIncome)}</Text>
+              </View>
+            </>
+          )}
+
+          {/* Deduction Fields (for wrong_deduction or other) */}
+          {(params.revisionReason === "wrong_deduction" || params.revisionReason === "other") && (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised 80C Deduction</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.sec80c)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised 80D Deduction</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.sec80d)}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised Home Loan Interest</Text>
+                <Text style={styles.infoVal}>{formatAmount(formDetails.homeLoanInterest)}</Text>
+              </View>
+              {params.revisionReason === "wrong_deduction" && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Revised Taxable Income</Text>
                   <Text style={styles.infoVal}>{formatAmount(formDetails.taxableIncome)}</Text>
                 </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised Other Income</Text>
-                  <Text style={styles.infoVal}>{formatAmount(formDetails.otherIncome)}</Text>
-                </View>
-              </>
-            )}
+              )}
+            </>
+          )}
 
-            {/* Deduction Fields (for wrong_deduction or other) */}
-            {(params.revisionReason === "wrong_deduction" || params.revisionReason === "other") && (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised 80C Deduction</Text>
-                  <Text style={styles.infoVal}>{formatAmount(formDetails.sec80c)}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised 80D Deduction</Text>
-                  <Text style={styles.infoVal}>{formatAmount(formDetails.sec80d)}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised Home Loan Interest</Text>
-                  <Text style={styles.infoVal}>{formatAmount(formDetails.homeLoanInterest)}</Text>
-                </View>
-                {params.revisionReason === "wrong_deduction" && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Revised Taxable Income</Text>
-                    <Text style={styles.infoVal}>{formatAmount(formDetails.taxableIncome)}</Text>
-                  </View>
-                )}
-              </>
-            )}
-
-            {/* Bank Details (for incorrect_bank or other) */}
-            {(params.revisionReason === "incorrect_bank" || params.revisionReason === "other") && (
-              <>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised Bank</Text>
-                  <Text style={styles.infoVal}>{formDetails.bankAccount || "—"}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Revised IFSC</Text>
-                  <Text style={styles.infoVal}>{formDetails.ifsc || "—"}</Text>
-                </View>
-              </>
-            )}
-          </View>
+          {/* Bank Details (for incorrect_bank or other) */}
+          {(params.revisionReason === "incorrect_bank" || params.revisionReason === "other") && (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised Bank</Text>
+                <Text style={styles.infoVal}>{formDetails.bankAccount || "—"}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Revised IFSC Code</Text>
+                <Text style={styles.infoVal}>{formDetails.ifsc || "—"}</Text>
+              </View>
+            </>
+          )}
         </View>
 
-        {/* 3. Documents Section */}
+        {/* 4. Uploaded Documents Section — UI matching GST Registration Review (Image 2) */}
         <View style={styles.reviewCard}>
           <View style={styles.cardHeaderRow}>
-            <View style={styles.docLeft}>
-              <Ionicons name="attach-outline" size={17} color="#083B75" />
-              <Text style={styles.cardTitle}>Uploaded Documents</Text>
-            </View>
+            <Text style={styles.cardTitle}>Uploaded Documents</Text>
             <TouchableOpacity
-              activeOpacity={0.7}
+              style={styles.editDocsButton}
               onPress={handleEditDocs}
-              style={styles.editBtn}
+              accessibilityLabel="Edit Uploaded Documents"
+              activeOpacity={0.7}
             >
-              <Text style={styles.editBtnText}>Edit</Text>
+              <Ionicons name="pencil" size={16} color={BrandColors.PRIMARY_ORANGE} />
+              <Text style={styles.editDocsButtonText}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.infoList}>
-            {storeDocumentsForCount && storeDocumentsForCount.filter((d) => d.status === "uploaded" || !!d.fileUri).length > 0 ? (
-              storeDocumentsForCount
+
+          {storeDocumentsForCount && storeDocumentsForCount.filter((d) => d.status === "uploaded" || !!d.fileUri).length > 0 ? (
+            <View style={styles.uploadedDocList}>
+              {storeDocumentsForCount
                 .filter((d) => d.status === "uploaded" || !!d.fileUri)
-                .map((doc, idx, arr) => (
-                  <View
+                .map((doc) => (
+                  <TouchableOpacity
                     key={doc.id}
-                    style={[
-                      styles.docItemRow,
-                      idx === arr.length - 1 && styles.docItemRowLast,
-                    ]}
+                    style={styles.uploadedDocItem}
+                    activeOpacity={0.7}
+                    onPress={() => setSelectedPreviewDoc({
+                      title: doc.title?.replace("\n", " "),
+                      fileUri: doc.fileUri,
+                      fileName: doc.fileName,
+                      fileSize: doc.fileSize,
+                      mimeType: doc.mimeType,
+                    })}
                   >
-                    <View style={styles.docLeft}>
-                      <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                      <View style={styles.docTextGroup}>
-                        <Text style={styles.docName} numberOfLines={1}>
-                          {doc.title.replace("\n", " ")}
+                    <Ionicons name="checkmark-circle" size={18} color="#059669" />
+                    <View style={styles.uploadedDocTextCol}>
+                      <Text style={styles.uploadedDocName} numberOfLines={1}>
+                        {doc.title?.replace("\n", " ")}
+                      </Text>
+                      {doc.fileName ? (
+                        <Text style={styles.uploadedDocSubtitle} numberOfLines={1}>
+                          {doc.fileName} {doc.fileSize ? `• ${doc.fileSize}` : ""}
                         </Text>
-                        {doc.fileName ? (
-                          <Text style={styles.docMeta} numberOfLines={1}>
-                            {doc.fileName} {doc.fileSize ? `• ${doc.fileSize}` : ""}
-                          </Text>
-                        ) : null}
-                      </View>
+                      ) : null}
                     </View>
-                    <View style={styles.uploadedBadge}>
-                      <Text style={styles.uploadedBadgeText}>Uploaded</Text>
-                    </View>
-                  </View>
-                ))
-            ) : (
-              <Text style={styles.emptyDocsText}>No documents uploaded yet</Text>
-            )}
-          </View>
+                    <TouchableOpacity
+                      style={styles.eyeIconBox}
+                      activeOpacity={0.7}
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        setSelectedPreviewDoc({
+                          title: doc.title?.replace("\n", " "),
+                          fileUri: doc.fileUri,
+                          fileName: doc.fileName,
+                          fileSize: doc.fileSize,
+                          mimeType: doc.mimeType,
+                        });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Preview ${doc.title}`}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name="eye-outline"
+                        size={18}
+                        color={BrandColors.PRIMARY_BLUE}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyDocsText}>No documents uploaded yet</Text>
+          )}
         </View>
 
         {/* Action Button — In Scroll Flow (Matching GST Filing) */}
@@ -494,6 +572,28 @@ export const ReviewRevisedComputationScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Document Preview Modal */}
+      {selectedPreviewDoc && (
+        <GstViewDocumentModal
+          visible={Boolean(selectedPreviewDoc)}
+          title={selectedPreviewDoc.title || "Document Preview"}
+          fileUri={selectedPreviewDoc.fileUri}
+          fileName={selectedPreviewDoc.fileName}
+          fileSize={selectedPreviewDoc.fileSize}
+          fileTypeLabel={selectedPreviewDoc.fileTypeLabel}
+          mimeType={selectedPreviewDoc.mimeType}
+          onClose={() => setSelectedPreviewDoc(null)}
+        />
+      )}
+
+      {/* Universal Draft Modal */}
+      <UniversalDraftModal
+        visible={draftGuard.showDraftModal}
+        onSaveAndExit={draftGuard.handleSaveAndExit}
+        onDiscardAndExit={draftGuard.handleDiscardAndExit}
+        onCancel={draftGuard.handleKeepEditing}
+      />
     </View>
   );
 };

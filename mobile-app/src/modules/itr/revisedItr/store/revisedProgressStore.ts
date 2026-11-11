@@ -14,6 +14,7 @@ interface RevisedProgressStore {
 
   formData: RevisedFormFields | null;
   setFormData: (data: Partial<RevisedFormFields>) => void;
+  replaceFormData: (data: Partial<RevisedFormFields> | null) => void;
   documents: RevisedDocumentItem[] | null;
   setDocuments: (docs: RevisedDocumentItem[] | null) => void;
   revisionReason: string | null;
@@ -34,6 +35,8 @@ export const useRevisedProgressStore = create<RevisedProgressStore>((set) => ({
   formData: null,
   setFormData: (data) =>
     set((state) => ({ formData: { ...state.formData, ...data } as RevisedFormFields })),
+  replaceFormData: (data) =>
+    set({ formData: data ? (data as RevisedFormFields) : null }),
   documents: null,
   setDocuments: (docs) => set({ documents: docs }),
   revisionReason: null,

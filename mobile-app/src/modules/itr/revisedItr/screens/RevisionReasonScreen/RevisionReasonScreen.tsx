@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
 import { RevisedItrHeader } from "../../components/common";
 import { RevisionReasonCard } from "../../components/reason";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useRevisedItrDraft } from "../../hooks/useRevisedItrDraft";
 import { REVISION_REASONS } from "../../mock/revisedItrData";
 import { RevisionReasonId } from "../../types/revisedItr.types";
 import {
@@ -29,13 +31,20 @@ export const RevisionReasonScreen: React.FC = () => {
   const storedReason = useRevisedProgressStore((s) => s.revisionReason);
   const setRevisionReason = useRevisedProgressStore((s) => s.setRevisionReason);
   const setDocuments = useRevisedProgressStore((s) => s.setDocuments);
-  const setFormData = useRevisedProgressStore((s) => s.setFormData);
+  const replaceFormData = useRevisedProgressStore((s) => s.replaceFormData);
 
   const params = useLocalSearchParams<{
     acknowledgementNumber?: string;
     assessmentYear?: string;
     isEditing?: string;
   }>();
+
+  const draftGuard = useRevisedItrDraft({
+    step: 2,
+    acknowledgementNumber: params.acknowledgementNumber,
+    assessmentYear: params.assessmentYear,
+    isEditing: params.isEditing === "true",
+  });
 
   // "missed_income" is selected by default matching the reference screenshot
   const [selectedReason, setSelectedReason] =
@@ -62,7 +71,7 @@ export const RevisionReasonScreen: React.FC = () => {
 
     if (selectedReason !== storedReason) {
       setDocuments(null);
-      setFormData({});
+      replaceFormData(null);
       setRevisionReason(selectedReason);
     }
 
@@ -114,7 +123,7 @@ export const RevisionReasonScreen: React.FC = () => {
 
     if (selectedReason !== storedReason) {
       setDocuments(null);
-      setFormData({});
+      replaceFormData(null);
       setRevisionReason(selectedReason);
     }
 
@@ -133,14 +142,17 @@ export const RevisionReasonScreen: React.FC = () => {
 
       await RevisedItrApiService.updateRevisionReason(revisionReasonId, payload);
 
-      // Redirect back to Review screen
+      // When reason is updated from review edit flow, continue forward to Step 3 (and then Step 4)
+      // to add/confirm details and documents for that specific reason.
       router.push({
-        pathname: "/service/revised-itr-review" as any,
+        pathname: "/service/revised-itr-update" as any,
         params: {
           acknowledgementNumber: params.acknowledgementNumber,
-          assessmentYear: params.assessmentYear || "AY 2025–26",
+          assessmentYear: params.assessmentYear || "AY 2026-27",
           revisionReason: selectedReason,
           otherReasonText: selectedReason === "other" ? otherReasonText : undefined,
+          isEditing: "true",
+          fromReasonEdit: "true",
         },
       });
     } catch (e) {
@@ -156,7 +168,21 @@ export const RevisionReasonScreen: React.FC = () => {
       <FocusAwareStatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Screen Header */}
-      <RevisedItrHeader subtitle="Reason for Revision" currentStep={2} totalSteps={5} />
+      <RevisedItrHeader
+        subtitle="Reason for Revision"
+        currentStep={2}
+        totalSteps={5}
+        hideBackButton={params.isEditing === "true"}
+        onBack={() => {
+          router.push({
+            pathname: "/service/revised-itr" as any,
+            params: {
+              acknowledgementNumber: params.acknowledgementNumber,
+              assessmentYear: params.assessmentYear,
+            },
+          });
+        }}
+      />
 
       {/* Main Content */}
       <KeyboardAwareScrollView
@@ -248,6 +274,14 @@ export const RevisionReasonScreen: React.FC = () => {
           )}
         </View>
       </KeyboardAwareScrollView>
+
+      {/* Universal Draft Modal */}
+      <UniversalDraftModal
+        visible={draftGuard.showDraftModal}
+        onSaveAndExit={draftGuard.handleSaveAndExit}
+        onDiscardAndExit={draftGuard.handleDiscardAndExit}
+        onCancel={draftGuard.handleKeepEditing}
+      />
     </View>
   );
 };

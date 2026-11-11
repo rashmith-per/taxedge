@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SharedItrDocumentCard } from "@/modules/itr/components/documents/SharedItrDocumentCard/SharedItrDocumentCard";
 import { RevisedItrApiService } from "../../services/RevisedItrApiService";
 import { RevisedItrHeader } from "../../components/common";
+import { UniversalDraftModal } from "@/shared/components/UniversalDraftModal";
+import { useRevisedItrDraft } from "../../hooks/useRevisedItrDraft";
 import { REVISED_SUPPORTING_DOCUMENTS } from "../../mock/revisedItrData";
 import { RevisedDocumentItem } from "../../types/revisedItr.types";
 import {
@@ -36,7 +38,15 @@ export const RevisedDocumentsScreen: React.FC = () => {
     revisionReason?: string;
     revisedDetails?: string;
     isEditing?: string;
+    fromReasonEdit?: string;
   }>();
+
+  const draftGuard = useRevisedItrDraft({
+    step: 4,
+    acknowledgementNumber: params.acknowledgementNumber,
+    assessmentYear: params.assessmentYear,
+    isEditing: Boolean(params.isEditing === "true"),
+  });
 
   const assessmentYear = params.assessmentYear || "AY 2025–26";
 
@@ -250,6 +260,17 @@ export const RevisedDocumentsScreen: React.FC = () => {
         currentStep={4}
         totalSteps={5}
         hideBackButton={params.isEditing === "true"}
+        onBack={() => {
+          router.push({
+            pathname: "/service/revised-itr-update" as any,
+            params: {
+              acknowledgementNumber: params.acknowledgementNumber,
+              assessmentYear: params.assessmentYear,
+              revisionReason: params.revisionReason,
+              fromReasonEdit: params.fromReasonEdit,
+            },
+          });
+        }}
       />
 
       <ScrollView
@@ -320,6 +341,14 @@ export const RevisedDocumentsScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Universal Draft Modal */}
+      <UniversalDraftModal
+        visible={draftGuard.showDraftModal}
+        onSaveAndExit={draftGuard.handleSaveAndExit}
+        onDiscardAndExit={draftGuard.handleDiscardAndExit}
+        onCancel={draftGuard.handleKeepEditing}
+      />
     </View>
   );
 };
