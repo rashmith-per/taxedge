@@ -26,13 +26,13 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/ca-manager/bucket")
+@RequestMapping("/api/v1/bucket")
 @RequiredArgsConstructor
 public class CaManagerBucketController {
 
     private final CaManagerBucketService bucketService;
 
-    @PostMapping
+    @PostMapping("/add")
     public ResponseEntity<String> addToBucket(@Valid @RequestBody AddToBucketRequestDto request) {
         log.info("REST request to add application [{}] ({}) to CA Manager bucket",
                 request.getApplicationId(), request.getApplicationCategory());
@@ -40,14 +40,7 @@ public class CaManagerBucketController {
         return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<String> updateBucketItem(
-            @PathVariable Long id,
-            @RequestBody UpdateBucketRequestDto request) {
-        log.info("REST request to update bucket item [{}]", id);
-        return ResponseEntity.ok(bucketService.updateBucketItem(id, request));
-    }
-
+  
    
 
     @DeleteMapping("/{id}")

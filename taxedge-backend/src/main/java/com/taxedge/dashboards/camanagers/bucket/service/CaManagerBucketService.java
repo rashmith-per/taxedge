@@ -11,8 +11,6 @@ public interface CaManagerBucketService {
 
     String addToBucket(AddToBucketRequestDto request);
 
-    String updateBucketItem(Long id, UpdateBucketRequestDto request);
-
     String updateBucketItemByApplicationId(String applicationId, UpdateBucketRequestDto request);
 
     String deleteBucketItem(Long id);

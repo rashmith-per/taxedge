@@ -1,5 +1,5 @@
 package com.taxedge.customer.config;
-
+ 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,20 +9,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+ 
 import com.taxedge.security.jwt.filter.JwtAuthenticationFilter;
-
+ 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+ 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
+ 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
+ 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -44,6 +44,8 @@ public class SecurityConfig {
                     "/agent/**",
                     "/api/v1/agents/**",
                     "/agents/**",
+                    "/api/v1/bucket/**",
+                    "/bucket/**",
                     "/ws/**",
                     "/api/v1/chat/**",
                     "/notifications/**",
@@ -65,7 +67,7 @@ public class SecurityConfig {
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+ 
         return http.build();
     }
 }

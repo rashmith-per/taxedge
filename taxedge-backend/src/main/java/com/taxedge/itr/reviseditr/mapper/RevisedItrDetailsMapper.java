@@ -3,11 +3,12 @@ package com.taxedge.itr.reviseditr.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import com.taxedge.itr.reviseditr.dto.RevisedItrDetailsDto;
 import com.taxedge.itr.reviseditr.entity.RevisedItrDetails;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
 public interface RevisedItrDetailsMapper {
 
 	@Mapping(target = "detailsId", ignore = true)

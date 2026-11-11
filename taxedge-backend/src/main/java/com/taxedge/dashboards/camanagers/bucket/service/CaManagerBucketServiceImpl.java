@@ -47,16 +47,7 @@ public class CaManagerBucketServiceImpl implements CaManagerBucketService {
         return "Application [" + saved.getApplicationId() + "] successfully added to bucket with ID [" + saved.getId() + "].";
     }
 
-    @Override
-    @Transactional
-    public String updateBucketItem(Long id, UpdateBucketRequestDto request) {
-        CaManagerBucketItem item = bucketRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Bucket item not found with ID: " + id));
-
-        bucketHelper.applyUpdates(item, request);
-        bucketRepository.save(item);
-        return "Bucket item [" + id + "] successfully updated.";
-    }
+  
 
     @Override
     @Transactional
