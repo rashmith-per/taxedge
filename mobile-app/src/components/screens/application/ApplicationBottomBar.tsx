@@ -4,14 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "@/styles/app/application/[id].styles";
 import type { DetailTab } from "./ApplicationHeader";
 
+import { KeyboardStickyFooter } from "@/shared/components/KeyboardStickyFooter";
 interface ApplicationBottomBarProps {
   activeTab: DetailTab;
   bottomInset: number;
@@ -40,10 +39,7 @@ export function ApplicationBottomBar({
 
   if (isChatActive) {
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? bottomInset + 20 : 0}
-      >
+      <KeyboardStickyFooter>
         <View
           style={[
             (styles as any).chatInputBar || styles.chatInputRow,
@@ -72,7 +68,7 @@ export function ApplicationBottomBar({
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyFooter>
     );
   }
 

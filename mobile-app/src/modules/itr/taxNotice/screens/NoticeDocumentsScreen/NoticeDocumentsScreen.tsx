@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  ScrollView,
   TouchableOpacity,
   StatusBar,
   Alert,
@@ -28,6 +27,7 @@ import {
   getProgressFillWidthStyle,
 } from "./NoticeDocumentsScreen.styles";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export const NoticeDocumentsScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -308,7 +308,7 @@ export const NoticeDocumentsScreen: React.FC = () => {
       />
 
       {/* Main Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -359,7 +359,7 @@ export const NoticeDocumentsScreen: React.FC = () => {
           />
           <Text style={styles.charCounter}>{remarks.length}/500</Text>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Sticky Bottom Action Button */}
       <View style={[styles.bottomBar, getBottomBarInsetsStyle(insets.bottom)]}>

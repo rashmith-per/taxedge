@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/design-system/colors";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 export interface BottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -33,6 +34,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       animationType="slide"
       onRequestClose={onClose}
     >
+      <KeyboardAvoidingOverlay>
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
@@ -55,6 +57,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           {children}
         </TouchableOpacity>
       </TouchableOpacity>
+          </KeyboardAvoidingOverlay>
     </RNModal>
   );
 };

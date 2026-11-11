@@ -11,6 +11,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { styles } from "./AadhaarOtpModal.styles";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 interface AadhaarOtpModalProps {
   visible: boolean;
   onVerifySuccess: () => void;
@@ -61,6 +62,7 @@ export const AadhaarOtpModal: React.FC<AadhaarOtpModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
+      <KeyboardAvoidingOverlay>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
@@ -132,6 +134,7 @@ export const AadhaarOtpModal: React.FC<AadhaarOtpModalProps> = ({
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+          </KeyboardAvoidingOverlay>
     </Modal>
   );
 };

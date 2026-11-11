@@ -17,6 +17,7 @@ import { styles } from "@/styles/app/(auth)/create-profile.styles";
 import { GENDER_OPTIONS, INDIAN_STATES_AND_UTS } from "./types";
 import type { IconName } from "@/types/domain";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 // ─── Shared Form Field ────────────────────────────────────────────────────────
 
 export interface FieldProps {
@@ -179,6 +180,7 @@ export function StatePickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingOverlay>
       <View style={styles.modalOverlay}>
         <View style={styles.stateModalContent}>
           <View style={styles.calendarHeader}>
@@ -230,6 +232,7 @@ export function StatePickerModal({
           </ScrollView>
         </View>
       </View>
+          </KeyboardAvoidingOverlay>
     </Modal>
   );
 }

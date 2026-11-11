@@ -20,6 +20,7 @@ import {
 } from "@/modules/applications/utils/chatAttachmentUtils";
 import type { ChatMessage, Application } from "@/types/domain";
 
+import { KeyboardStickyFooter } from "@/shared/components/KeyboardStickyFooter";
 export { getDynamicDateDivider };
 
 interface ChatTabProps {
@@ -318,7 +319,7 @@ export function ChatTab({
       </View>
 
       {/* ── Fixed Message Composer ── */}
-      <View style={[chatStyles.chatComposerWrap, getComposerInsetStyle(bottomInset)]}>
+      <KeyboardStickyFooter style={[chatStyles.chatComposerWrap, getComposerInsetStyle(bottomInset)]}>
         {/* ── Thumbnail Preview (Before Sending) ── */}
         {selectedImage && (
           <View style={chatStyles.attachmentPreviewBar}>
@@ -384,7 +385,7 @@ export function ChatTab({
           <Ionicons name="shield-checkmark-outline" size={12} color="#94A3B8" />
           <Text style={chatStyles.chatSecurityNoteText}>Secure professional support</Text>
         </View>
-      </View>
+      </KeyboardStickyFooter>
 
       {/* ── Document / Image Preview Modal ── */}
       <GstViewDocumentModal

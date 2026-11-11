@@ -19,6 +19,7 @@ import {
   TouchableWithoutFeedback,
   View,
   type ScrollViewInstance,
+  type ViewInstance,
   type GestureResponderEvent,
   type KeyboardEvent,
   type NativeScrollEvent,
@@ -314,6 +315,74 @@ export const KeyboardAwareScrollView = forwardRef<ScrollViewInstance, KeyboardAw
     );
   }
 );
+
+// ─── Modal / bottom-sheet overlay ────────────────────────────────────────────
+
+export interface KeyboardAvoidingOverlayProps {
+  children: React.ReactNode;
+  /** Overlay style: backdrop colour, justifyContent (flex-end sheet / center dialog), padding. */
+  style?: StyleProp<ViewStyle>;
+}
+
+/**
+ * Full-screen overlay for transparent Modals that hold a short dialog or bottom sheet.
+ *
+ * While the keyboard is open it adds bottom padding equal to the part of the overlay the keyboard
+ * covers, so a sheet anchored to the bottom (or a centered dialog) is pushed up above the keyboard
+ * and moves back when the keyboard closes. The inset is measured, so it is 0 whenever the system
+ * already resized the window and nothing is double-counted. Use `KeyboardAwareScrollView` inside
+ * the card when its content can be taller than the space left above the keyboard.
+ */
+export function KeyboardAvoidingOverlay({ children, style }: KeyboardAvoidingOverlayProps) {
+  const ref = useRef<ViewInstance>(null);
+  const keyboardTop = useRef<number | null>(null);
+  const timer = useRef<Timer | null>(null);
+  const [inset, setInset] = useState(0);
+
+  const refresh = useCallback(() => {
+    const kbTop = keyboardTop.current;
+    const node = ref.current;
+    if (kbTop == null || !node) return;
+    node.measureInWindow((_x, y, _w, height) => {
+      if (keyboardTop.current == null || !Number.isFinite(y) || height <= 0) return;
+      // Measured without our own padding, so repeated measurements do not compound.
+      setInset(keyboardOverlap(y + height, kbTop));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return undefined;
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      keyboardTop.current = getKeyboardTop(event);
+      refresh();
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(refresh, SCROLL_AFTER_KEYBOARD_DELAY_MS);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardTop.current = null;
+      if (timer.current) clearTimeout(timer.current);
+      setInset(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [refresh]);
+
+  return (
+    <View
+      ref={ref}
+      collapsable={false}
+      style={[styles.container, style, inset > 0 ? { paddingBottom: inset } : null]}
+    >
+      {children}
+    </View>
+  );
+}
 
 // ─── Form layout wrapper (kept for existing API compatibility) ───────────────
 

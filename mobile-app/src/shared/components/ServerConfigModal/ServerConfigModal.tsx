@@ -17,6 +17,7 @@ import {
   getResultTextStyle,
 } from "./ServerConfigModal.styles";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 export interface ServerConfigModalProps {
   visible: boolean;
   onClose: () => void;
@@ -116,6 +117,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingOverlay>
       <View style={styles.overlay}>
         <View style={styles.dialog}>
           <View style={styles.header}>
@@ -198,6 +200,7 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           </TouchableOpacity>
         </View>
       </View>
+          </KeyboardAvoidingOverlay>
     </Modal>
   );
 };

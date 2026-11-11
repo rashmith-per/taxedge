@@ -4,13 +4,14 @@ import {
   Text,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Animated,
+  type ScrollViewInstance,
   Keyboard,
   TouchableOpacity,
   useColorScheme,
 } from "react-native";
 import { FocusAwareStatusBar } from "@/shared/components/FocusAwareStatusBar";
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -95,7 +96,7 @@ export function AuthenticationScreen() {
     resetToBiometric,
     slideToPasscode: slideToBiometricDismissed,
   } = useReauthSlideAnimation();
-  const reauthScrollRef = useRef<ScrollView>(null);
+  const reauthScrollRef = useRef<ScrollViewInstance>(null);
 
   // Guards: prevent duplicate biometric calls or navigations
   const hasBioTriggered = useRef(false);
@@ -338,12 +339,11 @@ export function AuthenticationScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <FocusAwareStatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-        <ScrollView
+        <KeyboardAwareScrollView
           ref={reauthScrollRef}
           contentContainerStyle={[styles.scroll, dynamicScroll]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.wrapper}>
@@ -402,7 +402,7 @@ export function AuthenticationScreen() {
               </Reanimated.View>
             )}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
         {screenModals}
       </KeyboardAvoidingView>
     );
@@ -415,7 +415,7 @@ export function AuthenticationScreen() {
       style={[styles.container, themed.container]}
     >
       <FocusAwareStatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[styles.scroll, dynamicScroll]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -472,7 +472,7 @@ export function AuthenticationScreen() {
             />
           </Animated.View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       {screenModals}
     </KeyboardAvoidingView>
   );

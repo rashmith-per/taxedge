@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
   Keyboard,
@@ -29,6 +28,7 @@ import {
   getScrollContentInsetsStyle,
 } from "./FindOriginalReturnScreen.styles";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export const FindOriginalReturnScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -232,7 +232,7 @@ export const FindOriginalReturnScreen: React.FC = () => {
       <RevisedItrHeader subtitle="Find Original Return" currentStep={1} totalSteps={5} />
 
       {/* Main Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -370,7 +370,7 @@ export const FindOriginalReturnScreen: React.FC = () => {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Assessment Year Modal — Bottom Sheet UI Matching GST Filing */}
       <GstSelectModal

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Alert,
 } from "react-native";
@@ -21,6 +20,7 @@ import { styles } from "./PaymentsHomeScreen.styles";
 import { PaymentValidators } from "@/shared/validators/paymentValidators";
 import type { PaymentOutcomeViews } from "@/shared/types/paymentOutcome.types";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 type PaymentScreenView = "checkout" | "success" | "receipt" | "status";
 
 export interface PaymentsHomeScreenProps {
@@ -112,7 +112,7 @@ export function PaymentsHomeScreen({ outcomeViews }: PaymentsHomeScreenProps = {
       </View>
 
       {/* Main Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -192,7 +192,7 @@ export function PaymentsHomeScreen({ outcomeViews }: PaymentsHomeScreenProps = {
         {currentView === "receipt" && outcomeViews?.renderReceipt()}
 
         {currentView === "status" && outcomeViews?.renderStatus()}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

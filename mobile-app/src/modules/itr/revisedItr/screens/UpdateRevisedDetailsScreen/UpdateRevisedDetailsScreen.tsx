@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -28,6 +27,7 @@ import {
   getScrollContentInsetsStyle,
 } from "./UpdateRevisedDetailsScreen.styles";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export const UpdateRevisedDetailsScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -194,7 +194,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
       />
 
       {/* Main Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -458,7 +458,7 @@ export const UpdateRevisedDetailsScreen: React.FC = () => {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };

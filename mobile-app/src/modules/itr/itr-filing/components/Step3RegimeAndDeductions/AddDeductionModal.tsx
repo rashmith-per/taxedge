@@ -5,6 +5,7 @@ import { AmountTextInput } from "@/shared/components/AmountTextInput";
 import { AdditionalDeductionItem } from "../../types/itrFiling.types";
 import { styles } from "./Step3RegimeAndDeductions.styles";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 interface AddDeductionModalProps {
   visible: boolean;
   onClose: () => void;
@@ -49,6 +50,7 @@ export const AddDeductionModal: React.FC<AddDeductionModalProps> = ({ visible, o
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingOverlay>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeaderRow}>
@@ -104,6 +106,7 @@ export const AddDeductionModal: React.FC<AddDeductionModalProps> = ({ visible, o
           </View>
         </View>
       </View>
+          </KeyboardAvoidingOverlay>
     </Modal>
   );
 };

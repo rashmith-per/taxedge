@@ -15,6 +15,7 @@ import { removeEmoji } from "@/modules/gst/utils/gstEmojiFilter";
 import { normalizeLiveInput, finalizeTrim } from "@/modules/gst/utils/gstSpaceValidation";
 import { styles } from "./GstBusinessStep.styles";
  
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 interface InputProps {
   label: string;
   value: string;
@@ -192,6 +193,7 @@ export const FormSelect: React.FC<SelectProps> = React.memo(({
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
  
       <Modal visible={modalVisible} transparent animationType="fade">
+        <KeyboardAvoidingOverlay>
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
@@ -265,6 +267,7 @@ export const FormSelect: React.FC<SelectProps> = React.memo(({
             </View>
           </TouchableWithoutFeedback>
         </TouchableOpacity>
+              </KeyboardAvoidingOverlay>
       </Modal>
     </View>
   );

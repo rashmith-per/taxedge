@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StatusBar,
   Alert,
   ActivityIndicator,
@@ -36,6 +35,7 @@ import {
 import { validateStep1Data, validateStep2Data } from "./UploadNoticeScreen.utils";
 import { AssessmentYearDropdown, NoticeTypeDropdown } from "./UploadNoticeScreen.components";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export const UploadNoticeScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -211,7 +211,7 @@ export const UploadNoticeScreen: React.FC = () => {
       />
 
       {/* Main Form Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -349,7 +349,7 @@ export const UploadNoticeScreen: React.FC = () => {
               </Text>
             </View>
           </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Sticky Bottom Action Bar */}
       <View style={[styles.bottomBar, getBottomBarInsetsStyle(insets.bottom)]}>

@@ -20,6 +20,7 @@ import { RegimeComparisonTable } from "../../../components/RegimeComparisonTable
 import { AmountTextInput } from "@/shared/components/AmountTextInput";
 import { styles } from "./Step3RegimeAndDeductions.styles";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 interface Step3RegimeAndDeductionsProps {
   isEditing?: boolean;
   regime: TaxRegimeType;
@@ -426,6 +427,7 @@ export const Step3RegimeAndDeductions: React.FC<Step3RegimeAndDeductionsProps> =
 
       {/* Add Additional Deduction Modal */}
       <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+        <KeyboardAvoidingOverlay>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeaderRow}>
@@ -481,6 +483,7 @@ export const Step3RegimeAndDeductions: React.FC<Step3RegimeAndDeductionsProps> =
             </View>
           </View>
         </View>
+              </KeyboardAvoidingOverlay>
       </Modal>
     </View>
   );

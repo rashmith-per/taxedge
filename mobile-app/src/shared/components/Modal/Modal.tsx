@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/design-system/colors";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 export interface ModalProps {
   visible: boolean;
   onClose: () => void;
@@ -33,6 +34,7 @@ export const Modal: React.FC<ModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
+      <KeyboardAvoidingOverlay>
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
@@ -54,6 +56,7 @@ export const Modal: React.FC<ModalProps> = ({
           {children}
         </TouchableOpacity>
       </TouchableOpacity>
+          </KeyboardAvoidingOverlay>
     </RNModal>
   );
 };

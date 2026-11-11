@@ -5,6 +5,7 @@ import {
   TextInput,
   StyleSheet,
   type KeyboardTypeOptions,
+  type ReturnKeyTypeOptions,
   type StyleProp,
   type ViewStyle,
   type TextStyle,
@@ -25,6 +26,10 @@ export interface FormInputProps {
   inputStyle?: StyleProp<TextStyle>;
   onBlur?: () => void;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  /** Keyboard action key ("next" to move on, "done" to finish). */
+  returnKeyType?: ReturnKeyTypeOptions;
+  onSubmitEditing?: () => void;
+  multiline?: boolean;
 }
 
 export function FormInput({
@@ -41,6 +46,9 @@ export function FormInput({
   inputStyle,
   onBlur,
   autoCapitalize,
+  returnKeyType,
+  onSubmitEditing,
+  multiline,
 }: FormInputProps) {
   const colors = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -59,6 +67,9 @@ export function FormInput({
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
         autoCapitalize={autoCapitalize}
+        returnKeyType={returnKeyType}
+        onSubmitEditing={onSubmitEditing}
+        multiline={multiline}
         onFocus={() => setIsFocused(true)}
         onBlur={() => {
           setIsFocused(false);

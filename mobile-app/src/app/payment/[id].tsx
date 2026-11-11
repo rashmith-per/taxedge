@@ -27,6 +27,7 @@ import {
   PaymentSecurityNote,
 } from "@/components/screens/payment/PaymentPayBar";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 const GST_RATE = 0.18;
 
 export default function PaymentScreen() {
@@ -116,7 +117,7 @@ export default function PaymentScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader title="Complete Payment" showBack showNotification={false} />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -172,7 +173,7 @@ export default function PaymentScreen() {
 
         {/* Reassurance security guarantee */}
         <PaymentSecurityNote colors={colors} />
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Sticky pay bar */}
       <PaymentPayBar

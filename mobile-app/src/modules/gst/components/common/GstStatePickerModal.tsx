@@ -12,6 +12,7 @@ import { BrandColors } from "@/shared/theme";
 import { INDIAN_STATES_AND_UTS } from "@/components/screens/create-profile/types";
 import { styles } from "./GstStatePickerModal.styles";
 
+import { KeyboardAvoidingOverlay } from "@/shared/components/KeyboardAwareFormLayout";
 export interface GstStatePickerModalProps {
   visible: boolean;
   selectedState?: string;
@@ -54,6 +55,7 @@ export const GstStatePickerModal: React.FC<GstStatePickerModalProps> = memo(({
       animationType="fade"
       onRequestClose={handleClose}
     >
+      <KeyboardAvoidingOverlay>
       <View style={styles.modalOverlay}>
         <View style={styles.stateModalContent}>
           <View style={styles.headerRow}>
@@ -131,6 +133,7 @@ export const GstStatePickerModal: React.FC<GstStatePickerModalProps> = memo(({
           </ScrollView>
         </View>
       </View>
+          </KeyboardAvoidingOverlay>
     </Modal>
   );
 });

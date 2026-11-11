@@ -1,13 +1,13 @@
 import React, { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
-  ScrollView,
   Platform,
   StyleProp,
   ViewStyle,
 } from "react-native";
 import { styles } from "./ScreenWrapper.styles";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export interface ScreenWrapperProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -27,13 +27,13 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {children}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 };

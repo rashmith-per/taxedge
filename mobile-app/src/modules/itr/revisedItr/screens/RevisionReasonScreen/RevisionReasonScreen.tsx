@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -23,6 +22,7 @@ import {
   getScrollContentInsetsStyle,
 } from "./RevisionReasonScreen.styles";
 
+import { KeyboardAwareScrollView } from "@/shared/components/KeyboardAwareFormLayout";
 export const RevisionReasonScreen: React.FC = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -159,7 +159,7 @@ export const RevisionReasonScreen: React.FC = () => {
       <RevisedItrHeader subtitle="Reason for Revision" currentStep={2} totalSteps={5} />
 
       {/* Main Content */}
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
           getScrollContentInsetsStyle(insets.bottom),
@@ -247,7 +247,7 @@ export const RevisionReasonScreen: React.FC = () => {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };
